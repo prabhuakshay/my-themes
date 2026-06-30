@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Frontline — Responsive Design System for Field & Operations Software</title>
+<meta name="description" content="Frontline — a responsive, mobile-friendly enterprise design system for field & operations teams. Hi-vis daylight palette, an operational status system, BI dashboard, data tables, inline edits, edit drawers, modals. Field + Shift editions." />
+<meta name="theme-color" content="#FB5A1F" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@400;500;600;700&family=Saira+Semi+Condensed:wght@500;600;700&family=Martian+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={ darkMode:'class', theme:{ fontFamily:{ sans:['Saira','system-ui','sans-serif'], cond:['"Saira Semi Condensed"','sans-serif'], mono:['"Martian Mono"','ui-monospace','monospace'] } } };</script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+  /* ============ EDITION TOKENS — FIELD (light) ============ */
+  :root{
+    --bg:#EDF0F3; --surface:#FFFFFF; --surface-2:#F5F7F9; --ink:#13171C; --ink-2:#586069; --ink-3:#8B95A0;
+    --line:#E5E9ED; --line-2:#D3D9E0; --brand:#FB5A1F; --brand-press:#E2470F; --brand-ink:#C23A0E; --brand-soft:#FFEDE5;
+    --s-sched:#5B6B7B; --s-enroute:#2563EB; --s-onsite:#0D9488; --s-blocked:#E11D48; --s-done:#16A34A; --warn:#D97706;
+    --shadow:0 1px 2px rgba(20,24,29,.06),0 4px 16px rgba(20,24,29,.07);
+    --shadow-lg:0 8px 24px rgba(20,24,29,.10),0 24px 60px rgba(20,24,29,.16);
+    --r:14px; --r-sm:10px; color-scheme:light;
+  }
+  /* ============ EDITION TOKENS — SHIFT (dark) ============ */
+  html.dark{
+    --bg:#0A0D11; --surface:#161B21; --surface-2:#1D232B; --ink:#EAEEF2; --ink-2:#9AA4AE; --ink-3:#67727D;
+    --line:#262D35; --line-2:#323B45; --brand:#FF6A2E; --brand-press:#FF7E48; --brand-ink:#FF8A57; --brand-soft:#2A1A12;
+    --s-sched:#94A3B8; --s-enroute:#60A5FA; --s-onsite:#2DD4BF; --s-blocked:#FB7185; --s-done:#4ADE80; --warn:#FBBF24;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.45);
+    --shadow-lg:0 12px 40px rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; }
+  body{ font-family:'Saira',system-ui,sans-serif; color:var(--ink); background:var(--bg); font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased; }
+  .mono{ font-family:'Martian Mono',monospace; } .cond{ font-family:'Saira Semi Condensed',sans-serif; }
+  [x-cloak]{ display:none !important; }
+  ::-webkit-scrollbar{ width:10px; height:10px; } ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:6px; } ::-webkit-scrollbar-track{ background:transparent; }
+
+  .lbl{ font-family:'Saira Semi Condensed',sans-serif; font-size:11px; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3); }
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); }
+  .sidebar{ background:var(--surface); border-right:1px solid var(--line-2); }
+  .topbar{ background:var(--surface); border-bottom:1px solid var(--line-2); }
+
+  /* nav */
+  .nav-item{ display:flex; align-items:center; gap:12px; height:42px; padding:0 14px; border-radius:var(--r-sm); color:var(--ink-2); cursor:pointer; font-weight:500; transition:background .12s,color .12s; }
+  .nav-item:hover{ background:var(--surface-2); color:var(--ink); }
+  .nav-item.on{ background:var(--brand-soft); color:var(--brand-ink); font-weight:600; }
+  html.dark .nav-item.on{ color:var(--brand); }
+  .nav-item.on i{ color:var(--brand); }
+
+  /* status chip */
+  .chip{ display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 9px; border-radius:99px; font-family:'Saira Semi Condensed',sans-serif; font-weight:700; font-size:11.5px; letter-spacing:.05em; text-transform:uppercase; white-space:nowrap; }
+  .chip .d{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+
+  /* buttons */
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:7px; height:40px; padding:0 16px; border-radius:var(--r-sm); font-weight:600; font-size:14px; border:1px solid transparent; cursor:pointer; transition:background .12s,border-color .12s,transform .06s; white-space:nowrap; }
+  .btn:active{ transform:scale(.98); }
+  .btn-primary{ background:var(--brand); color:#fff; } .btn-primary:hover{ background:var(--brand-press); }
+  .btn-outline{ background:transparent; color:var(--ink); border-color:var(--line); } .btn-outline:hover{ background:var(--surface-2); }
+  .btn-ghost{ background:var(--surface-2); color:var(--ink); } .btn-ghost:hover{ background:var(--line); }
+  .btn-sm{ height:34px; padding:0 12px; font-size:13px; } .btn-block{ width:100%; }
+  .iconbtn{ width:40px; height:40px; border-radius:var(--r-sm); display:flex; align-items:center; justify-content:center; color:var(--ink-2); cursor:pointer; border:1px solid transparent; }
+  .iconbtn:hover{ background:var(--surface-2); color:var(--ink); }
+
+  /* inputs */
+  .field,.isel{ height:40px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm); padding:0 12px; font-size:14px; color:var(--ink); font-family:'Saira',sans-serif; width:100%; }
+  .field:focus,.isel:focus{ outline:2px solid var(--brand); outline-offset:1px; border-color:var(--brand); }
+  textarea.field{ height:auto; padding:10px 12px; resize:vertical; }
+  .field::placeholder{ color:var(--ink-3); }
+
+  /* fchip / seg */
+  .fchip{ height:32px; padding:0 13px; border-radius:99px; border:1px solid var(--line); background:var(--surface); font-family:'Saira Semi Condensed',sans-serif; font-weight:600; font-size:13px; color:var(--ink-2); white-space:nowrap; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .fchip.on{ background:var(--ink); color:var(--surface); border-color:var(--ink); }
+  .seg{ display:inline-flex; border:1px solid var(--line); border-radius:var(--r-sm); overflow:hidden; }
+  .seg button{ height:34px; padding:0 13px; font-family:'Saira Semi Condensed',sans-serif; font-weight:600; font-size:12.5px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-2); background:transparent; border-right:1px solid var(--line); cursor:pointer; }
+  .seg button:last-child{ border-right:0; } .seg button:hover{ background:var(--surface-2); } .seg button.on{ background:var(--ink); color:var(--surface); }
+
+  /* toggle / stepper */
+  .tg{ width:44px; height:26px; border-radius:99px; background:var(--line); position:relative; cursor:pointer; transition:background .16s; flex:none; }
+  .tg.on{ background:var(--brand); } .tg b{ position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:left .16s; box-shadow:0 1px 3px rgba(0,0,0,.3); } .tg.on b{ left:21px; }
+  .step{ width:34px; height:34px; border-radius:9px; border:1px solid var(--line); background:var(--surface-2); display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; } .step:active{ background:var(--line); }
+
+  /* table */
+  table.tbl{ width:100%; border-collapse:collapse; }
+  table.tbl th{ font-family:'Saira Semi Condensed',sans-serif; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); text-align:left; font-weight:700; padding:14px 14px 11px; border-bottom:1px solid var(--line); white-space:nowrap; background:var(--surface); position:sticky; top:0; z-index:1; }
+  table.tbl td{ padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  table.tbl tbody tr{ cursor:pointer; } table.tbl tbody tr:hover td{ background:var(--surface-2); }
+  table.tbl tbody tr:last-child td{ border-bottom:0; } .r{ text-align:right; }
+
+  /* overlays */
+  .scrim{ position:fixed; inset:0; background:rgba(8,11,15,.5); z-index:50; }
+  .drawer{ position:fixed; top:0; right:0; bottom:0; width:min(440px,92vw); background:var(--surface); z-index:60; box-shadow:var(--shadow-lg); display:flex; flex-direction:column; }
+  .ndrawer{ position:fixed; top:0; left:0; bottom:0; width:270px; background:var(--surface); z-index:60; box-shadow:var(--shadow-lg); display:flex; flex-direction:column; }
+  .modal{ position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; padding:16px; }
+  .modal-card{ width:100%; max-width:460px; background:var(--surface); border-radius:var(--r); box-shadow:var(--shadow-lg); max-height:90vh; display:flex; flex-direction:column; }
+  .kpi-spark{ height:34px; }
+  .ie{ border:1px solid transparent; border-radius:8px; padding:2px 6px; margin:-2px -6px; cursor:text; }
+  .ie:hover{ background:var(--surface-2); border-color:var(--line); }
+</style>
+</head>
+
+<body x-data="frontline()" x-init="boot()">
+<div class="flex h-[100dvh] overflow-hidden">
+
+  <!-- ============ SIDEBAR (desktop) ============ -->
+  <aside class="sidebar hidden lg:flex flex-col flex-none h-full transition-all" :style="`width:${collapsed?'72px':'248px'}`">
+    <div class="flex items-center gap-2.5 h-16 flex-none px-4" style="border-bottom:1px solid var(--line-2)">
+      <div class="w-9 h-9 rounded-[10px] flex items-center justify-center flex-none" style="background:var(--brand)">
+        <i data-lucide="hard-hat" class="w-5 h-5" style="color:#fff"></i>
+      </div>
+      <div x-show="!collapsed" class="cond" style="font-size:21px; font-weight:700; letter-spacing:-.01em">Frontline</div>
+    </div>
+    <nav class="flex-1 min-h-0 overflow-y-auto p-3">
+      <div class="lbl px-3 mb-2" x-show="!collapsed">Operations</div>
+      <div class="flex flex-col gap-1">
+        <template x-for="n in nav" :key="n.id">
+          <div class="nav-item" :class="page===n.id&&'on'" @click="go(n.id)" :title="n.label" :style="collapsed&&'justify-content:center; padding:0'">
+            <i :data-lucide="n.icon" class="w-5 h-5 flex-none"></i>
+            <span x-show="!collapsed" x-text="n.label"></span>
+            <span x-show="!collapsed && n.badge" class="ml-auto chip" :style="`color:var(--brand-ink);background:var(--brand-soft)`" x-text="n.badge"></span>
+          </div>
+        </template>
+      </div>
+    </nav>
+    <div class="flex-none p-3" style="border-top:1px solid var(--line-2)">
+      <div class="nav-item" @click="collapsed=!collapsed" :style="collapsed&&'justify-content:center; padding:0'">
+        <i :data-lucide="collapsed?'chevrons-right':'chevrons-left'" class="w-5 h-5 flex-none"></i>
+        <span x-show="!collapsed">Collapse</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="flex-1 min-w-0 flex flex-col h-full">
+
+    <!-- topbar -->
+    <header class="topbar flex-none flex items-center gap-2 sm:gap-3 px-3 sm:px-5 h-16">
+      <div class="iconbtn lg:hidden" @click="navOpen=true"><i data-lucide="menu" class="w-5 h-5"></i></div>
+      <div class="min-w-0">
+        <div class="lbl hidden sm:block" x-text="meta[page].kicker"></div>
+        <div class="cond" style="font-size:20px; font-weight:700; line-height:1.1" x-text="meta[page].title"></div>
+      </div>
+      <div class="relative ml-auto hidden md:block">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+        <input class="field" style="width:240px; padding-left:34px" placeholder="Search jobs, sites, parts…" x-model="search" />
+      </div>
+      <button class="btn btn-primary ml-auto md:ml-0" @click="openNew()"><i data-lucide="plus" class="w-4 h-4"></i><span class="hidden sm:inline">New job</span></button>
+      <div class="iconbtn" @click="toggleEdition()" :title="dark?'Field edition':'Shift edition'">
+        <i data-lucide="sun" class="w-5 h-5" x-show="dark" x-cloak></i><i data-lucide="moon" class="w-5 h-5" x-show="!dark"></i>
+      </div>
+      <div class="iconbtn relative" @click="page='dispatch'; go('dispatch')"><i data-lucide="bell" class="w-5 h-5"></i><span style="position:absolute; top:7px; right:8px; width:7px; height:7px; border-radius:50%; background:var(--brand)"></span></div>
+      <div class="w-9 h-9 rounded-full hidden sm:flex items-center justify-center cond flex-none" style="background:var(--brand); color:#fff; font-weight:700">RM</div>
+    </header>
+
+    <!-- content -->
+    <main class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
+
+      <!-- ========== DASHBOARD (BI) ========== -->
+      <div x-show="page==='dashboard'">
+        <!-- KPI tiles -->
+        <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+          <template x-for="k in kpis" :key="k.l">
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><span class="lbl" x-text="k.l"></span><i :data-lucide="k.i" class="w-4 h-4" style="color:var(--ink-3)"></i></div>
+              <div class="cond mt-1" style="font-size:30px; font-weight:700; line-height:1" x-text="k.v"></div>
+              <div class="flex items-center gap-1 mt-1.5 mono" style="font-size:12px" :style="`color:var(${k.up?'--s-done':'--s-blocked'})`">
+                <i :data-lucide="k.up?'trending-up':'trending-down'" class="w-3.5 h-3.5"></i><span x-text="k.d"></span>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- charts -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+          <div class="card p-4 xl:col-span-2">
+            <div class="flex items-center justify-between mb-3"><div><div class="lbl">Performance</div><div class="cond" style="font-size:17px; font-weight:600">On-time completion · 12 weeks</div></div>
+              <div class="seg"><button class="on">%</button><button>Jobs</button></div></div>
+            <div style="height:230px"><canvas id="cLine"></canvas></div>
+          </div>
+          <div class="card p-4">
+            <div class="lbl mb-1">Today</div><div class="cond mb-3" style="font-size:17px; font-weight:600">Work order status</div>
+            <div style="height:170px"><canvas id="cDonut"></canvas></div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3">
+              <template x-for="s in statusOrder" :key="s">
+                <div class="flex items-center gap-2" style="font-size:12px">
+                  <span style="width:9px;height:9px;border-radius:3px" :style="`background:var(${statusMeta[s].v})`"></span>
+                  <span x-text="statusMeta[s].label"></span>
+                  <span class="mono ml-auto" style="color:var(--ink-2)" x-text="orders.filter(o=>o.status===s).length"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+          <div class="card p-4">
+            <div class="lbl mb-1">Volume</div><div class="cond mb-3" style="font-size:17px; font-weight:600">Jobs per day</div>
+            <div style="height:180px"><canvas id="cBar"></canvas></div>
+          </div>
+          <!-- table: top fault types -->
+          <div class="card xl:col-span-2 overflow-hidden">
+            <div class="p-4 pb-0 flex items-center justify-between"><div><div class="lbl">This week</div><div class="cond" style="font-size:17px; font-weight:600">Top fault types</div></div>
+              <button class="btn btn-ghost btn-sm" @click="go('orders')">All work orders <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button></div>
+            <div class="overflow-x-auto mt-3">
+              <table class="tbl"><thead><tr><th>Fault type</th><th class="r">Jobs</th><th class="r">Avg fix</th><th class="r">SLA met</th><th>Trend</th></tr></thead>
+                <tbody>
+                  <template x-for="f in faults" :key="f.t"><tr @click="go('orders')">
+                    <td style="font-weight:600" x-text="f.t"></td>
+                    <td class="r mono" x-text="f.n"></td>
+                    <td class="r mono" style="color:var(--ink-2)" x-text="f.fix"></td>
+                    <td class="r mono" :style="`color:var(${f.sla>=95?'--s-done':(f.sla>=90?'--warn':'--s-blocked')})`" x-text="f.sla+'%'"></td>
+                    <td><span class="mono" :style="`color:var(${f.up?'--s-done':'--s-blocked'})`" x-text="(f.up?'▲ ':'▼ ')+f.dv"></span></td>
+                  </tr></template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== WORK ORDERS (table + inline edit + drawer) ========== -->
+      <div x-show="page==='orders'" x-cloak>
+        <div class="flex items-center gap-2 flex-wrap mb-4">
+          <div class="flex gap-2 flex-wrap">
+            <div class="fchip" :class="filter==='All'&&'on'" @click="filter='All'">All <span class="mono" x-text="orders.length"></span></div>
+            <template x-for="s in statusOrder" :key="s">
+              <div class="fchip" :class="filter===s&&'on'" @click="filter=s">
+                <span style="width:7px;height:7px;border-radius:50%" :style="`background:var(${statusMeta[s].v})`"></span>
+                <span x-text="statusMeta[s].label"></span>
+              </div>
+            </template>
+          </div>
+          <div class="relative ml-auto md:hidden">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+            <input class="field" style="padding-left:34px" placeholder="Search…" x-model="search" />
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="overflow-x-auto" style="max-height:calc(100dvh - 220px)">
+            <table class="tbl"><thead><tr>
+              <th>WO</th><th>Customer</th><th class="hidden md:table-cell">Type</th><th>Priority</th><th>Status</th><th class="hidden sm:table-cell">Window</th><th></th>
+            </tr></thead><tbody>
+              <template x-for="o in filteredOrders" :key="o.id">
+                <tr @click="openEdit(o)">
+                  <td class="mono" style="font-size:12.5px; color:var(--ink-2); white-space:nowrap" x-text="o.id"></td>
+                  <td style="font-weight:600; min-width:150px" x-text="o.cust"></td>
+                  <td class="hidden md:table-cell" style="color:var(--ink-2)" x-text="o.type"></td>
+                  <td><span class="chip" :style="prioStyle(o.prio)" x-text="o.prio"></span></td>
+                  <!-- inline edit: status select -->
+                  <td @click.stop>
+                    <select class="isel" style="height:32px; padding:0 8px; width:auto; font-family:'Saira Semi Condensed'; font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em"
+                            :style="`color:var(${statusMeta[o.status].v})`" x-model="o.status" @change="ping('“'+o.cust+'” → '+statusMeta[o.status].label,'check')">
+                      <template x-for="s in statusOrder" :key="s"><option :value="s" x-text="statusMeta[s].label"></option></template>
+                    </select>
+                  </td>
+                  <td class="hidden sm:table-cell mono" style="font-size:12.5px; color:var(--ink-2); white-space:nowrap" x-text="o.win"></td>
+                  <td class="r"><i data-lucide="pencil" class="w-4 h-4" style="color:var(--ink-3)" @click.stop="openEdit(o)"></i></td>
+                </tr>
+              </template>
+            </tbody></table>
+          </div>
+        </div>
+        <div class="lbl mt-3" x-text="filteredOrders.length+' of '+orders.length+' work orders'"></div>
+      </div>
+
+      <!-- ========== DISPATCH (route timeline) ========== -->
+      <div x-show="page==='dispatch'" x-cloak>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          <template x-for="t in [{l:'Stops',v:orders.length},{l:'Distance',v:totalDist+' mi'},{l:'On-site now',v:orders.filter(o=>o.status==='onsite').length},{l:'Finish ETA',v:'16:40'}]" :key="t.l">
+            <div class="card p-4"><div class="lbl" x-text="t.l"></div><div class="cond" style="font-size:24px; font-weight:700" x-text="t.v"></div></div>
+          </template>
+        </div>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-x-8 gap-y-3 relative" style="padding-left:6px">
+          <template x-for="o in orders" :key="o.id">
+            <div class="flex gap-3 items-start">
+              <div style="flex:none; margin-top:16px"><span :style="`display:block;width:16px;height:16px;border-radius:50%;border:3px solid var(--surface);background:var(${statusMeta[o.status].v});box-shadow:0 0 0 1px var(${statusMeta[o.status].v})`"></span></div>
+              <div class="card flex-1 p-4 tap" @click="openEdit(o)" style="cursor:pointer">
+                <div class="flex items-center justify-between gap-2"><span class="mono" style="font-size:12px; color:var(--ink-2)" x-text="o.eta+' · '+o.dist"></span>
+                  <span class="chip" :style="chipStyle(o.status)"><span x-text="statusMeta[o.status].label"></span></span></div>
+                <div class="cond mt-1" style="font-size:18px; font-weight:600" x-text="o.cust"></div>
+                <div class="flex items-center gap-1.5 mt-0.5" style="font-size:13px; color:var(--ink-2)"><i data-lucide="map-pin" class="w-3.5 h-3.5"></i><span x-text="o.addr"></span></div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- ========== CAPTURE (forms / inputs) ========== -->
+      <div x-show="page==='capture'" x-cloak>
+        <div class="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-4" style="max-width:1100px">
+          <div class="card p-5">
+            <div class="lbl mb-4">Field capture · WO-4821 · Northwind Cold Storage</div>
+            <label class="lbl" style="color:var(--ink-2)">Reading type</label>
+            <select class="isel mt-1.5 mb-4"><option>Electricity (kWh)</option><option>Gas (m³)</option><option>Water (L)</option><option>Temperature (°C)</option></select>
+
+            <label class="lbl" style="color:var(--ink-2)">Meter reading</label>
+            <!-- inline-editable number + steppers -->
+            <div class="flex items-center gap-3 mt-1.5 mb-4">
+              <div class="step" @click="reading=Math.max(0,reading-1)"><i data-lucide="minus" class="w-4 h-4"></i></div>
+              <input class="field mono text-center" style="font-size:24px; font-weight:600; flex:1; height:54px" type="tel" x-model.number="reading" />
+              <div class="step" @click="reading++"><i data-lucide="plus" class="w-4 h-4"></i></div>
+            </div>
+            <div class="flex gap-2 mb-5 flex-wrap"><template x-for="n in [10,100,1000]" :key="n"><button class="btn btn-ghost btn-sm" @click="reading+=n" x-text="'+'+n"></button></template></div>
+
+            <label class="lbl" style="color:var(--ink-2)">Parts used</label>
+            <div class="mt-1.5 mb-4 flex flex-col gap-2">
+              <template x-for="(p,i) in usedParts" :key="i">
+                <div class="flex items-center gap-2"><input class="field" x-model="p.name" /><input class="field mono" style="width:72px; text-align:center" type="tel" x-model.number="p.qty" /><div class="iconbtn" @click="usedParts.splice(i,1)"><i data-lucide="trash-2" class="w-4 h-4"></i></div></div>
+              </template>
+              <button class="btn btn-outline btn-sm" style="width:fit-content" @click="usedParts.push({name:'',qty:1})"><i data-lucide="plus" class="w-4 h-4"></i> Add part</button>
+            </div>
+
+            <label class="lbl" style="color:var(--ink-2)">Notes</label>
+            <textarea class="field mt-1.5" rows="3" placeholder="Observations for the office…"></textarea>
+
+            <div class="flex items-center gap-3 mt-4">
+              <span style="font-size:14px">Requires follow-up visit</span>
+              <div class="tg ml-auto" x-data="{on:false}" :class="on&&'on'" @click="on=!on"><b></b></div>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-4">
+            <div class="card p-5">
+              <div class="lbl mb-3">Evidence</div>
+              <div class="flex flex-col items-center justify-center gap-2 py-8" style="border:2px dashed var(--line); border-radius:12px; color:var(--ink-3)">
+                <i data-lucide="camera" class="w-8 h-8"></i><span class="cond" style="font-weight:600">Tap to add photos</span><span style="font-size:12px">or drop files here</span>
+              </div>
+              <div class="grid grid-cols-3 gap-2 mt-3"><template x-for="i in 3" :key="i"><div style="aspect-ratio:1; border-radius:10px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; color:var(--ink-3)"><i data-lucide="image" class="w-6 h-6"></i></div></template></div>
+            </div>
+            <button class="btn btn-primary btn-lg btn-block" style="height:52px; font-size:16px" @click="ping(online?'Reading submitted':'Saved offline · will sync', online?'check-check':'cloud-off')"><i data-lucide="send" class="w-5 h-5"></i> Submit capture</button>
+            <button class="btn btn-outline btn-block" @click="ping('Saved as draft','save')">Save draft</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== INVENTORY (table + steppers) ========== -->
+      <div x-show="page==='inventory'" x-cloak>
+        <div class="card overflow-hidden" style="max-width:900px">
+          <div class="overflow-x-auto"><table class="tbl"><thead><tr><th>Part</th><th>SKU</th><th class="r">On van</th><th class="r">Min</th><th>Adjust</th></tr></thead><tbody>
+            <template x-for="s in stock" :key="s.sku"><tr style="cursor:default">
+              <td style="font-weight:600" x-text="s.name"></td>
+              <td class="mono" style="font-size:12px; color:var(--ink-2)" x-text="s.sku"></td>
+              <td class="r mono" style="font-size:16px; font-weight:600"><span x-text="s.qty"></span> <span x-show="s.qty<=s.min" class="chip" style="height:18px;padding:0 6px;font-size:10px;color:var(--warn);background:color-mix(in srgb,var(--warn) 16%,transparent)">Low</span></td>
+              <td class="r mono" style="color:var(--ink-3)" x-text="s.min"></td>
+              <td><div class="flex items-center gap-2"><div class="step" @click="s.qty=Math.max(0,s.qty-1)"><i data-lucide="minus" class="w-4 h-4"></i></div><div class="step" @click="s.qty++"><i data-lucide="plus" class="w-4 h-4"></i></div></div></td>
+            </tr></template>
+          </tbody></table></div>
+        </div>
+        <button class="btn btn-primary btn-sm mt-4" @click="ping('Stock counts saved','check')"><i data-lucide="save" class="w-4 h-4"></i> Save counts</button>
+      </div>
+
+      <!-- ========== SETTINGS ========== -->
+      <div x-show="page==='settings'" x-cloak style="max-width:680px">
+        <div class="card p-5 mb-4">
+          <div class="lbl mb-3">Account</div>
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-full flex items-center justify-center cond flex-none" style="background:var(--brand); color:#fff; font-weight:700; font-size:20px">RM</div>
+            <div class="min-w-0">
+              <!-- inline edit name -->
+              <template x-if="!editName"><div class="cond ie" style="font-size:20px; font-weight:700" @click="editName=true; $nextTick(()=>$refs.nm.focus())" x-text="name"></div></template>
+              <template x-if="editName"><div class="flex items-center gap-2"><input x-ref="nm" class="field" style="width:200px" x-model="name" @keydown.enter="editName=false; ping('Name updated','check')" @keydown.escape="editName=false" /><button class="btn btn-primary btn-sm" @click="editName=false; ping('Name updated','check')">Save</button></div></template>
+              <div class="mono" style="font-size:12px; color:var(--ink-2)">Field Tech · Crew 7 · ID 2048</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card divide-y" style="--tw-divide-opacity:1">
+          <div class="flex items-center justify-between p-4" style="border-bottom:1px solid var(--line)"><div><div style="font-weight:600">Edition</div><div style="font-size:13px; color:var(--ink-2)">Field for daylight, Shift for night ops.</div></div>
+            <div class="seg"><button :class="!dark&&'on'" @click="dark&&toggleEdition()">Field</button><button :class="dark&&'on'" @click="!dark&&toggleEdition()">Shift</button></div></div>
+          <div class="flex items-center justify-between p-4" style="border-bottom:1px solid var(--line)"><div><div style="font-weight:600">Work offline</div><div style="font-size:13px; color:var(--ink-2)">Queue changes and sync when back online.</div></div>
+            <div class="tg" :class="!online&&'on'" @click="online=!online"><b></b></div></div>
+          <div class="flex items-center justify-between p-4" style="border-bottom:1px solid var(--line)"><div><div style="font-weight:600">Job alerts</div><div style="font-size:13px; color:var(--ink-2)">Push when a job is assigned or changed.</div></div>
+            <div class="tg on" x-data="{on:true}" :class="on&&'on'" @click="on=!on"><b></b></div></div>
+          <div class="flex items-center justify-between p-4"><div><div style="font-weight:600">Open a sample dialog</div><div style="font-size:13px; color:var(--ink-2)">Preview the modal pattern.</div></div>
+            <button class="btn btn-outline btn-sm" @click="openNew()">Open modal</button></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============ MOBILE NAV DRAWER (left) ============ -->
+<template x-if="navOpen">
+  <div>
+    <div class="scrim lg:hidden" @click="navOpen=false" x-transition.opacity></div>
+    <div class="ndrawer lg:hidden" x-transition:enter="transition duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0">
+      <div class="flex items-center gap-2.5 h-16 flex-none px-4" style="border-bottom:1px solid var(--line-2)">
+        <div class="w-9 h-9 rounded-[10px] flex items-center justify-center" style="background:var(--brand)"><i data-lucide="hard-hat" class="w-5 h-5" style="color:#fff"></i></div>
+        <div class="cond" style="font-size:21px; font-weight:700">Frontline</div>
+        <div class="iconbtn ml-auto" @click="navOpen=false"><i data-lucide="x" class="w-5 h-5"></i></div>
+      </div>
+      <nav class="flex-1 overflow-y-auto p-3">
+        <div class="lbl px-3 mb-2">Operations</div>
+        <div class="flex flex-col gap-1">
+          <template x-for="n in nav" :key="'m'+n.id">
+            <div class="nav-item" :class="page===n.id&&'on'" @click="go(n.id); navOpen=false"><i :data-lucide="n.icon" class="w-5 h-5"></i><span x-text="n.label"></span>
+              <span x-show="n.badge" class="ml-auto chip" style="color:var(--brand-ink); background:var(--brand-soft)" x-text="n.badge"></span></div>
+          </template>
+        </div>
+      </nav>
+      <div class="p-3 flex items-center gap-3" style="border-top:1px solid var(--line)">
+        <div class="w-9 h-9 rounded-full flex items-center justify-center cond" style="background:var(--brand); color:#fff; font-weight:700">RM</div>
+        <div><div style="font-weight:600; font-size:13px" x-text="name"></div><div class="mono" style="font-size:11px; color:var(--ink-2)">Crew 7</div></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ EDIT DRAWER (right) ============ -->
+<template x-if="drawer">
+  <div>
+    <div class="scrim" @click="drawer=null" x-transition.opacity></div>
+    <div class="drawer" x-transition:enter="transition duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0">
+      <div class="flex items-center gap-3 h-16 flex-none px-5" style="border-bottom:1px solid var(--line)">
+        <div><div class="lbl" x-text="drawer.id"></div><div class="cond" style="font-size:18px; font-weight:700">Edit work order</div></div>
+        <div class="iconbtn ml-auto" @click="drawer=null"><i data-lucide="x" class="w-5 h-5"></i></div>
+      </div>
+      <div class="flex-1 overflow-y-auto p-5">
+        <label class="lbl" style="color:var(--ink-2)">Customer</label>
+        <input class="field mt-1.5 mb-4" x-model="drawer.cust" />
+        <label class="lbl" style="color:var(--ink-2)">Job type</label>
+        <input class="field mt-1.5 mb-4" x-model="drawer.type" />
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div><label class="lbl" style="color:var(--ink-2)">Status</label>
+            <select class="isel mt-1.5" x-model="drawer.status"><template x-for="s in statusOrder" :key="s"><option :value="s" x-text="statusMeta[s].label"></option></template></select></div>
+          <div><label class="lbl" style="color:var(--ink-2)">Window</label><input class="field mt-1.5" x-model="drawer.win" /></div>
+        </div>
+        <label class="lbl" style="color:var(--ink-2)">Priority</label>
+        <div class="seg mt-1.5 mb-4" style="display:flex">
+          <template x-for="p in ['Low','Med','High','Urgent']" :key="p"><button :class="drawer.prio===p&&'on'" @click="drawer.prio=p" style="flex:1" x-text="p"></button></template>
+        </div>
+        <label class="lbl" style="color:var(--ink-2)">Address</label>
+        <input class="field mt-1.5 mb-4" x-model="drawer.addr" />
+        <label class="lbl" style="color:var(--ink-2)">Note for office</label>
+        <textarea class="field mt-1.5" rows="3" placeholder="Add a note…"></textarea>
+      </div>
+      <div class="flex-none p-4 flex gap-3" style="border-top:1px solid var(--line)">
+        <button class="btn btn-outline" style="flex:1" @click="drawer=null">Cancel</button>
+        <button class="btn btn-primary" style="flex:2" @click="ping('Work order saved','check'); drawer=null"><i data-lucide="check" class="w-4 h-4"></i> Save changes</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ MODAL (new work order) ============ -->
+<template x-if="modal">
+  <div>
+    <div class="scrim" @click="modal=false" x-transition.opacity></div>
+    <div class="modal" @keydown.escape.window="modal=false">
+      <div class="modal-card" x-transition:enter="transition duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+        <div class="flex items-center gap-3 p-5 pb-3"><div class="cond" style="font-size:20px; font-weight:700">New work order</div><div class="iconbtn ml-auto" @click="modal=false"><i data-lucide="x" class="w-5 h-5"></i></div></div>
+        <div class="px-5 pb-2 overflow-y-auto">
+          <label class="lbl" style="color:var(--ink-2)">Customer</label>
+          <input class="field mt-1.5 mb-3" x-model="nw.cust" placeholder="e.g. Harbor Freight Depot" />
+          <label class="lbl" style="color:var(--ink-2)">Job type</label>
+          <select class="isel mt-1.5 mb-3" x-model="nw.type"><option>HVAC service</option><option>Inspection</option><option>Meter calibration</option><option>Battery replacement</option><option>Emergency repair</option></select>
+          <div class="grid grid-cols-2 gap-3 mb-1">
+            <div><label class="lbl" style="color:var(--ink-2)">Window</label><input class="field mt-1.5" x-model="nw.win" placeholder="09:00–11:00" /></div>
+            <div><label class="lbl" style="color:var(--ink-2)">Priority</label>
+              <select class="isel mt-1.5" x-model="nw.prio"><option>Low</option><option>Med</option><option>High</option><option>Urgent</option></select></div>
+          </div>
+        </div>
+        <div class="flex gap-3 p-5 pt-3"><button class="btn btn-outline" style="flex:1" @click="modal=false">Cancel</button>
+          <button class="btn btn-primary" style="flex:2" @click="createWO()"><i data-lucide="plus" class="w-4 h-4"></i> Create job</button></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ TOAST ============ -->
+<div x-show="toast" x-cloak x-transition class="fixed left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 bottom-6 z-[70] flex items-center gap-3 px-4 py-3" style="background:var(--ink); color:var(--surface); border-radius:12px; box-shadow:var(--shadow-lg)">
+  <i :data-lucide="toastIcon" class="w-5 h-5" style="color:var(--brand)"></i><span class="cond" style="font-weight:600" x-text="toastMsg"></span>
+</div>
+
+<script>
+  function frontline(){
+    return {
+      page:'dashboard', dark:false, online:true, collapsed:false, navOpen:false,
+      drawer:null, modal:false, toast:false, toastMsg:'', toastIcon:'check',
+      filter:'All', search:'', reading:48213, editName:false, name:'Riya Mehta', _n:0,
+      nw:{cust:'', type:'HVAC service', win:'', prio:'Med'},
+      usedParts:[{name:'Capacitor 45/5 µF', qty:1}],
+      nav:[
+        {id:'dashboard', label:'Dashboard',  icon:'layout-dashboard'},
+        {id:'dispatch',  label:'Dispatch',   icon:'route', badge:'8'},
+        {id:'orders',    label:'Work Orders',icon:'clipboard-list'},
+        {id:'capture',   label:'Capture',    icon:'gauge'},
+        {id:'inventory', label:'Inventory',  icon:'package'},
+        {id:'settings',  label:'Settings',   icon:'settings'},
+      ],
+      meta:{
+        dashboard:{kicker:'Crew 7 · Tue 30 Jun', title:'Operations dashboard'},
+        dispatch:{kicker:'8 stops · 41 mi', title:'Dispatch & route'},
+        orders:{kicker:'Live queue', title:'Work orders'},
+        capture:{kicker:'WO-4821 · Northwind', title:'Field capture'},
+        inventory:{kicker:'Van 7', title:'Inventory'},
+        settings:{kicker:'Riya Mehta', title:'Settings'},
+      },
+      statusOrder:['scheduled','enroute','onsite','blocked','done'],
+      statusMeta:{
+        scheduled:{label:'Scheduled', v:'--s-sched'}, enroute:{label:'En route', v:'--s-enroute'},
+        onsite:{label:'On site', v:'--s-onsite'}, blocked:{label:'Blocked', v:'--s-blocked'}, done:{label:'Done', v:'--s-done'},
+      },
+      kpis:[
+        {l:'Open work orders', v:'34', i:'clipboard-list', d:'+5 today', up:false},
+        {l:'On-time rate', v:'96%', i:'timer', d:'+1.4pt', up:true},
+        {l:'Avg on-site', v:'42m', i:'wrench', d:'−3m', up:true},
+        {l:'SLA breaches', v:'2', i:'octagon-alert', d:'−1 wk', up:true},
+      ],
+      faults:[
+        {t:'No cooling / HVAC', n:14, fix:'52m', sla:97, up:true, dv:'4%'},
+        {t:'Power / UPS', n:9, fix:'38m', sla:99, up:true, dv:'2%'},
+        {t:'Refrigeration', n:7, fix:'1h 04m', sla:88, up:false, dv:'6%'},
+        {t:'Access control', n:5, fix:'29m', sla:100, up:true, dv:'1%'},
+        {t:'Plumbing / leak', n:4, fix:'47m', sla:92, up:false, dv:'3%'},
+      ],
+      orders:[
+        {id:'WO-4810', cust:'Harbor Freight Depot', type:'Quarterly safety inspection', addr:'4 Pier Ave, Bayonne', win:'08:00–08:45', eta:'08:05', dist:'1.1 mi', status:'done', prio:'Low'},
+        {id:'WO-4815', cust:'Lakeside Medical Center', type:'Generator load test', addr:'70 Lake Dr, Edison', win:'08:45–09:30', eta:'08:55', dist:'3.0 mi', status:'done', prio:'High'},
+        {id:'WO-4821', cust:'Northwind Cold Storage', type:'Compressor service', addr:'12 Dock Rd, Newark', win:'09:00–11:00', eta:'09:40', dist:'2.4 mi', status:'enroute', prio:'High'},
+        {id:'WO-4826', cust:'Cobalt Systems HQ', type:'UPS battery replacement', addr:'400 Tech Pkwy, Iselin', win:'11:15–12:30', eta:'11:20', dist:'5.6 mi', status:'onsite', prio:'Med'},
+        {id:'WO-4830', cust:'Atlas Retail — Store 14', type:'HVAC fault — no cooling', addr:'88 Market St, Rahway', win:'13:00–14:00', eta:'13:10', dist:'4.2 mi', status:'blocked', prio:'Urgent'},
+        {id:'WO-4834', cust:'Verde Health Clinic', type:'Annual meter calibration', addr:'9 Grove St, Cranford', win:'14:15–15:00', eta:'14:20', dist:'3.8 mi', status:'scheduled', prio:'Low'},
+        {id:'WO-4838', cust:'Sterling Bank — Br. 02', type:'Access control firmware', addr:'200 Main St, Union', win:'15:15–16:00', eta:'15:25', dist:'2.9 mi', status:'scheduled', prio:'Med'},
+        {id:'WO-4841', cust:'Pinecrest Co-op', type:'Water heater leak', addr:'5 Elm Ct, Linden', win:'16:00–16:40', eta:'16:10', dist:'2.0 mi', status:'scheduled', prio:'High'},
+      ],
+      stock:[
+        {name:'R-410A refrigerant', sku:'REF-410A', qty:3, min:2},{name:'Compressor oil 1L', sku:'OIL-POE1', qty:5, min:3},
+        {name:'Capacitor 45/5 µF', sku:'CAP-455', qty:1, min:3},{name:'Contactor 40A', sku:'CON-40A', qty:2, min:2},
+        {name:'UPS battery 12V 9Ah', sku:'BAT-1209', qty:0, min:2},{name:'Cable ties (100)', sku:'TIE-100', qty:8, min:4},
+        {name:'Nitrile gloves (50)', sku:'GLV-N50', qty:6, min:4},
+      ],
+
+      get filteredOrders(){ const q=this.search.trim().toLowerCase();
+        return this.orders.filter(o=>(this.filter==='All'||o.status===this.filter) && (!q || (o.cust+o.type+o.id).toLowerCase().includes(q))); },
+      get totalDist(){ return this.orders.reduce((a,o)=>a+parseFloat(o.dist),0).toFixed(1); },
+      prioStyle(p){ const c={Low:'--ink-3',Med:'--s-enroute',High:'--warn',Urgent:'--s-blocked'}[p]||'--ink-3'; return `color:var(${c}); background:color-mix(in srgb, var(${c}) 14%, transparent)`; },
+      chipStyle(s){ const v=this.statusMeta[s].v; return `color:var(${v}); background:color-mix(in srgb, var(${v}) 14%, transparent)`; },
+
+      boot(){ this.$nextTick(()=>{ this.icons(); this.renderCharts(); });
+        new MutationObserver(()=>{ this.$nextTick(()=>{ this.icons(); this.renderCharts(); }); }).observe(document.documentElement,{attributes:true,attributeFilter:['class']}); },
+      icons(){ if(window.lucide) lucide.createIcons(); },
+      go(p){ this.page=p; this.$nextTick(()=>{ this.icons(); if(p==='dashboard') this.renderCharts(); }); },
+      openEdit(o){ this.drawer=o; this.$nextTick(()=>this.icons()); },
+      openNew(){ this.modal=true; this.nw={cust:'',type:'HVAC service',win:'',prio:'Med'}; this.$nextTick(()=>this.icons()); },
+      createWO(){ this._n++; const id='WO-'+(4842+this._n);
+        this.orders.unshift({id, cust:this.nw.cust||'New customer', type:this.nw.type, addr:'—', win:this.nw.win||'TBD', eta:'—', dist:'0.0 mi', status:'scheduled', prio:this.nw.prio});
+        this.modal=false; this.page='orders'; this.ping('Created '+id,'check'); this.$nextTick(()=>this.icons()); },
+      toggleEdition(){ this.dark=!this.dark; document.documentElement.classList.toggle('dark', this.dark);
+        const m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content', this.dark?'#161B21':'#FB5A1F'); },
+      ping(msg,icon){ this.toastMsg=msg; this.toastIcon=icon||'check'; this.toast=true; this.$nextTick(()=>this.icons()); clearTimeout(this._t); this._t=setTimeout(()=>this.toast=false,2600); },
+      renderCharts(){
+        if(!window.Chart) return;
+        const css=getComputedStyle(document.documentElement);
+        const ink3=css.getPropertyValue('--ink-3').trim(), line=css.getPropertyValue('--line').trim(), brand=css.getPropertyValue('--brand').trim();
+        if(!window._c) window._c={};
+        const draw=(id,cfg)=>{ const el=document.getElementById(id); if(!el||el.offsetParent===null) return; if(window._c[id]) window._c[id].destroy();
+          window._c[id]=new Chart(el.getContext('2d'), cfg); };
+        const baseScale=(money)=>({ x:{grid:{display:false}, border:{color:line}, ticks:{color:ink3, font:{family:'Martian Mono', size:10}}},
+          y:{grid:{color:line}, border:{display:false}, ticks:{color:ink3, font:{family:'Martian Mono', size:10}}} });
+        const wk=['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12'];
+        const ctx=document.getElementById('cLine');
+        let grad=null; if(ctx){ const g=ctx.getContext('2d').createLinearGradient(0,0,0,230); g.addColorStop(0,brand+'33'); g.addColorStop(1,brand+'00'); grad=g; }
+        draw('cLine',{ type:'line', data:{labels:wk, datasets:[{data:[88,90,89,92,91,93,94,92,95,94,96,96], borderColor:brand, borderWidth:2, backgroundColor:grad, fill:true, tension:.35, pointRadius:0, pointHoverRadius:4}]},
+          options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>' '+c.parsed.y+'%'}}}, scales:baseScale() } });
+        draw('cBar',{ type:'bar', data:{labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], datasets:[{data:[12,15,11,14,18,7,3], backgroundColor:brand, borderRadius:6, barThickness:18}]},
+          options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:baseScale() } });
+        const sc=this.statusOrder.map(s=>this.orders.filter(o=>o.status===s).length);
+        const scol=this.statusOrder.map(s=>css.getPropertyValue(this.statusMeta[s].v).trim());
+        draw('cDonut',{ type:'doughnut', data:{labels:this.statusOrder, datasets:[{data:sc, backgroundColor:scol, borderColor:css.getPropertyValue('--surface').trim(), borderWidth:3}]},
+          options:{ responsive:true, maintainAspectRatio:false, cutout:'66%', plugins:{legend:{display:false}} } });
+      },
+    };
+  }
+</script>
+</body>
+</html>
