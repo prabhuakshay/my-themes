@@ -1,86 +1,69 @@
 <div align="center">
 
-# Meridian Enterprise
+# my-themes
 
-### Calm, governance-grade software for people who run the business.
+### A gallery of design systems & UI themes.
 
-A Carbon-grade B2B design system — disciplined tokens, sharp 1px borders, a strict 2px grid,
-and motion that informs rather than entertains. Light + Dark (Gray-90 / Gray-100).
+Self-contained, zero-build themes — each with a full design spec and a live, in-browser demo.
 
-[**▶ Live Demo**](https://prabhuakshay.github.io/meridian-enterprise/) · [**📖 Design Spec**](./meridian-enterprise.md)
+[**▶ Browse the live gallery**](https://prabhuakshay.github.io/my-themes/)
 
-![Status](https://img.shields.io/badge/version-1.0-161616)
+![Themes](https://img.shields.io/badge/themes-1-161616)
 ![License](https://img.shields.io/badge/license-MIT-0f62fe)
-![WCAG](https://img.shields.io/badge/WCAG_2.1-AA-24a148)
-![Dependencies](https://img.shields.io/badge/build-zero--build-525252)
+![Build](https://img.shields.io/badge/build-zero--build-525252)
 
 </div>
 
 ---
 
-> A *meridian* is the line a navigator uses to fix position with confidence. In dense,
-> high-stakes enterprise software, the interface should be that fixed reference — so an operator
-> always knows **where they are, what is true right now, and what to do next.**
+This repo collects design themes I build. Every theme is **self-contained** — open its
+`index.html` in any browser, no install or build step — and ships with a written spec so the
+intent behind every token and component is documented, not just demonstrated.
 
-Meridian is not a marketing aesthetic bolted onto an app. It is a **productive, data-first
-system** in the lineage of IBM Carbon: every value resolves to a named token, every component
-earns its density, and accessibility is built in from the first frame — not bolted on by audit.
+## Themes
 
-## What's inside
+| Theme | Description | Links |
+| --- | --- | --- |
+| **[Meridian Enterprise](./themes/meridian-enterprise/)** | Calm, governance-grade B2B design system — Carbon-grade tokens, 2px grid, sharp 1px borders, light + dark. | [Demo](https://prabhuakshay.github.io/my-themes/themes/meridian-enterprise/) · [Spec](./themes/meridian-enterprise/meridian-enterprise.md) · [README](./themes/meridian-enterprise/README.md) |
 
-| File | What it is |
-| --- | --- |
-| [`meridian-enterprise.md`](./meridian-enterprise.md) | The full **design specification** — 23 sections, ~950 lines, covering tokens, components, accessibility, and governance. |
-| [`index.html`](./index.html) | A **self-contained live demo** — open it in any browser, no build step. Light/dark themes, real components, charts, and tables. |
+> _More themes coming — each lands in its own folder under [`themes/`](./themes)._
 
-## Seven principles
+## Repository layout
 
-1. **Clarity over decoration** — every pixel earns its place by communicating state, hierarchy, or affordance.
-2. **Truth is immediate** — current system state is always visible without a click.
-3. **Dense, but disciplined** — high information density, earned through a strict 2px grid.
-4. **Sharp & precise** — small radii (2–4px), crisp 1px borders, hairline gridlines.
-5. **Tokens, not decisions** — no raw hex or magic margins; everything resolves to a named token.
-6. **Accessible by default** — WCAG 2.1 AA is the floor, designed in, not audited in.
-7. **Productive motion** — motion explains causality, in short standard-eased durations (70–240ms).
+```
+my-themes/
+├── index.html                      # landing page — the live gallery
+├── themes/
+│   └── meridian-enterprise/
+│       ├── index.html              # live, self-contained demo
+│       ├── meridian-enterprise.md  # full design specification
+│       └── README.md               # theme overview
+└── README.md                       # you are here
+```
 
-## At a glance
-
-- **Color** — IBM Carbon gray ramp + functional blue / red / green / yellow, with role tokens (`--text-secondary`, `--layer-01`, `--interactive`) that swap cleanly between light and dark.
-- **Typography** — IBM Plex Sans for UI, IBM Plex Mono for data and code.
-- **Grid** — a strict 2px spacing scale and ruthless typographic hierarchy.
-- **Components** — navigation, data tables, KPIs, overlays, toasts, and full interactive-state matrices.
-- **Foundations** — folds Nielsen's heuristics and the classic interaction laws into one builder-ready document.
-
-## Quick start
+## Using a theme
 
 ```bash
-git clone https://github.com/prabhuakshay/meridian-enterprise.git
-cd meridian-enterprise
+git clone https://github.com/prabhuakshay/my-themes.git
+cd my-themes
 
-# Open the live demo — no build, no install
-open index.html        # macOS
-xdg-open index.html    # Linux
-start index.html       # Windows
+# open any theme's demo directly — no build, no install
+open themes/meridian-enterprise/index.html        # macOS
+xdg-open themes/meridian-enterprise/index.html    # Linux
 ```
 
-The demo loads its dependencies (Tailwind Play CDN, IBM Plex, Alpine, Lucide, Chart.js) from
-CDNs, so an internet connection is needed on first open. The design spec is plain Markdown —
-read it [on GitHub](./meridian-enterprise.md) or in any editor.
+Each theme's `README.md` has its own quick-start, principles, and theming notes.
 
-## Theming
+## Adding a theme
 
-Every visual decision resolves to a CSS custom property. Switching themes — or rebranding the
-whole system — is a token swap, never a refactor:
-
-```css
-:root, .theme-white { --bg:#ffffff; --layer-01:#f4f4f4; --interactive:#0f62fe; /* … */ }
-.theme-g100         { --bg:#161616; --layer-01:#262626; --interactive:#4589ff; /* … */ }
-```
+Each theme is a folder under `themes/<theme-name>/` containing at least an `index.html` demo
+and a `README.md`. Add a row to the table above and a card to `index.html`, and it shows up in
+the gallery.
 
 ## License
 
 [MIT](./LICENSE) — use it, adapt it, ship it.
 
 <div align="center">
-<sub>Meridian Enterprise · Version 1.0 · Built to look engineered, not soft.</sub>
+<sub>my-themes · by Akshay Prabhu</sub>
 </div>

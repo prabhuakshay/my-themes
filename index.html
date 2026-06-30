@@ -1,1001 +1,147 @@
 <!DOCTYPE html>
-<html lang="en" class="theme-white">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Meridian Enterprise — Theme Demo</title>
-<meta name="description" content="Meridian Enterprise design system — a self-contained, themed live demo. Carbon-grade B2B tokens, IBM Plex, 2px grid, sharp 1px borders, light + dark (Gray-100)." />
-
-<!-- Fonts: IBM Plex Sans (UI) + IBM Plex Mono (data/code) -->
+<title>my-themes — a gallery of design systems & UI themes</title>
+<meta name="description" content="A gallery of self-contained, zero-build design themes by Akshay Prabhu. Each ships with a full design spec and a live in-browser demo." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-
-<!-- Tailwind Play CDN + inline theme config -->
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    darkMode: 'class',
-    theme: {
-      fontFamily: {
-        sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'],
-        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
-      },
-      borderRadius: { none: '0', sm: '2px', DEFAULT: '2px', md: '4px', lg: '8px' },
-      extend: {
-        colors: {
-          blue:  {10:'#edf5ff',20:'#d0e2ff',30:'#a6c8ff',40:'#78a9ff',50:'#4589ff',60:'#0f62fe',70:'#0043ce',80:'#002d9c',90:'#001d6c',100:'#001141'},
-          gray:  {10:'#f4f4f4',20:'#e0e0e0',30:'#c6c6c6',40:'#a8a8a8',50:'#8d8d8d',60:'#6f6f6f',70:'#525252',80:'#393939',90:'#262626',100:'#161616'},
-          red:   {30:'#ffd7d9',50:'#fa4d56',60:'#da1e28',70:'#a2191f'},
-          green: {30:'#a7f0ba',50:'#42be65',60:'#24a148',70:'#0e6027'},
-          yellow:{20:'#fdd13a',30:'#f1c21b',40:'#d2a106'},
-        },
-      },
-    },
-  };
-</script>
-
-<!-- Alpine plugins (before core) -->
-<script defer src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
-<script defer src="https://unpkg.com/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
-<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
-<!-- Lucide icons + Chart.js -->
-<script src="https://unpkg.com/lucide@latest"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
-  /* ============ THEME ROLE TOKENS ============ */
-  :root, .theme-white {
-    --bg:#ffffff; --layer-01:#f4f4f4; --layer-02:#ffffff; --field:#f4f4f4;
-    --text-primary:#161616; --text-secondary:#525252; --text-placeholder:#a8a8a8; --text-disabled:#c6c6c6;
-    --text-on-color:#ffffff;
-    --border-subtle:#e0e0e0; --border-strong:#8d8d8d;
-    --interactive:#0f62fe; --interactive-hover:#0043ce; --interactive-active:#002d9c;
-    --hover-ui:#e8e8e8; --active-ui:#c6c6c6; --selected-ui:#e0e0e0;
-    --focus:#0f62fe; --grid-line:#e0e0e0; --chart-text:#525252;
-    --link:#0f62fe; --shadow:0,0,0;
+  :root{
+    --bg:#161616; --layer:#262626; --layer-hover:#333; --line:#393939;
+    --text:#f4f4f4; --text-2:#c6c6c6; --text-3:#8d8d8d; --accent:#4589ff;
+    --green:#42be65;
   }
-  .theme-g100 {
-    --bg:#161616; --layer-01:#262626; --layer-02:#393939; --field:#262626;
-    --text-primary:#f4f4f4; --text-secondary:#c6c6c6; --text-placeholder:#6f6f6f; --text-disabled:#6f6f6f;
-    --text-on-color:#ffffff;
-    --border-subtle:#393939; --border-strong:#8d8d8d;
-    --interactive:#4589ff; --interactive-hover:#78a9ff; --interactive-active:#a6c8ff;
-    --hover-ui:#2c2c2c; --active-ui:#6f6f6f; --selected-ui:#393939;
-    --focus:#ffffff; --grid-line:#393939; --chart-text:#c6c6c6;
-    --link:#78a9ff; --shadow:0,0,0;
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ -webkit-font-smoothing:antialiased; }
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"IBM Plex Sans",system-ui,sans-serif;
+    line-height:1.5; min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+    padding:0 24px;
   }
+  .mono{ font-family:"IBM Plex Mono",ui-monospace,monospace; }
+  .wrap{ width:100%; max-width:1040px; }
 
-  html, body { background:var(--bg); color:var(--text-primary); font-family:"IBM Plex Sans",system-ui,sans-serif; }
-  body { -webkit-font-smoothing:antialiased; }
-  * { -webkit-tap-highlight-color:transparent; }
-  .font-mono { font-family:"IBM Plex Mono",ui-monospace,monospace; }
-  .tnum { font-variant-numeric:tabular-nums; }
-
-  /* Role-token utility classes */
-  .bg-canvas{background:var(--bg);} .bg-layer1{background:var(--layer-01);} .bg-layer2{background:var(--layer-02);}
-  .bg-field{background:var(--field);}
-  /* Subtle, on-brand glass for sticky chrome — content faintly shows through on scroll.
-     Token-driven so it adapts to light/dark; falls back to opaque where backdrop-filter
-     is unsupported. */
-  .glass-bar{ background:color-mix(in srgb, var(--bg) 82%, transparent); }
-  .glass-bar-2{ background:color-mix(in srgb, var(--layer-02) 86%, transparent); }
-  @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
-    .glass-bar, .glass-bar-2{ -webkit-backdrop-filter:blur(8px) saturate(1.2); backdrop-filter:blur(8px) saturate(1.2); }
+  /* Header */
+  header{ padding:96px 0 56px; border-bottom:1px solid var(--line); }
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--text-3); margin-bottom:20px;
+    display:flex; align-items:center; gap:10px;
   }
-  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-    .glass-bar{ background:var(--bg); }
-    .glass-bar-2{ background:var(--layer-02); }
+  .dot{ width:7px; height:7px; border-radius:50%; background:var(--green);
+        box-shadow:0 0 0 3px rgba(66,190,101,.18); }
+  h1{ font-weight:300; font-size:clamp(40px,7vw,68px); line-height:1.04;
+      letter-spacing:-.02em; margin-bottom:18px; }
+  h1 b{ font-weight:600; }
+  .lede{ font-size:19px; color:var(--text-2); max-width:60ch; font-weight:300; }
+  .links{ margin-top:32px; display:flex; gap:14px; flex-wrap:wrap; }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; height:44px; padding:0 20px;
+    border:1px solid var(--line); border-radius:2px; color:var(--text);
+    text-decoration:none; font-size:14px; font-weight:500;
+    transition:background .12s ease, border-color .12s ease;
   }
-  .txt-pri{color:var(--text-primary);} .txt-sec{color:var(--text-secondary);} .txt-ph{color:var(--text-placeholder);}
-  .bd-sub{border-color:var(--border-subtle);} .bd-strong{border-color:var(--border-strong);}
+  .btn:hover{ background:var(--layer); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover{ background:#3a78e6; }
 
-  /* Focus ring — :focus-visible only */
-  .ring-focus:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
-  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible{
-    outline:2px solid var(--focus); outline-offset:2px;
+  /* Section label */
+  .section-label{
+    font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--text-3);
+    padding:56px 0 20px; display:flex; align-items:center; justify-content:space-between;
   }
-  /* Command palette: the whole header row is the field, so the input shows no ring of
-     its own — focus is indicated by a subtle brand accent under the row instead. */
-  .palette-field:focus, .palette-field:focus-visible{ outline:none; }
-  .palette-head{ border-bottom:1px solid var(--border-subtle); transition:border-color .11s; }
-  .palette-head:focus-within{ border-bottom-color:var(--interactive); box-shadow:0 1px 0 0 var(--interactive); }
+  .count{ color:var(--text-2); }
 
-  /* Buttons */
-  .btn{ display:inline-flex; align-items:center; gap:8px; height:40px; padding:0 16px; border-radius:2px;
-    font-size:14px; font-weight:600; line-height:1; cursor:pointer; transition:background .11s cubic-bezier(.2,0,.38,.9),
-    border-color .11s, color .11s; border:1px solid transparent; white-space:nowrap; }
-  .btn:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
-  .btn-sm{ height:32px; padding:0 12px; font-size:12px; }
-  .btn-lg{ height:48px; padding:0 20px; }
-  .btn-primary{ background:var(--interactive); color:#fff; }
-  .btn-primary:hover{ background:var(--interactive-hover); }
-  .btn-primary:active{ background:var(--interactive-active); }
-  .btn-secondary{ background:transparent; color:var(--text-primary); border-color:var(--border-strong); }
-  .btn-secondary:hover{ background:var(--hover-ui); }
-  .btn-ghost{ background:transparent; color:var(--interactive); }
-  .btn-ghost:hover{ background:var(--hover-ui); }
-  .btn-danger{ background:#da1e28; color:#fff; }
-  .btn-danger:hover{ background:#a2191f; }
-  .btn:disabled,.btn[disabled]{ background:var(--layer-01); color:var(--text-disabled); border-color:transparent; cursor:not-allowed; }
-
-  /* Inputs */
-  .field{ width:100%; height:40px; padding:0 12px; background:var(--field); color:var(--text-primary);
-    border:none; border-bottom:1px solid var(--border-strong); border-radius:0; font-size:14px;
-    transition:border-color .11s; }
-  .field::placeholder{ color:var(--text-placeholder); }
-  .field:focus{ outline:2px solid var(--focus); outline-offset:-2px; }
-  .field-error{ border-bottom-color:#da1e28; }
-
-  /* Cards */
-  .card{ background:var(--layer-02); border:1px solid var(--border-subtle); border-radius:2px; }
-
-  /* Tags */
-  .tag{ display:inline-flex; align-items:center; gap:4px; height:24px; padding:0 8px; border-radius:2px;
-    font-size:12px; font-weight:500; line-height:1; }
-
-  /* Nav item */
-  .nav-item{ display:flex; align-items:center; gap:12px; height:40px; padding:0 16px; font-size:14px;
-    color:var(--text-secondary); border-left:2px solid transparent; cursor:pointer; transition:background .11s; }
-  .nav-item:hover{ background:var(--hover-ui); color:var(--text-primary); }
-  .nav-item.active{ background:var(--selected-ui); color:var(--text-primary); border-left-color:var(--interactive); font-weight:600; }
-
-  /* Table */
-  table.mtable{ width:100%; border-collapse:collapse; font-size:14px; }
-  .mtable thead th{ position:sticky; top:0; background:var(--layer-01); text-align:left; font-size:12px;
-    font-weight:600; color:var(--text-secondary); padding:0 16px; height:40px; border-bottom:1px solid var(--border-subtle);
-    letter-spacing:.32px; cursor:pointer; user-select:none; white-space:nowrap; }
-  .mtable tbody td{ padding:0 16px; height:var(--row-h,48px); border-bottom:1px solid var(--border-subtle); color:var(--text-primary); }
-  .mtable tbody tr:hover{ background:var(--hover-ui); }
-  .mtable tbody tr.selected{ background:var(--selected-ui); }
-
-  /* Swatch */
-  .swatch{ height:56px; border-radius:2px; border:1px solid var(--border-subtle); }
-
-  /* Scroll-spy section anchor offset */
-  section[id]{ scroll-margin-top:110px; }
-
-  /* Toast */
-  .toast{ box-shadow:0 2px 6px rgba(0,0,0,.18); }
-
-  /* Skeleton shimmer */
-  @keyframes shimmer{ 0%{background-position:-400px 0;} 100%{background-position:400px 0;} }
-  .skeleton{ background:linear-gradient(90deg, var(--layer-01) 25%, var(--hover-ui) 37%, var(--layer-01) 63%);
-    background-size:800px 100%; animation:shimmer 1.4s infinite linear; border-radius:2px; }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar{ width:10px; height:10px; }
-  ::-webkit-scrollbar-thumb{ background:var(--border-subtle); border-radius:0; }
-  ::-webkit-scrollbar-track{ background:transparent; }
-
-  [x-cloak]{ display:none !important; }
-
-  @media (prefers-reduced-motion: reduce){
-    *{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
+  /* Theme grid */
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:1px;
+         background:var(--line); border:1px solid var(--line); }
+  .card{
+    background:var(--bg); padding:28px; text-decoration:none; color:inherit;
+    display:flex; flex-direction:column; min-height:230px;
+    transition:background .14s ease;
   }
+  .card:hover{ background:var(--layer); }
+  .swatches{ display:flex; gap:0; margin-bottom:22px; }
+  .swatches span{ width:30px; height:30px; border-radius:2px; margin-right:-1px;
+                  border:1px solid rgba(0,0,0,.25); }
+  .card h2{ font-size:21px; font-weight:600; margin-bottom:8px; }
+  .card p{ color:var(--text-2); font-size:14px; font-weight:300; flex:1; }
+  .card .meta{ margin-top:20px; display:flex; align-items:center; gap:10px;
+               font-size:12px; color:var(--text-3); }
+  .tag{ font-family:"IBM Plex Mono",monospace; border:1px solid var(--line);
+        border-radius:2px; padding:3px 8px; color:var(--text-2); }
+  .arrow{ margin-left:auto; color:var(--accent); font-weight:500; font-size:14px;
+          transition:transform .14s ease; }
+  .card:hover .arrow{ transform:translateX(3px); }
+
+  /* placeholder card */
+  .card.soon{ cursor:default; }
+  .card.soon:hover{ background:var(--bg); }
+  .card.soon h2,.card.soon p{ color:var(--text-3); }
+  .card.soon .swatches span{ background:var(--layer); border-color:var(--line); }
+
+  footer{ width:100%; max-width:1040px; border-top:1px solid var(--line);
+          margin-top:64px; padding:28px 0 56px; color:var(--text-3); font-size:13px;
+          display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+  footer a{ color:var(--text-2); text-decoration:none; }
+  footer a:hover{ color:var(--text); }
 </style>
 </head>
-
-<body x-data="meridian()" :class="theme" class="min-h-screen bg-canvas txt-pri">
-
-<!-- Skip link -->
-<a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:z-[600] focus:top-2 focus:left-2 focus:bg-blue-60 focus:text-white focus:px-4 focus:py-2 focus:rounded-sm">Skip to content</a>
-
-<!-- ============ TOP BAR ============ -->
-<header class="fixed top-0 inset-x-0 h-12 glass-bar-2 border-b bd-sub z-[200] flex items-center px-3 gap-2">
-  <button @click="navOpen=!navOpen" class="lg:hidden w-10 h-10 grid place-items-center rounded-sm hover:bg-[color:var(--hover-ui)]" aria-label="Toggle navigation">
-    <i data-lucide="menu" class="w-5 h-5"></i>
-  </button>
-  <div class="flex items-center gap-2 pl-1 pr-4 select-none">
-    <div class="w-7 h-7 rounded-sm grid place-items-center" style="background:var(--interactive)">
-      <i data-lucide="compass" class="w-4 h-4 text-white"></i>
-    </div>
-    <div class="leading-tight">
-      <div class="text-[14px] font-semibold">Meridian</div>
-    </div>
-    <span class="hidden sm:inline tag font-mono ml-1" style="background:var(--layer-01);color:var(--text-secondary)">Enterprise</span>
-  </div>
-
-  <!-- Global search opens command palette -->
-  <button @click="paletteOpen=true" class="hidden md:flex items-center gap-2 h-9 ml-2 px-3 text-[13px] txt-ph bg-field border bd-sub rounded-sm min-w-[260px] hover:bd-strong transition-colors">
-    <i data-lucide="search" class="w-4 h-4"></i>
-    <span>Search or jump to…</span>
-    <span class="ml-auto font-mono text-[11px] px-1.5 py-0.5 rounded-sm" style="background:var(--bg);border:1px solid var(--border-subtle)">⌘K</span>
-  </button>
-
-  <div class="ml-auto flex items-center gap-1">
-    <!-- Theme toggle -->
-    <button @click="toggleTheme()" class="w-10 h-10 grid place-items-center rounded-sm hover:bg-[color:var(--hover-ui)]" :aria-label="theme==='theme-white' ? 'Switch to dark theme' : 'Switch to light theme'">
-      <i :data-lucide="theme==='theme-white' ? 'moon' : 'sun'" class="w-5 h-5"></i>
-    </button>
-    <!-- Notifications -->
-    <div class="relative" x-data="{open:false}" @keydown.escape="open=false">
-      <button @click="open=!open" class="w-10 h-10 grid place-items-center rounded-sm hover:bg-[color:var(--hover-ui)] relative" aria-label="Notifications">
-        <i data-lucide="bell" class="w-5 h-5"></i>
-        <span class="absolute top-2 right-2 w-2 h-2 rounded-full" style="background:#da1e28"></span>
-      </button>
-      <div x-show="open" x-cloak @click.outside="open=false" x-transition.opacity.duration.150ms
-           class="absolute right-0 mt-1 w-80 card toast z-[300] p-0" role="menu">
-        <div class="px-4 h-10 flex items-center justify-between border-b bd-sub text-[13px] font-semibold">Notifications <span class="txt-sec font-normal">3 new</span></div>
-        <template x-for="n in notifications" :key="n.id">
-          <div class="px-4 py-3 border-b bd-sub flex gap-3 hover:bg-[color:var(--hover-ui)]">
-            <i :data-lucide="n.icon" class="w-4 h-4 mt-0.5" :style="`color:${n.color}`"></i>
-            <div class="text-[13px]"><div x-text="n.title" class="font-medium"></div><div class="txt-sec" x-text="n.time"></div></div>
-          </div>
-        </template>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow"><span class="dot"></span> my-themes · design gallery</div>
+      <h1>A gallery of<br><b>design systems</b> &amp; UI themes.</h1>
+      <p class="lede">Self-contained, zero-build themes — each one ships with a full written
+        design spec and a live, in-browser demo. No install, no build step. Just open and explore.</p>
+      <div class="links">
+        <a class="btn primary" href="./themes/meridian-enterprise/">▶ Open Meridian Enterprise</a>
+        <a class="btn" href="https://github.com/prabhuakshay/my-themes">View on GitHub →</a>
       </div>
-    </div>
-    <!-- Avatar -->
-    <button class="w-8 h-8 ml-1 rounded-full grid place-items-center text-[12px] font-semibold text-white" style="background:var(--interactive)" aria-label="Account">AP</button>
-  </div>
-</header>
+    </header>
 
-<!-- ============ SIDEBAR ============ -->
-<aside x-show="navOpen || isDesktop" x-cloak
-       class="fixed top-12 bottom-0 left-0 w-64 bg-layer2 border-r bd-sub z-[200] flex flex-col"
-       :class="(navOpen && !isDesktop) ? '' : 'hidden lg:flex'">
-  <nav class="flex-1 overflow-y-auto py-2" aria-label="Primary">
-    <template x-for="item in nav" :key="item.id">
-      <a :href="'#'+item.id" @click="if(!isDesktop) navOpen=false"
-         class="nav-item ring-focus" :class="active===item.id ? 'active':''" :aria-current="active===item.id ? 'page':false">
-        <i :data-lucide="item.icon" class="w-5 h-5 shrink-0"></i>
-        <span x-text="item.label"></span>
+    <div class="section-label"><span>Themes</span><span class="count">01 / 01</span></div>
+
+    <div class="grid">
+      <a class="card" href="./themes/meridian-enterprise/">
+        <div class="swatches">
+          <span style="background:#161616"></span>
+          <span style="background:#0f62fe"></span>
+          <span style="background:#42be65"></span>
+          <span style="background:#da1e28"></span>
+          <span style="background:#f1c21b"></span>
+        </div>
+        <h2>Meridian Enterprise</h2>
+        <p>Calm, governance-grade B2B design system. Carbon-grade tokens, a strict 2px grid,
+           sharp 1px borders, and a full light + dark theme.</p>
+        <div class="meta">
+          <span class="tag">v1.0</span>
+          <span class="tag">B2B</span>
+          <span class="tag">WCAG AA</span>
+          <span class="arrow">Open →</span>
+        </div>
       </a>
-    </template>
-  </nav>
-  <div class="border-t bd-sub p-3 text-[11px] txt-sec flex items-center justify-between">
-    <span class="font-mono">v1.0.0</span>
-    <span class="tag" style="background:var(--layer-01)"><i data-lucide="git-branch" class="w-3 h-3"></i> stable</span>
-  </div>
-</aside>
 
-<!-- Mobile scrim -->
-<div x-show="navOpen && !isDesktop" x-cloak @click="navOpen=false" class="fixed inset-0 top-12 bg-black/40 z-[150] lg:hidden"></div>
-
-<!-- ============ MAIN ============ -->
-<div class="lg:pl-64 pt-12">
-  <!-- Context / breadcrumb bar (sticky) -->
-  <div class="sticky top-12 z-[100] h-10 glass-bar border-b bd-sub flex items-center px-4 gap-2 text-[13px]">
-    <i data-lucide="layout-dashboard" class="w-4 h-4 txt-sec"></i>
-    <span class="txt-sec">Design System</span>
-    <i data-lucide="chevron-right" class="w-3.5 h-3.5 txt-ph"></i>
-    <span class="font-medium" x-text="nav.find(n=>n.id===active)?.label || 'Overview'"></span>
-    <span class="ml-auto hidden sm:flex items-center gap-1.5 txt-sec">
-      <span class="w-1.5 h-1.5 rounded-full" style="background:#24a148"></span>
-      Updated <span class="font-mono tnum" x-text="freshness"></span>
-    </span>
-  </div>
-
-  <main id="main" class="max-w-[1320px] mx-auto px-4 sm:px-6 py-8 space-y-16">
-
-    <!-- ===== OVERVIEW ===== -->
-    <section id="overview">
-      <div class="flex items-start gap-3 mb-2">
-        <span class="tag" style="background:var(--interactive);color:#fff">v1.0</span>
-        <span class="tag" style="background:var(--layer-01);color:var(--text-secondary)">Carbon-grade B2B</span>
-      </div>
-      <h1 class="text-[42px] leading-[1.1] font-light tracking-tight mb-3">Meridian Enterprise</h1>
-      <p class="text-[18px] txt-sec max-w-[68ch] leading-relaxed">
-        Calm, governance-grade software for the people who run the business. A data-first system
-        with disciplined tokens, sharp 1px borders, a strict 2px grid, and motion that informs
-        rather than entertains.
-      </p>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-px mt-8 border bd-sub" style="background:var(--border-subtle)">
-        <template x-for="p in principles" :key="p.n">
-          <div class="bg-layer2 p-5">
-            <div class="font-mono text-[12px] txt-ph mb-2" x-text="p.n"></div>
-            <div class="font-semibold text-[15px] mb-1" x-text="p.title"></div>
-            <div class="text-[13px] txt-sec leading-relaxed" x-text="p.body"></div>
-          </div>
-        </template>
-      </div>
-    </section>
-
-    <!-- ===== KPI DASHBOARD ===== -->
-    <section id="dashboard">
-      <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
-        <h2 class="text-[20px] font-semibold">Operations overview</h2>
-        <div class="flex items-center gap-2">
-          <div class="hidden sm:flex border bd-sub rounded-sm overflow-hidden">
-            <template x-for="(r,i) in ranges" :key="r">
-              <button @click="range=r; rebuildCharts()" class="h-8 px-3 text-[12px] font-medium transition-colors"
-                :class="range===r ? 'text-white' : 'txt-sec hover:bg-[color:var(--hover-ui)]'"
-                :style="range===r ? 'background:var(--interactive)' : ''" x-text="r"></button>
-            </template>
-          </div>
-          <button class="btn btn-secondary btn-sm"><i data-lucide="download" class="w-4 h-4"></i> Export</button>
+      <div class="card soon">
+        <div class="swatches">
+          <span></span><span></span><span></span><span></span><span></span>
         </div>
+        <h2>More soon</h2>
+        <p>Additional themes land here — each in its own folder under <span class="mono">themes/</span>.</p>
+        <div class="meta"><span class="tag">coming&nbsp;soon</span></div>
       </div>
-
-      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <template x-for="k in kpis" :key="k.label">
-          <div class="card p-4">
-            <div class="text-[12px] txt-sec mb-1" x-text="k.label"></div>
-            <div class="text-[28px] font-light tnum leading-none mb-2" x-text="k.value"></div>
-            <div class="flex items-center gap-1 text-[12px] font-medium" :style="`color:${k.up ? '#24a148':'#da1e28'}`">
-              <i :data-lucide="k.up ? 'trending-up':'trending-down'" class="w-4 h-4"></i>
-              <span x-text="k.delta"></span>
-              <span class="txt-ph font-normal ml-1">vs prev</span>
-            </div>
-          </div>
-        </template>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
-        <div class="card p-4 lg:col-span-2 min-w-0">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-[14px] font-semibold">Throughput &amp; error rate</h3>
-            <span class="tag" style="background:var(--layer-01);color:var(--text-secondary)">Live</span>
-          </div>
-          <div class="relative h-[260px] min-w-0"><canvas id="chartMain"></canvas></div>
-        </div>
-        <div class="card p-4 min-w-0">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-[14px] font-semibold">Traffic mix</h3>
-          </div>
-          <div class="relative h-[260px] min-w-0"><canvas id="chartDonut"></canvas></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== COLOR ===== -->
-    <section id="color">
-      <h2 class="text-[20px] font-semibold mb-1">Color</h2>
-      <p class="text-[13px] txt-sec mb-4 max-w-[70ch]">Functional color. Hue carries meaning; gray does the structural work. Click any swatch to copy its hex.</p>
-
-      <h3 class="text-[13px] font-semibold mb-2 txt-sec">Brand / Interactive (Blue)</h3>
-      <div class="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2 mb-6">
-        <template x-for="c in blueScale" :key="c.t">
-          <button @click="copy(c.hex)" class="text-left group">
-            <div class="swatch" :style="`background:${c.hex}`"></div>
-            <div class="font-mono text-[11px] mt-1" x-text="c.t"></div>
-            <div class="font-mono text-[10px] txt-ph group-hover:txt-sec" x-text="c.hex"></div>
-          </button>
-        </template>
-      </div>
-
-      <h3 class="text-[13px] font-semibold mb-2 txt-sec">Neutral gray scale</h3>
-      <div class="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2 mb-6">
-        <template x-for="c in grayScale" :key="c.t">
-          <button @click="copy(c.hex)" class="text-left group">
-            <div class="swatch" :style="`background:${c.hex}`"></div>
-            <div class="font-mono text-[11px] mt-1" x-text="c.t"></div>
-            <div class="font-mono text-[10px] txt-ph group-hover:txt-sec" x-text="c.hex"></div>
-          </button>
-        </template>
-      </div>
-
-      <h3 class="text-[13px] font-semibold mb-2 txt-sec">Semantic</h3>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <template x-for="c in semantic" :key="c.label">
-          <button @click="copy(c.hex)" class="card p-3 flex items-center gap-3 text-left hover:bg-[color:var(--hover-ui)]">
-            <div class="w-9 h-9 rounded-sm grid place-items-center shrink-0" :style="`background:${c.hex}`">
-              <i :data-lucide="c.icon" class="w-4 h-4 text-white"></i>
-            </div>
-            <div>
-              <div class="text-[13px] font-medium" x-text="c.label"></div>
-              <div class="font-mono text-[11px] txt-ph" x-text="c.hex"></div>
-            </div>
-          </button>
-        </template>
-      </div>
-    </section>
-
-    <!-- ===== TYPOGRAPHY ===== -->
-    <section id="type">
-      <h2 class="text-[20px] font-semibold mb-1">Typography</h2>
-      <p class="text-[13px] txt-sec mb-4 max-w-[70ch]">IBM Plex Sans for UI, IBM Plex Mono for data. Productive scale shown.</p>
-      <div class="card divide-y bd-sub">
-        <template x-for="t in typeScale" :key="t.token">
-          <div class="flex items-baseline gap-4 px-4 py-3 flex-wrap">
-            <div class="w-32 shrink-0 font-mono text-[11px] txt-sec" x-text="t.token"></div>
-            <div :style="`font-size:${t.px}px;font-weight:${t.w};line-height:1.2`" x-text="t.sample"></div>
-            <div class="ml-auto font-mono text-[11px] txt-ph" x-text="t.px+'px · '+t.w"></div>
-          </div>
-        </template>
-      </div>
-    </section>
-
-    <!-- ===== BUTTONS & COMPONENTS ===== -->
-    <section id="components">
-      <h2 class="text-[20px] font-semibold mb-4">Components</h2>
-
-      <div class="card p-5 mb-4">
-        <h3 class="text-[14px] font-semibold mb-3">Buttons — variants, sizes &amp; states</h3>
-        <div class="flex flex-wrap items-center gap-3 mb-4">
-          <button class="btn btn-primary">Primary</button>
-          <button class="btn btn-secondary">Secondary</button>
-          <button class="btn btn-ghost">Ghost</button>
-          <button class="btn btn-danger"><i data-lucide="trash-2" class="w-4 h-4"></i> Delete</button>
-          <button class="btn btn-primary" disabled>Disabled</button>
-          <button class="btn btn-primary" @click="loadBtn($event)">
-            <span class="btn-label">With loading</span>
-          </button>
-        </div>
-        <div class="flex flex-wrap items-center gap-3">
-          <button class="btn btn-primary btn-sm">Small</button>
-          <button class="btn btn-primary">Medium</button>
-          <button class="btn btn-primary btn-lg">Large</button>
-          <button class="btn btn-secondary"><i data-lucide="plus" class="w-4 h-4"></i> With icon</button>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <!-- Tags / status -->
-        <div class="card p-5">
-          <h3 class="text-[14px] font-semibold mb-3">Status pills</h3>
-          <div class="flex flex-wrap gap-2">
-            <span class="tag" style="background:var(--layer-01);color:var(--text-secondary)"><i data-lucide="minus" class="w-3 h-3"></i> Neutral</span>
-            <span class="tag" style="background:#defbe6;color:#0e6027"><i data-lucide="check-circle" class="w-3 h-3"></i> Healthy</span>
-            <span class="tag" style="background:#fff8e1;color:#d2a106"><i data-lucide="alert-triangle" class="w-3 h-3"></i> Warning</span>
-            <span class="tag" style="background:#fff1f1;color:#da1e28"><i data-lucide="alert-circle" class="w-3 h-3"></i> Down</span>
-            <span class="tag" style="background:var(--blue-10,#edf5ff);color:#0043ce"><i data-lucide="info" class="w-3 h-3"></i> Info</span>
-          </div>
-          <p class="text-[12px] txt-ph mt-3">Color is always paired with an icon and a text label — never color alone.</p>
-        </div>
-        <!-- Inline alert -->
-        <div class="card p-5">
-          <h3 class="text-[14px] font-semibold mb-3">Inline alert</h3>
-          <div class="flex gap-3 p-3 rounded-sm" style="background:#fff1f1;border-left:2px solid #da1e28">
-            <i data-lucide="alert-circle" class="w-5 h-5 shrink-0" style="color:#da1e28"></i>
-            <div class="text-[13px]" style="color:#161616">
-              <div class="font-semibold">Settlement batch failed</div>
-              <div>3 transactions could not be reconciled. Retry or review the exception queue.</div>
-            </div>
-          </div>
-          <div class="flex gap-3 p-3 rounded-sm mt-3" style="background:var(--layer-01);border-left:2px solid var(--interactive)">
-            <i data-lucide="info" class="w-5 h-5 shrink-0" style="color:var(--interactive)"></i>
-            <div class="text-[13px] txt-pri"><div class="font-semibold">Maintenance window</div><div class="txt-sec">Read-only mode tonight 02:00–02:30 UTC.</div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Form -->
-      <div class="card p-5">
-        <h3 class="text-[14px] font-semibold mb-4">Form / data entry</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-[640px]">
-          <div>
-            <label class="block text-[12px] font-medium mb-1.5">Account name</label>
-            <input class="field rounded-sm" placeholder="e.g. Northwind Trading" value="Northwind Trading" />
-            <div class="text-[12px] txt-ph mt-1.5">Shown on invoices and statements.</div>
-          </div>
-          <div>
-            <label class="block text-[12px] font-medium mb-1.5">Region</label>
-            <select class="field rounded-sm">
-              <option>EU-West (Frankfurt)</option><option>US-East (Virginia)</option><option>AP-South (Mumbai)</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-[12px] font-medium mb-1.5">Routing code <span class="txt-ph">(required)</span></label>
-            <input class="field rounded-sm field-error" value="ABC-12" aria-invalid="true" />
-            <div class="text-[12px] mt-1.5 flex items-center gap-1" style="color:#da1e28"><i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> Code must be 9 characters.</div>
-          </div>
-          <div>
-            <label class="block text-[12px] font-medium mb-1.5">Daily limit</label>
-            <input class="field rounded-sm font-mono tnum" value="50,000.00" />
-            <div class="text-[12px] txt-ph mt-1.5">USD · tabular numerals.</div>
-          </div>
-          <div class="sm:col-span-2 flex flex-wrap items-center gap-x-6 gap-y-3">
-            <label class="flex items-center gap-2 text-[13px] cursor-pointer"><input type="checkbox" checked class="w-4 h-4 accent-blue-60" /> Enable alerts</label>
-            <label class="flex items-center gap-2 text-[13px] cursor-pointer"><input type="checkbox" class="w-4 h-4 accent-blue-60" /> Auto-reconcile</label>
-            <label class="flex items-center gap-2 text-[13px] cursor-pointer sm:ml-auto">
-              <span class="relative inline-flex" x-data="{on:true}" @click="on=!on">
-                <span class="w-9 h-5 rounded-full transition-colors" :style="on ? 'background:var(--interactive)':'background:var(--border-strong)'"></span>
-                <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform" :class="on?'translate-x-4':''"></span>
-              </span>
-              <span>Production</span>
-            </label>
-          </div>
-        </div>
-        <div class="flex gap-3 mt-6 pt-4 border-t bd-sub">
-          <button class="btn btn-primary" @click="toast('Changes saved','check-circle','#24a148')">Save changes</button>
-          <button class="btn btn-secondary">Cancel</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== DATA TABLE ===== -->
-    <section id="table">
-      <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
-        <h2 class="text-[20px] font-semibold">Data table</h2>
-        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <div class="relative flex-1 sm:flex-none min-w-0">
-            <i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 txt-ph"></i>
-            <input x-model="q" class="field rounded-sm pl-8 h-8 text-[13px] w-full sm:w-[200px]" placeholder="Filter rows…" />
-          </div>
-          <button @click="dense=!dense" class="btn btn-secondary btn-sm shrink-0"><i data-lucide="rows-3" class="w-4 h-4"></i> <span x-text="dense?'Comfortable':'Compact'"></span></button>
-        </div>
-      </div>
-
-      <!-- Batch toolbar -->
-      <div x-show="selected.length" x-cloak class="flex items-center gap-3 px-4 h-10 mb-px text-white" style="background:var(--interactive)">
-        <span class="text-[13px] font-medium"><span x-text="selected.length"></span> selected</span>
-        <button class="text-[13px] hover:underline flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i> Approve</button>
-        <button class="text-[13px] hover:underline flex items-center gap-1"><i data-lucide="archive" class="w-4 h-4"></i> Archive</button>
-        <button @click="selected=[]" class="ml-auto text-[13px] hover:underline">Clear</button>
-      </div>
-
-      <div class="card overflow-x-auto" :style="`--row-h:${dense?'32px':'48px'}`">
-        <table class="mtable">
-          <thead>
-            <tr>
-              <th class="w-10"><input type="checkbox" class="accent-blue-60" :checked="selected.length===filteredRows.length && filteredRows.length" @change="toggleAll($event)" aria-label="Select all" /></th>
-              <th @click="sortBy('id')">Transaction <span x-show="sort.key==='id'" x-text="sort.dir>0?'↑':'↓'"></span></th>
-              <th @click="sortBy('account')">Account</th>
-              <th @click="sortBy('amount')" class="text-right">Amount</th>
-              <th @click="sortBy('status')">Status</th>
-              <th @click="sortBy('updated')">Updated</th>
-            </tr>
-          </thead>
-          <tbody>
-            <template x-for="r in filteredRows" :key="r.id">
-              <tr :class="selected.includes(r.id)?'selected':''">
-                <td><input type="checkbox" class="accent-blue-60" :checked="selected.includes(r.id)" @change="toggleRow(r.id)" :aria-label="'Select '+r.id" /></td>
-                <td class="font-mono text-[13px]" x-text="r.id"></td>
-                <td x-text="r.account"></td>
-                <td class="text-right font-mono tnum" x-text="r.amount"></td>
-                <td>
-                  <span class="tag" :style="statusStyle(r.status)">
-                    <i :data-lucide="statusIcon(r.status)" class="w-3 h-3"></i> <span x-text="r.status"></span>
-                  </span>
-                </td>
-                <td class="txt-sec text-[13px]" x-text="r.updated"></td>
-              </tr>
-            </template>
-            <tr x-show="!filteredRows.length">
-              <td colspan="6" class="text-center" style="height:120px">
-                <div class="flex flex-col items-center gap-2 txt-sec">
-                  <i data-lucide="search-x" class="w-7 h-7 txt-ph"></i>
-                  <div class="text-[14px] font-medium">No matching transactions</div>
-                  <div class="text-[12px]">Try a different filter term.</div>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="flex items-center justify-between text-[12px] txt-sec mt-2 px-1">
-        <span><span x-text="filteredRows.length"></span> of <span x-text="rows.length"></span> rows</span>
-        <span class="flex items-center gap-1">
-          <button class="w-7 h-7 grid place-items-center rounded-sm hover:bg-[color:var(--hover-ui)]"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
-          <span class="font-mono">1 / 1</span>
-          <button class="w-7 h-7 grid place-items-center rounded-sm hover:bg-[color:var(--hover-ui)]"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
-        </span>
-      </div>
-    </section>
-
-    <!-- ===== OVERLAYS & PATTERNS ===== -->
-    <section id="patterns" x-data="{tab:'summary', acc:1, menu:false, modal:false, drawer:false, editing:false, name:'Northwind Trading', draft:''}">
-      <h2 class="text-[20px] font-semibold mb-1">Overlays &amp; patterns</h2>
-      <p class="text-[13px] txt-sec mb-4 max-w-[70ch]">Standard, keyboard-operable patterns — reused, never reinvented. Esc closes overlays; focus is trapped while open and returned on close.</p>
-
-      <!-- Triggers: modal / drawer / dropdown -->
-      <div class="card p-5 mb-4">
-        <h3 class="text-[14px] font-semibold mb-3">Modal · drawer · overflow menu</h3>
-        <div class="flex flex-wrap items-center gap-3">
-          <button class="btn btn-danger" @click="modal=true"><i data-lucide="trash-2" class="w-4 h-4"></i> Delete account…</button>
-          <button class="btn btn-secondary" @click="drawer=true"><i data-lucide="panel-right-open" class="w-4 h-4"></i> Open record detail</button>
-
-          <!-- Dropdown / overflow menu -->
-          <div class="relative" @keydown.escape="menu=false">
-            <button @click="menu=!menu; if(menu) $nextTick(()=>{ const m=$refs.amenu; m.style.left='0'; m.style.right='auto'; if(m.getBoundingClientRect().right > window.innerWidth-8){ m.style.left='auto'; m.style.right='0'; } })" class="btn btn-secondary" :aria-expanded="menu" aria-haspopup="true">
-              <i data-lucide="ellipsis" class="w-4 h-4"></i> Actions <i data-lucide="chevron-down" class="w-4 h-4"></i>
-            </button>
-            <div x-ref="amenu" x-show="menu" x-cloak @click.outside="menu=false" x-transition.opacity.duration.150ms
-                 class="absolute left-0 mt-1 w-52 max-w-[calc(100vw-2rem)] card z-[300] py-1" style="box-shadow:0 2px 6px rgba(0,0,0,.18)" role="menu">
-              <button class="w-full flex items-center gap-3 px-4 h-9 text-[13px] hover:bg-[color:var(--hover-ui)]" role="menuitem"><i data-lucide="copy" class="w-4 h-4 txt-sec"></i> Duplicate</button>
-              <button class="w-full flex items-center gap-3 px-4 h-9 text-[13px] hover:bg-[color:var(--hover-ui)]" role="menuitem"><i data-lucide="download" class="w-4 h-4 txt-sec"></i> Export</button>
-              <button class="w-full flex items-center gap-3 px-4 h-9 text-[13px] hover:bg-[color:var(--hover-ui)]" role="menuitem"><i data-lucide="archive" class="w-4 h-4 txt-sec"></i> Archive</button>
-              <div class="my-1 border-t bd-sub"></div>
-              <button class="w-full flex items-center gap-3 px-4 h-9 text-[13px] hover:bg-[color:var(--hover-ui)]" style="color:#da1e28" role="menuitem"><i data-lucide="trash-2" class="w-4 h-4"></i> Delete</button>
-            </div>
-          </div>
-
-          <!-- Tooltip -->
-          <div class="relative group">
-            <button class="btn btn-ghost" aria-describedby="tt1"><i data-lucide="help-circle" class="w-4 h-4"></i> Hover for tooltip</button>
-            <span id="tt1" role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 whitespace-nowrap px-2 py-1 text-[12px] rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                  style="background:var(--text-primary);color:var(--bg)">Settles within 2 business days</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <!-- Tabs -->
-        <div class="card p-5">
-          <h3 class="text-[14px] font-semibold mb-3">Tabs</h3>
-          <div class="flex border-b bd-sub" role="tablist">
-            <template x-for="t in [{k:'summary',l:'Summary'},{k:'activity',l:'Activity'},{k:'limits',l:'Limits'}]" :key="t.k">
-              <button @click="tab=t.k" role="tab" :aria-selected="tab===t.k"
-                class="h-10 px-4 text-[13px] font-medium border-b-2 -mb-px transition-colors"
-                :class="tab===t.k ? '' : 'txt-sec hover:txt-pri border-transparent'"
-                :style="tab===t.k ? 'color:var(--text-primary);border-bottom-color:var(--interactive)' : ''" x-text="t.l"></button>
-            </template>
-          </div>
-          <div class="pt-4 text-[13px] txt-sec min-h-[88px]">
-            <div x-show="tab==='summary'">Account in good standing. 4,812 transactions settled this quarter with a 0.4% exception rate.</div>
-            <div x-show="tab==='activity'" x-cloak>Last login 12s ago from EU-West. Routing code updated yesterday by A. Prabhu.</div>
-            <div x-show="tab==='limits'" x-cloak>Daily limit <span class="font-mono tnum txt-pri">$50,000.00</span> · per-transaction cap <span class="font-mono tnum txt-pri">$25,000.00</span>.</div>
-          </div>
-        </div>
-
-        <!-- Accordion -->
-        <div class="card p-5">
-          <h3 class="text-[14px] font-semibold mb-3">Accordion</h3>
-          <div class="border-t bd-sub">
-            <template x-for="(a,i) in [{q:'How are settlements scheduled?',an:'Batches run at 02:00 UTC daily; exceptions route to the review queue.'},{q:'What triggers a fraud flag?',an:'Velocity, geo-mismatch, or amount above the per-transaction cap.'},{q:'Can limits be changed?',an:'Yes — an admin can edit limits inline on the account record.'}]" :key="i">
-              <div class="border-b bd-sub">
-                <button @click="acc===i ? acc=null : acc=i" class="w-full flex items-center justify-between h-11 text-[13px] font-medium text-left" :aria-expanded="acc===i">
-                  <span x-text="a.q"></span>
-                  <i data-lucide="chevron-down" class="w-4 h-4 txt-sec transition-transform" :class="acc===i ? 'rotate-180':''"></i>
-                </button>
-                <div x-show="acc===i" x-collapse><p class="pb-3 text-[13px] txt-sec" x-text="a.an"></p></div>
-              </div>
-            </template>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <!-- Inline edit -->
-        <div class="card p-5">
-          <h3 class="text-[14px] font-semibold mb-3">Inline edit</h3>
-          <label class="block text-[12px] font-medium mb-1.5">Account name</label>
-          <div x-show="!editing" class="flex items-center gap-2 group">
-            <span class="text-[14px]" x-text="name"></span>
-            <button @click="draft=name; editing=true; $nextTick(()=>$refs.edit.focus())" class="w-7 h-7 grid place-items-center rounded-sm txt-sec opacity-0 group-hover:opacity-100 hover:bg-[color:var(--hover-ui)]" aria-label="Edit account name">
-              <i data-lucide="pencil" class="w-4 h-4"></i>
-            </button>
-          </div>
-          <div x-show="editing" x-cloak class="flex items-center gap-2">
-            <input x-ref="edit" x-model="draft" @keydown.enter="name=draft; editing=false; toast('Name updated','check-circle','#24a148')" @keydown.escape="editing=false"
-                   class="field rounded-sm h-9 max-w-[260px]" />
-            <button class="btn btn-primary btn-sm" @click="name=draft; editing=false; toast('Name updated','check-circle','#24a148')">Save</button>
-            <button class="btn btn-ghost btn-sm" @click="editing=false">Cancel</button>
-          </div>
-          <p class="text-[12px] txt-ph mt-2">Enter saves · Esc cancels. Input is preserved until you confirm.</p>
-        </div>
-
-        <!-- Stepper -->
-        <div class="card p-5">
-          <h3 class="text-[14px] font-semibold mb-3">Stepper / wizard</h3>
-          <ol class="flex items-center">
-            <template x-for="(s,i) in ['Details','Limits','Review']" :key="i">
-              <li class="flex items-center" :class="i<2 ? 'flex-1':''">
-                <span class="w-7 h-7 rounded-full grid place-items-center text-[12px] font-semibold shrink-0"
-                  :style="i===0 ? 'background:#24a148;color:#fff' : i===1 ? 'background:var(--interactive);color:#fff' : 'background:var(--layer-01);color:var(--text-secondary);border:1px solid var(--border-subtle)'">
-                  <template x-if="i===0"><i data-lucide="check" class="w-4 h-4"></i></template>
-                  <span x-show="i!==0" x-text="i+1"></span>
-                </span>
-                <span class="ml-2 text-[13px]" :class="i===1 ? 'font-semibold':'txt-sec'" x-text="s"></span>
-                <span x-show="i<2" class="flex-1 h-px mx-3" :style="i===0 ? 'background:var(--interactive)':'background:var(--border-subtle)'"></span>
-              </li>
-            </template>
-          </ol>
-          <p class="text-[12px] txt-ph mt-4">Step 2 of 3 — current step is brand-filled, completed steps show a check.</p>
-        </div>
-      </div>
-
-      <!-- MODAL / DIALOG -->
-      <div x-show="modal" x-cloak class="fixed inset-0 z-[500]" @keydown.escape.window="modal=false" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-        <div class="absolute inset-0 bg-black/50" @click="modal=false"></div>
-        <div x-show="modal" x-transition class="relative max-w-[440px] mx-4 sm:mx-auto mt-[20vh] card" style="box-shadow:0 8px 24px rgba(0,0,0,.30)" x-trap.inert.noscroll="modal">
-          <div class="flex items-start gap-3 p-5 border-b bd-sub">
-            <div class="w-9 h-9 rounded-sm grid place-items-center shrink-0" style="background:#fff1f1"><i data-lucide="alert-triangle" class="w-5 h-5" style="color:#da1e28"></i></div>
-            <div>
-              <h3 id="modalTitle" class="text-[16px] font-semibold">Delete this account?</h3>
-              <p class="text-[13px] txt-sec mt-1">This permanently removes <span class="font-medium txt-pri" x-text="name"></span> and its 4,812 transactions. This action cannot be undone.</p>
-            </div>
-          </div>
-          <div class="flex justify-end gap-3 p-4">
-            <button class="btn btn-secondary" @click="modal=false">Cancel</button>
-            <button class="btn btn-danger" @click="modal=false; toast('Account deleted','trash-2','#da1e28')">Delete account</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- DRAWER / SIDE-PANEL -->
-      <div x-show="drawer" x-cloak class="fixed inset-0 z-[500]" @keydown.escape.window="drawer=false" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
-        <div class="absolute inset-0 bg-black/50" @click="drawer=false" x-show="drawer" x-transition.opacity></div>
-        <div x-show="drawer" x-trap.inert.noscroll="drawer"
-             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
-             x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
-             class="absolute top-0 right-0 h-full w-full max-w-[420px] bg-layer2 border-l bd-sub flex flex-col">
-          <div class="h-12 px-4 flex items-center justify-between border-b bd-sub shrink-0">
-            <h3 id="drawerTitle" class="text-[14px] font-semibold">Transaction TXN-90412</h3>
-            <button @click="drawer=false" class="w-9 h-9 grid place-items-center rounded-sm hover:bg-[color:var(--hover-ui)]" aria-label="Close panel"><i data-lucide="x" class="w-5 h-5"></i></button>
-          </div>
-          <div class="flex-1 overflow-y-auto p-5 space-y-4">
-            <span class="tag" style="background:#defbe6;color:#0e6027"><i data-lucide="check-circle" class="w-3 h-3"></i> Settled</span>
-            <dl class="space-y-3 text-[13px]">
-              <template x-for="row in [['Account','Northwind Trading'],['Amount','$12,400.00'],['Routing','ABC-123456'],['Region','EU-West (Frankfurt)'],['Settled at','2026-06-30 02:00 UTC'],['Reference','INV-2026-0041']]" :key="row[0]">
-                <div class="flex justify-between gap-4 border-b bd-sub pb-3">
-                  <dt class="txt-sec" x-text="row[0]"></dt>
-                  <dd class="font-mono tnum text-right" x-text="row[1]"></dd>
-                </div>
-              </template>
-            </dl>
-          </div>
-          <div class="p-4 border-t bd-sub flex gap-3 shrink-0">
-            <button class="btn btn-primary flex-1" @click="drawer=false; toast('Receipt sent','mail','#24a148')">Send receipt</button>
-            <button class="btn btn-secondary" @click="drawer=false">Close</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== STATES / LOADING ===== -->
-    <section id="states">
-      <h2 class="text-[20px] font-semibold mb-4">States</h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="card p-5">
-          <h3 class="text-[13px] font-semibold mb-3 txt-sec">Loading (skeleton)</h3>
-          <div class="space-y-2">
-            <div class="skeleton h-6 w-1/2"></div>
-            <div class="skeleton h-4 w-full"></div>
-            <div class="skeleton h-4 w-5/6"></div>
-            <div class="skeleton h-24 w-full mt-3"></div>
-          </div>
-        </div>
-        <div class="card p-5 flex flex-col items-center justify-center text-center" style="min-height:200px">
-          <i data-lucide="inbox" class="w-8 h-8 txt-ph mb-3"></i>
-          <div class="text-[14px] font-semibold mb-1">No exceptions</div>
-          <div class="text-[12px] txt-sec mb-4">Every transaction reconciled cleanly.</div>
-          <button class="btn btn-secondary btn-sm"><i data-lucide="refresh-cw" class="w-4 h-4"></i> Refresh</button>
-        </div>
-        <div class="card p-5 flex flex-col items-center justify-center text-center" style="min-height:200px">
-          <i data-lucide="cloud-off" class="w-8 h-8 mb-3" style="color:#da1e28"></i>
-          <div class="text-[14px] font-semibold mb-1">Couldn't reach the ledger</div>
-          <div class="text-[12px] txt-sec mb-4">Service is unavailable. We'll keep retrying.</div>
-          <button class="btn btn-primary btn-sm" @click="toast('Retrying connection…','loader','#0f62fe')">Retry now</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== TOKENS QUICK REF ===== -->
-    <section id="tokens">
-      <h2 class="text-[20px] font-semibold mb-4">Foundations quick reference</h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="card p-5">
-          <h3 class="text-[13px] font-semibold mb-3 txt-sec">Spacing — 2px grid</h3>
-          <template x-for="s in [2,4,8,12,16,24,32]" :key="s">
-            <div class="flex items-center gap-3 mb-2">
-              <div class="font-mono text-[11px] w-10 txt-sec" x-text="s+'px'"></div>
-              <div class="h-3" style="background:var(--interactive)" :style="`width:${s*2}px;background:var(--interactive)`"></div>
-            </div>
-          </template>
-        </div>
-        <div class="card p-5">
-          <h3 class="text-[13px] font-semibold mb-3 txt-sec">Radius &amp; border</h3>
-          <div class="flex gap-4 items-end">
-            <div class="text-center"><div class="w-14 h-14 border bd-strong" style="border-radius:2px"></div><div class="font-mono text-[11px] mt-1 txt-sec">2px</div></div>
-            <div class="text-center"><div class="w-14 h-14 border bd-strong" style="border-radius:4px"></div><div class="font-mono text-[11px] mt-1 txt-sec">4px</div></div>
-            <div class="text-center"><div class="w-14 h-14 border bd-strong" style="border-radius:8px"></div><div class="font-mono text-[11px] mt-1 txt-sec">8px</div></div>
-          </div>
-          <p class="text-[12px] txt-ph mt-4">Sharp by identity. 1px borders define regions; shadows only float.</p>
-        </div>
-        <div class="card p-5">
-          <h3 class="text-[13px] font-semibold mb-3 txt-sec">Elevation</h3>
-          <div class="space-y-3">
-            <div class="h-10 bg-layer2 grid place-items-center text-[12px] txt-sec" style="box-shadow:0 1px 2px rgba(0,0,0,.10)">elevation-01 · dropdowns</div>
-            <div class="h-10 bg-layer2 grid place-items-center text-[12px] txt-sec" style="box-shadow:0 2px 6px rgba(0,0,0,.12)">elevation-02 · toasts</div>
-            <div class="h-10 bg-layer2 grid place-items-center text-[12px] txt-sec" style="box-shadow:0 8px 24px rgba(0,0,0,.18)">elevation-03 · modals</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="border-t bd-sub pt-6 pb-12 flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px] txt-sec">
-      <span class="font-semibold txt-pri">Meridian Enterprise</span>
-      <span class="font-mono">v1.0.0</span>
-      <span>WCAG 2.1 AA</span>
-      <span>IBM Plex · 2px grid · light + dark</span>
-      <span class="ml-auto">Press <span class="font-mono px-1.5 py-0.5 rounded-sm" style="background:var(--layer-01)">⌘K</span> for the command palette</span>
-    </footer>
-  </main>
-</div>
-
-<!-- ============ COMMAND PALETTE ============ -->
-<div x-show="paletteOpen" x-cloak class="fixed inset-0 z-[500]" @keydown.escape.window="paletteOpen=false">
-  <div class="absolute inset-0 bg-black/50" @click="paletteOpen=false"></div>
-  <div x-show="paletteOpen" x-transition class="relative max-w-[560px] mx-4 sm:mx-auto mt-[12vh] card" style="box-shadow:0 8px 24px rgba(0,0,0,.30)" x-trap.inert.noscroll="paletteOpen">
-    <div class="palette-head flex items-center gap-3 px-4">
-      <i data-lucide="search" class="w-5 h-5 txt-sec shrink-0"></i>
-      <input x-model="pq" class="palette-field flex-1 bg-transparent outline-none text-[15px] py-4 px-1" placeholder="Jump to a section…" autofocus />
-      <span class="font-mono text-[11px] px-1.5 py-0.5 rounded-sm shrink-0" style="background:var(--layer-01)">esc</span>
-    </div>
-    <div class="max-h-[320px] overflow-y-auto py-1">
-      <template x-for="item in nav.filter(n=>n.label.toLowerCase().includes(pq.toLowerCase()))" :key="item.id">
-        <a :href="'#'+item.id" @click="paletteOpen=false" class="flex items-center gap-3 px-4 h-10 text-[14px] hover:bg-[color:var(--hover-ui)]">
-          <i :data-lucide="item.icon" class="w-4 h-4 txt-sec"></i> <span x-text="item.label"></span>
-        </a>
-      </template>
     </div>
   </div>
-</div>
 
-<!-- ============ TOASTS ============ -->
-<div class="fixed top-16 right-4 z-[600] space-y-2 w-[320px]">
-  <template x-for="t in toasts" :key="t.id">
-    <div class="toast card p-3 flex items-start gap-3" x-transition>
-      <i :data-lucide="t.icon" class="w-5 h-5 shrink-0 mt-0.5" :style="`color:${t.color}`"></i>
-      <div class="text-[13px] flex-1"><div class="font-medium" x-text="t.msg"></div></div>
-      <button @click="toasts=toasts.filter(x=>x.id!==t.id)" class="txt-ph hover:txt-pri"><i data-lucide="x" class="w-4 h-4"></i></button>
-    </div>
-  </template>
-</div>
-
-<script>
-// Chart instances live OUTSIDE Alpine's reactive state — Alpine deep-proxies reactive
-// data, and Chart.js objects have circular internals that recurse infinitely when proxied.
-const MCHARTS = { main:null, donut:null };
-function meridian(){
-  return {
-    theme: localStorage.getItem('meridian-theme') || 'theme-white',
-    navOpen:false, isDesktop: window.innerWidth>=1024,
-    paletteOpen:false, pq:'',
-    active:'overview', freshness:'just now',
-    range:'7D', ranges:['24H','7D','30D','QTD'],
-    q:'', dense:false, sort:{key:'updated',dir:-1}, selected:[],
-    toasts:[], _tid:0,
-    notifications:[
-      {id:1,icon:'alert-circle',color:'#da1e28',title:'Settlement batch failed',time:'2 min ago'},
-      {id:2,icon:'check-circle',color:'#24a148',title:'Reconciliation complete',time:'18 min ago'},
-      {id:3,icon:'info',color:'#0f62fe',title:'New region available: AP-South',time:'1 hr ago'},
-    ],
-    nav:[
-      {id:'overview',label:'Overview',icon:'home'},
-      {id:'dashboard',label:'Dashboard',icon:'layout-dashboard'},
-      {id:'color',label:'Color',icon:'palette'},
-      {id:'type',label:'Typography',icon:'type'},
-      {id:'components',label:'Components',icon:'component'},
-      {id:'table',label:'Data table',icon:'table'},
-      {id:'patterns',label:'Overlays & patterns',icon:'layers'},
-      {id:'states',label:'States',icon:'loader'},
-      {id:'tokens',label:'Foundations',icon:'ruler'},
-    ],
-    principles:[
-      {n:'P1',title:'Clarity over decoration',body:'Every pixel earns its place by communicating state, hierarchy, or affordance.'},
-      {n:'P2',title:'Truth is immediate',body:'Current state and consequences are visible before you act, not after.'},
-      {n:'P3',title:'Dense, but disciplined',body:'Embrace density through a strict 2px grid and ruthless hierarchy.'},
-      {n:'P4',title:'Sharp & precise',body:'Small radii, crisp 1px borders. Engineered, not soft.'},
-      {n:'P5',title:'Tokens, not decisions',body:'Every value resolves to a named token; theming is a swap, not a refactor.'},
-      {n:'P6',title:'Accessible by default',body:'WCAG AA designed in: focus rings, contrast, color never alone.'},
-      {n:'P7',title:'Productive motion',body:'Short, standard-eased motion that explains causality, never entertains.'},
-      {n:'—',title:'The meridian',body:'The fixed line a navigator uses to know exactly where they are.'},
-    ],
-    blueScale:[['10','#edf5ff'],['20','#d0e2ff'],['30','#a6c8ff'],['40','#78a9ff'],['50','#4589ff'],['60','#0f62fe'],['70','#0043ce'],['80','#002d9c'],['90','#001d6c'],['100','#001141']].map(([t,hex])=>({t:'blue-'+t,hex})),
-    grayScale:[['10','#f4f4f4'],['20','#e0e0e0'],['30','#c6c6c6'],['40','#a8a8a8'],['50','#8d8d8d'],['60','#6f6f6f'],['70','#525252'],['80','#393939'],['90','#262626'],['100','#161616']].map(([t,hex])=>({t:'gray-'+t,hex})),
-    semantic:[
-      {label:'Danger · red-60',hex:'#da1e28',icon:'alert-circle'},
-      {label:'Success · green-60',hex:'#24a148',icon:'check-circle'},
-      {label:'Warning · yellow-40',hex:'#d2a106',icon:'alert-triangle'},
-      {label:'Info · blue-60',hex:'#0f62fe',icon:'info'},
-    ],
-    typeScale:[
-      {token:'label-01',px:12,w:400,sample:'Field labels & captions'},
-      {token:'body-compact',px:14,w:400,sample:'Default dense UI body text'},
-      {token:'heading-01',px:16,w:600,sample:'Subsection headings'},
-      {token:'heading-03',px:20,w:400,sample:'Page & section headings'},
-      {token:'heading-04',px:28,w:400,sample:'Major headings'},
-      {token:'heading-06',px:42,w:300,sample:'Expressive / cover'},
-    ],
-    kpis:[
-      {label:'Transactions / min',value:'14,208',delta:'8.2%',up:true},
-      {label:'Avg latency',value:'182 ms',delta:'12 ms',up:true},
-      {label:'Error rate',value:'0.42%',delta:'0.08%',up:false},
-      {label:'Settled value',value:'$4.81M',delta:'3.1%',up:true},
-    ],
-    rows:[
-      {id:'TXN-90412',account:'Northwind Trading',amount:'12,400.00',status:'Settled',updated:'12s ago'},
-      {id:'TXN-90411',account:'Acme Logistics',amount:'3,920.50',status:'Pending',updated:'1m ago'},
-      {id:'TXN-90408',account:'Globex Capital',amount:'88,100.00',status:'Failed',updated:'3m ago'},
-      {id:'TXN-90405',account:'Initech Systems',amount:'540.00',status:'Settled',updated:'7m ago'},
-      {id:'TXN-90401',account:'Umbrella Health',amount:'21,750.25',status:'Review',updated:'12m ago'},
-      {id:'TXN-90399',account:'Soylent Foods',amount:'6,310.00',status:'Settled',updated:'20m ago'},
-      {id:'TXN-90395',account:'Stark Industries',amount:'140,000.00',status:'Pending',updated:'33m ago'},
-      {id:'TXN-90390',account:'Wayne Enterprises',amount:'9,815.75',status:'Failed',updated:'41m ago'},
-    ],
-    get filteredRows(){
-      let r=this.rows.filter(x=>(x.id+x.account+x.status).toLowerCase().includes(this.q.toLowerCase()));
-      const k=this.sort.key,d=this.sort.dir;
-      return r.sort((a,b)=>{ let av=a[k],bv=b[k];
-        if(k==='amount'){av=parseFloat(av.replace(/,/g,''));bv=parseFloat(bv.replace(/,/g,''));}
-        return av>bv?d:av<bv?-d:0; });
-    },
-    init(){
-      lucide.createIcons();
-      window.addEventListener('resize',()=>{ this.isDesktop=window.innerWidth>=1024; });
-      // Cmd-K
-      window.addEventListener('keydown',e=>{ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); this.paletteOpen=true; }});
-      // Scroll spy
-      const obs=new IntersectionObserver((es)=>{ es.forEach(en=>{ if(en.isIntersecting) this.active=en.target.id; }); },{rootMargin:'-30% 0px -60% 0px'});
-      document.querySelectorAll('section[id]').forEach(s=>obs.observe(s));
-      this.$nextTick(()=>{ this.buildCharts(); lucide.createIcons(); });
-      document.addEventListener('alpine:updated',()=>lucide.createIcons());
-      // freshness ticker
-      let s=0; setInterval(()=>{ s+=5; this.freshness = s<60? s+'s ago' : Math.floor(s/60)+'m ago'; },5000);
-    },
-    toggleTheme(){
-      this.theme = this.theme==='theme-white' ? 'theme-g100' : 'theme-white';
-      localStorage.setItem('meridian-theme',this.theme);
-      this.$nextTick(()=>{ this.themeCharts(); lucide.createIcons(); });
-    },
-    copy(hex){ navigator.clipboard?.writeText(hex); this.toast('Copied '+hex,'clipboard-check','#24a148'); },
-    toast(msg,icon='info',color='#0f62fe'){
-      const id=++this._tid; this.toasts.push({id,msg,icon,color});
-      this.$nextTick(()=>lucide.createIcons());
-      setTimeout(()=>{ this.toasts=this.toasts.filter(t=>t.id!==id); },3200);
-    },
-    loadBtn(e){
-      const btn=e.currentTarget, label=btn.querySelector('.btn-label'), old=label.textContent;
-      btn.disabled=true; label.textContent='Saving…';
-      setTimeout(()=>{ btn.disabled=false; label.textContent=old; this.toast('Saved','check-circle','#24a148'); },1400);
-    },
-    sortBy(k){ if(this.sort.key===k) this.sort.dir*=-1; else this.sort={key:k,dir:1}; },
-    toggleRow(id){ this.selected.includes(id) ? this.selected=this.selected.filter(x=>x!==id) : this.selected.push(id); },
-    toggleAll(e){ this.selected = e.target.checked ? this.filteredRows.map(r=>r.id) : []; },
-    statusStyle(s){
-      const m={Settled:['#defbe6','#0e6027'],Pending:['#fff8e1','#d2a106'],Failed:['#fff1f1','#da1e28'],Review:['#edf5ff','#0043ce']};
-      const dark = this.theme==='theme-g100';
-      const c=m[s]||['#f4f4f4','#525252'];
-      return dark ? `background:rgba(255,255,255,.06);color:${c[1]}` : `background:${c[0]};color:${c[1]}`;
-    },
-    statusIcon(s){ return {Settled:'check-circle',Pending:'clock',Failed:'alert-circle',Review:'eye'}[s]||'minus'; },
-
-    // ----- charts -----
-    chartColors(){
-      const cs=getComputedStyle(document.documentElement);
-      return { text:cs.getPropertyValue('--chart-text').trim(), grid:cs.getPropertyValue('--grid-line').trim(),
-               brand:cs.getPropertyValue('--interactive').trim() };
-    },
-    seriesFor(){
-      const base = this.range==='24H'?[42,48,40,52,60,55,68]:this.range==='30D'?[120,132,118,140,155,148,170]:this.range==='QTD'?[300,330,310,360,390,372,420]:[80,92,78,98,110,104,124];
-      const err = base.map(v=>+(v*0.018).toFixed(1));
-      return {base,err};
-    },
-    buildCharts(){
-      const c=this.chartColors(); const {base,err}=this.seriesFor();
-      const labels=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-      Chart.defaults.font.family='"IBM Plex Sans"'; Chart.defaults.font.size=11;
-      MCHARTS.main=new Chart(document.getElementById('chartMain'),{
-        type:'line',
-        data:{labels,datasets:[
-          {label:'Throughput (k)',data:base,borderColor:c.brand,backgroundColor:c.brand+'22',fill:true,tension:.35,borderWidth:2,pointRadius:0},
-          {label:'Error rate (%)',data:err,borderColor:'#da1e28',backgroundColor:'transparent',tension:.35,borderWidth:2,pointRadius:0,yAxisID:'y1'},
-        ]},
-        options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-          plugins:{legend:{labels:{color:c.text,boxWidth:12,boxHeight:2,usePointStyle:false}}},
-          scales:{
-            x:{grid:{color:c.grid},ticks:{color:c.text}},
-            y:{grid:{color:c.grid},ticks:{color:c.text}},
-            y1:{position:'right',grid:{display:false},ticks:{color:c.text}},
-          }}
-      });
-      MCHARTS.donut=new Chart(document.getElementById('chartDonut'),{
-        type:'doughnut',
-        data:{labels:['API','Web','Batch','Mobile'],datasets:[{data:[42,28,18,12],
-          backgroundColor:[c.brand,'#42be65','#f1c21b','#8d8d8d'],borderWidth:0}]},
-        options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
-          plugins:{legend:{position:'bottom',labels:{color:c.text,boxWidth:10,padding:14}}}}
-      });
-    },
-    rebuildCharts(){ const {base,err}=this.seriesFor(); MCHARTS.main.data.datasets[0].data=base; MCHARTS.main.data.datasets[1].data=err; MCHARTS.main.update(); },
-    themeCharts(){
-      const c=this.chartColors();
-      [MCHARTS.main,MCHARTS.donut].forEach(ch=>{ if(!ch)return;
-        Object.values(ch.options.scales||{}).forEach(s=>{ if(s.grid)s.grid.color=c.grid; if(s.ticks)s.ticks.color=c.text; });
-        if(ch.options.plugins.legend.labels) ch.options.plugins.legend.labels.color=c.text;
-      });
-      MCHARTS.main.data.datasets[0].borderColor=c.brand; MCHARTS.main.data.datasets[0].backgroundColor=c.brand+'22';
-      MCHARTS.donut.data.datasets[0].backgroundColor=[c.brand,'#42be65','#f1c21b','#8d8d8d'];
-      MCHARTS.main.update(); MCHARTS.donut.update();
-    },
-  };
-}
-</script>
+  <footer class="wrap">
+    <span>my-themes · by Akshay Prabhu</span>
+    <span><a href="https://github.com/prabhuakshay/my-themes">github.com/prabhuakshay/my-themes</a> · MIT</span>
+  </footer>
 </body>
 </html>
