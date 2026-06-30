@@ -8,7 +8,7 @@ Self-contained, zero-build themes — each with a full design spec and a live, i
 
 [**▶ Browse the live gallery**](https://prabhuakshay.github.io/my-themes/)
 
-![Themes](https://img.shields.io/badge/themes-1-161616)
+![Themes](https://img.shields.io/badge/themes-2-161616)
 ![License](https://img.shields.io/badge/license-MIT-0f62fe)
 ![Build](https://img.shields.io/badge/build-zero--build-525252)
 
@@ -24,9 +24,11 @@ intent behind every token and component is documented, not just demonstrated.
 
 | Theme | Description | Links |
 | --- | --- | --- |
-| **[Meridian Enterprise](./themes/meridian-enterprise/)** | Calm, governance-grade B2B design system — Carbon-grade tokens, 2px grid, sharp 1px borders, light + dark. | [Demo](https://prabhuakshay.github.io/my-themes/themes/meridian-enterprise/) · [Spec](./themes/meridian-enterprise/meridian-enterprise.md) · [README](./themes/meridian-enterprise/README.md) |
+| **[Meridian Enterprise](./themes/meridian-enterprise/)** | Calm, governance-grade B2B design system — a Carbon-grade *instrument panel*: mono tokens, 2px grid, sharp 1px borders, cool gray, light + dark. | [Demo](https://prabhuakshay.github.io/my-themes/themes/meridian-enterprise/) · [Spec](./themes/meridian-enterprise/meridian-enterprise.md) · [README](./themes/meridian-enterprise/README.md) |
+| **[Broadsheet](./themes/broadsheet/)** | Editorial system for enterprise data — a *front page*: tinted newsprint, serif headlines, claret accent, hairline rules, every figure bylined. Day + Evening. | [Demo](https://prabhuakshay.github.io/my-themes/themes/broadsheet/) · [Spec](./themes/broadsheet/broadsheet.md) · [README](./themes/broadsheet/README.md) |
 
-> _More themes coming — each lands in its own folder under [`themes/`](./themes)._
+> _Two themes, same enterprise user, opposite temperament — the instrument panel and the front
+> page. More land in their own folders under [`themes/`](./themes)._
 
 ## Repository layout
 
@@ -34,9 +36,13 @@ intent behind every token and component is documented, not just demonstrated.
 my-themes/
 ├── index.html                      # landing page — the live gallery
 ├── themes/
-│   └── meridian-enterprise/
+│   ├── meridian-enterprise/
+│   │   ├── index.html              # live, self-contained demo
+│   │   ├── meridian-enterprise.md  # full design specification
+│   │   └── README.md               # theme overview
+│   └── broadsheet/
 │       ├── index.html              # live, self-contained demo
-│       ├── meridian-enterprise.md  # full design specification
+│       ├── broadsheet.md           # full design specification
 │       └── README.md               # theme overview
 └── README.md                       # you are here
 ```
