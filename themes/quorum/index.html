@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Quorum — Board Reporting & Investor Relations Design System</title>
+<meta name="description" content="Quorum — a premium, narrative design system for board reporting and investor relations. The board pack told as a story: a cover, headline KPIs, guidance-vs-actual bullet charts, segment mix, an operating scorecard, board talking points, and a distribution list — a full app shell with a new-board-pack modal and a guidance edit drawer. Boardroom (dark) is the hero; Ivory is the printed hand-out." />
+<meta name="theme-color" content="#14161C" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2314161C'/%3E%3Ccircle cx='15' cy='15' r='7' fill='none' stroke='%23CBB681' stroke-width='2.4'/%3E%3Cpath d='M19 19l5 6' stroke='%23CBB681' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: { fontFamily: {
+      sans: ['"DM Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      serif: ['"DM Serif Display"', 'ui-serif', 'Georgia', 'serif'],
+      mono: ['"DM Mono"', 'ui-monospace', 'monospace'],
+    } } },
+  };
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<style>
+  /* ============================================================
+     QUORUM — EDITION TOKENS
+     "Boardroom" (dark) is the hero — a premium board pack read
+     in the room. "Ivory" (light) is the printed hand-out copy.
+     The chrome (sidebar/top bar) stays a deep charcoal binder in
+     BOTH editions — a constant, premium identity. Champagne is
+     the brand; ahead/behind vs guidance is the semantic core.
+     An edition swap is one class on <body>.
+     ============================================================ */
+
+  :root, .light {
+    color-scheme: light;
+    --canvas:#EFEBE1; --surface:#FBF9F4; --surface-2:#F1EDE2;
+    --line:#E4DECF; --line-2:#CFC6B2;
+    --ink:#22242C; --ink-2:#575D68; --ink-3:#6E6A61;
+    --chrome:#161821; --chrome-2:#22252F; --chrome-line:#313641;
+    --chrome-ink:#ECEEF3; --chrome-ink-2:#98A0AE;
+    --accent:#B79A55; --accent-2:#A5883F; --accent-ink:#7E6526;
+    --accent-soft:#EFE6CF; --on-accent:#211A08;
+    --link:#3B6CA8;
+    --pos:#14713F; --pos-soft:#DCEBE0; --neg:#B0442F; --neg-soft:#F3DED8;
+    --flat:#6E6A61; --warn:#8A6A1E;
+    --r:12px; --r-sm:8px;
+    --shadow:0 1px 2px rgba(30,26,14,.05), 0 4px 14px rgba(30,26,14,.06);
+    --shadow-lg:0 18px 46px rgba(30,26,14,.16), 0 4px 12px rgba(30,26,14,.10);
+    --scrim:rgba(20,22,28,.46);
+  }
+
+  .dark {
+    color-scheme: dark;
+    --canvas:#14161C; --surface:#1B1E26; --surface-2:#232732;
+    --line:#2A2F3A; --line-2:#3B4250;
+    --ink:#E9ECF2; --ink-2:#AEB6C4; --ink-3:#868EA0;
+    --chrome:#101218; --chrome-2:#1A1D25; --chrome-line:#262B35;
+    --chrome-ink:#E9ECF2; --chrome-ink-2:#9BA3B2;
+    --accent:#CBB681; --accent-2:#DBC896; --accent-ink:#CBB681;
+    --accent-soft:rgba(203,182,129,.14); --on-accent:#191509;
+    --link:#7FA8DA;
+    --pos:#4FB783; --pos-soft:rgba(79,183,131,.16); --neg:#E07A6A; --neg-soft:rgba(224,122,106,.16);
+    --flat:#9BA3B2; --warn:#D9B45C;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 30px rgba(0,0,0,.42);
+    --shadow-lg:0 20px 54px rgba(0,0,0,.6), 0 6px 16px rgba(0,0,0,.5);
+    --scrim:rgba(5,7,11,.66);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { background:#14161C; }
+  html.light { background:#EFEBE1; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    background: var(--canvas); color: var(--ink);
+    font-size: 13.5px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+  }
+  [x-cloak] { display: none !important; }
+  .mono, .num { font-family: 'DM Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .serif { font-family: 'DM Serif Display', ui-serif, Georgia, serif; font-weight: 400; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  a, button, select, input, textarea, [tabindex] { outline: none; }
+  a:focus-visible, button:focus-visible, select:focus-visible,
+  input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--link); outline-offset: 2px; border-radius: var(--r-sm);
+  }
+
+  .lbl { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+  .display { font-family: 'DM Serif Display', ui-serif, Georgia, serif; font-weight: 400; letter-spacing: -.01em; }
+  .chrome { background: var(--chrome); color: var(--chrome-ink); }
+  .chrome-seam { border-color: var(--chrome-line) !important; }
+  .pos { color: var(--pos); } .neg { color: var(--neg); } .flat { color: var(--flat); }
+  .hairline { height:1px; background: var(--line); }
+
+  .nav-item { position: relative; display: flex; align-items: center; gap: 12px; height: 42px;
+    padding: 0 14px; border-radius: var(--r-sm); color: var(--chrome-ink-2); cursor: pointer;
+    font-weight: 500; transition: background .12s, color .12s; }
+  .nav-item:hover { background: var(--chrome-2); color: var(--chrome-ink); }
+  .nav-item.on { background: var(--chrome-2); color: var(--chrome-ink); font-weight: 600; }
+  .nav-item.on::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px;
+    width: 3px; background: var(--accent); border-radius: 0 3px 3px 0; }
+  .nav-item.on i { color: var(--accent); }
+  .nav-num { font-family:'DM Mono',monospace; font-size:10px; color:var(--chrome-ink-2); opacity:.7; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px;
+    padding: 0 17px; border-radius: var(--r-sm); font-weight: 600; font-size: 13px;
+    border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+    transition: background .12s, border-color .12s, transform .06s; }
+  .btn:active { transform: scale(.985); }
+  .btn-primary { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+  .btn-primary:hover { background: var(--accent-2); }
+  .btn-outline { background: transparent; color: var(--ink); border-color: var(--line-2); }
+  .btn-outline:hover { background: var(--surface-2); }
+  .btn-ghost { background: var(--surface-2); color: var(--ink); }
+  .btn-ghost:hover { background: var(--line); }
+  .btn-sm { height: 34px; padding: 0 12px; font-size: 12px; }
+  .btn-block { width: 100%; }
+  .iconbtn { width: 40px; height: 40px; border-radius: var(--r-sm); display: flex; align-items: center;
+    justify-content: center; color: var(--ink-2); cursor: pointer; border: 1px solid transparent; background: transparent; }
+  .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
+  .chrome-icon { color: var(--chrome-ink-2); background: var(--chrome-2); }
+  .chrome-icon:hover { background: var(--chrome-line); color: var(--chrome-ink); }
+
+  .field { width: 100%; background: var(--surface-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 12px; font-size: 13px;
+    height: 40px; font-family: 'DM Sans', sans-serif; }
+  textarea.field { padding: 9px 12px; min-height: 76px; height:auto; resize: vertical; line-height: 1.5; }
+  .field::placeholder, textarea.field::placeholder { color: var(--ink-3); }
+  .isel { appearance: none; -webkit-appearance: none; padding-right: 30px; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+    background-position: calc(100% - 15px) 17px, calc(100% - 10px) 17px; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  .flbl { font-family:'DM Mono',monospace; font-size: 10px; font-weight: 500; letter-spacing:.12em; text-transform:uppercase;
+    color: var(--ink-3); margin-bottom: 6px; display: block; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px;
+    border-radius: 6px; font-family: 'DM Mono', monospace; font-size: 10.5px; font-weight: 500; letter-spacing: .03em; }
+  .chip-pos { color: var(--pos); background: var(--pos-soft); }
+  .chip-neg { color: var(--neg); background: var(--neg-soft); }
+  .chip-flat { color: var(--flat); background: var(--surface-2); }
+  .chip-warn { color: var(--warn); background: rgba(217,180,92,.16); }
+  .chip-accent { color: var(--accent-ink); background: var(--accent-soft); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  /* filter chips (toggle) */
+  .chipbtn { cursor: pointer; border: 1px solid var(--line-2); background: transparent; color: var(--ink-2);
+    height: 32px; padding: 0 13px; border-radius: 999px; font-size: 12px; font-weight: 600; transition: .12s; }
+  .chipbtn:hover { background: var(--surface-2); }
+  .chipbtn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+
+  /* toggle switch */
+  .switch { width: 42px; height: 24px; border-radius: 999px; background: var(--line-2); position: relative;
+    cursor: pointer; transition: background .15s; flex: none; border: 0; }
+  .switch.on { background: var(--accent); }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+  .switch.on::after { transform: translateX(18px); }
+
+  /* stepper */
+  .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: var(--surface-2); overflow: hidden; }
+  .stepper button { width: 38px; height: 40px; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; font-size: 17px; line-height: 1; }
+  .stepper button:hover { background: var(--line); color: var(--ink); }
+  .stepper input { width: 84px; height: 40px; border: 0; background: transparent; text-align: center; color: var(--ink);
+    font-family: 'DM Mono', monospace; font-variant-numeric: tabular-nums; }
+
+  /* segmented control */
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 3px; }
+  .seg button { height: 30px; padding: 0 14px; border: 0; background: transparent; color: var(--ink-2);
+    font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; border-radius: 5px; cursor: pointer; letter-spacing: .04em; transition:.12s; }
+  .seg button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+  /* bullet chart (guidance vs actual) */
+  .bullet { position: relative; height: 16px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .bullet-band { position: absolute; top: 0; bottom: 0; background: var(--accent-soft);
+    border-left: 1px solid var(--accent); border-right: 1px solid var(--accent); }
+  .bullet-fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 999px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 55%, transparent), var(--accent)); }
+  .bullet-mark { position: absolute; top: -3px; bottom: -3px; width: 3px; border-radius: 2px; background: var(--ink); box-shadow: 0 0 0 2px var(--surface); }
+
+  /* data table */
+  table { border-collapse: collapse; width: 100%; }
+  .tbl th { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-3); text-align: right; padding: 11px 14px; white-space: nowrap;
+    border-bottom: 1px solid var(--line-2); cursor: pointer; user-select: none; }
+  .tbl th:first-child, .tbl td:first-child { text-align: left; }
+  .tbl td { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  .tbl tbody tr { transition: background .1s; }
+  .tbl tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+  .tbl tbody tr:hover { background: var(--surface-2); }
+  .tbl tbody tr:last-child td { border-bottom: 0; }
+  .tbl tbody tr.clickable { cursor: pointer; }
+
+  .toast { background: var(--surface); border: 1px solid var(--line-2); border-left: 3px solid var(--accent);
+    box-shadow: var(--shadow-lg); border-radius: var(--r-sm); }
+  .scrim { background: var(--scrim); backdrop-filter: blur(2px); }
+  .spark { display: block; }
+  .edit-ln { border-bottom: 1px dotted var(--ink-3); cursor: text; }
+  .edit-ln:hover { border-bottom-color: var(--accent); color: var(--ink); }
+  .kv { display: flex; align-items: baseline; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .kv:last-child { border-bottom: 0; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+
+<body x-data="quorum()" x-cloak x-init="init()" :class="edition" @keydown.escape.window="closeAll()">
+
+<div class="h-screen flex flex-col">
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="chrome border-b chrome-seam shrink-0 flex items-center gap-3 px-3 sm:px-4" style="height:64px;border-bottom-width:1px">
+    <button class="iconbtn chrome-icon lg:hidden" @click="mobileNav=true" aria-label="Open navigation">
+      <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
+
+    <div class="flex items-center gap-2.5 select-none">
+      <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:var(--accent);color:var(--on-accent)">
+        <span class="serif text-[19px] leading-none" style="margin-top:1px">Q</span>
+      </div>
+      <div class="leading-none">
+        <div class="serif text-[19px]" style="color:var(--chrome-ink)">Quorum</div>
+        <div class="lbl mt-1" style="font-size:8.5px;color:var(--chrome-ink-2)">Board &amp; Investor Reporting</div>
+      </div>
+    </div>
+
+    <div class="hidden md:flex items-center gap-2 ml-5">
+      <div class="seg" style="background:var(--chrome-2);border-color:var(--chrome-line)">
+        <template x-for="v in views" :key="v">
+          <button :class="{'on': view===v}" @click="setView(v)" x-text="v"
+                  :style="view===v ? 'background:var(--chrome-line);color:var(--chrome-ink)' : 'color:var(--chrome-ink-2)'"></button>
+        </template>
+      </div>
+    </div>
+
+    <div class="flex-1"></div>
+
+    <div class="hidden sm:flex items-center gap-2.5 px-3 h-10 rounded-lg" style="background:var(--chrome-2)">
+      <i data-lucide="calendar" class="w-4 h-4" style="color:var(--chrome-ink-2)"></i>
+      <span class="mono text-[12px]" style="color:var(--chrome-ink)" x-text="period"></span>
+    </div>
+
+    <button class="btn btn-primary btn-sm hidden sm:inline-flex" @click="openModal()">
+      <i data-lucide="plus" class="w-4 h-4"></i> New board pack
+    </button>
+    <button class="iconbtn chrome-icon" @click="toggleEdition()" :aria-label="'Switch to '+(edition==='dark'?'Ivory':'Boardroom')+' edition'">
+      <i :data-lucide="edition==='dark' ? 'sun' : 'moon'" class="w-5 h-5"></i>
+    </button>
+    <button class="iconbtn chrome-icon relative" aria-label="Notifications">
+      <i data-lucide="bell" class="w-5 h-5"></i>
+      <span class="absolute top-2 right-2 w-2 h-2 rounded-full" style="background:var(--accent)"></span>
+    </button>
+    <div class="w-9 h-9 rounded-lg hidden sm:flex items-center justify-center mono text-[12px] shrink-0"
+         style="background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--line-2)">IR</div>
+  </header>
+
+  <div class="flex flex-1 min-h-0">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="chrome border-r chrome-seam w-64 shrink-0 hidden lg:flex flex-col" style="border-right-width:1px">
+      <nav class="p-3 flex-1 min-h-0 overflow-y-auto">
+        <div class="lbl px-3 pt-1 pb-2" style="color:var(--chrome-ink-2)">The board pack</div>
+        <div class="space-y-0.5">
+          <template x-for="(n,i) in nav" :key="n.k">
+            <a class="nav-item" :class="{'on': page===n.k}" href="#" @click.prevent="go(n.k)">
+              <span class="nav-num" x-text="String(i+1).padStart(2,'0')"></span>
+              <i :data-lucide="n.i" class="w-[18px] h-[18px]"></i>
+              <span x-text="n.t"></span>
+            </a>
+          </template>
+        </div>
+      </nav>
+      <div class="p-3 border-t chrome-seam" style="border-top-width:1px">
+        <div class="flex items-center gap-2 px-1">
+          <i data-lucide="lock" class="w-3.5 h-3.5" style="color:var(--chrome-ink-2)"></i>
+          <span class="text-[11px]" style="color:var(--chrome-ink-2)">Confidential · Board of Directors</span>
+        </div>
+        <div class="flex items-center gap-2 mt-2 px-1">
+          <i data-lucide="check-circle-2" class="w-3.5 h-3.5" style="color:var(--accent)"></i>
+          <span class="text-[11px]" style="color:var(--chrome-ink-2)">Numbers reviewed · IR &amp; FP&amp;A</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="flex-1 min-w-0 overflow-y-auto" x-ref="main">
+      <div class="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1180px] mx-auto">
+
+        <!-- ============================================================ OVERVIEW ============================================================ -->
+        <section x-show="page==='overview'">
+          <!-- board-pack cover -->
+          <div class="card overflow-hidden" style="border-color:var(--line-2)">
+            <div class="px-6 sm:px-9 py-7 sm:py-9" style="border-bottom:1px solid var(--line)">
+              <div class="flex items-center gap-3 flex-wrap">
+                <span class="lbl" style="color:var(--accent-ink)">Board pack · Investor relations</span>
+                <span class="w-1 h-1 rounded-full" style="background:var(--ink-3)"></span>
+                <span class="lbl">Prepared for the Board of Directors</span>
+              </div>
+              <div class="flex items-end justify-between gap-6 flex-wrap mt-5">
+                <div>
+                  <div class="serif leading-[0.98] text-[44px] sm:text-[60px]" x-text="period.replace(' · ',' ')"></div>
+                  <div class="mono text-[12px] mt-2" style="color:var(--ink-2)">Quarter ended 30 June 2026 · USD · illustrative</div>
+                </div>
+                <span class="chip chip-pos" style="height:28px;font-size:12px"><i data-lucide="trending-up" class="w-4 h-4"></i> Ahead of guidance</span>
+              </div>
+
+              <!-- editable takeaway (the narrative) -->
+              <div class="mt-7 max-w-[62ch]">
+                <div class="lbl mb-2">The one-line takeaway</div>
+                <template x-if="!editCover">
+                  <p class="serif text-[22px] sm:text-[27px] leading-[1.25] edit-ln inline"
+                     tabindex="0" role="button" @click="startCover()" @keydown.enter.prevent="startCover()"
+                     x-text="coverMsg" title="Click to edit the board headline"></p>
+                </template>
+                <template x-if="editCover">
+                  <div>
+                    <textarea class="field serif !text-[20px]" style="min-height:96px;line-height:1.3" x-model="coverDraft"
+                              @keydown.escape="editCover=false" x-init="$nextTick(()=>$el.focus())"></textarea>
+                    <div class="flex items-center gap-2 mt-2">
+                      <button class="btn btn-primary btn-sm" @click="saveCover()"><i data-lucide="check" class="w-4 h-4"></i> Save headline</button>
+                      <button class="btn btn-outline btn-sm" @click="editCover=false">Cancel</button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <div class="px-6 sm:px-9 py-4 flex items-center justify-between gap-4 flex-wrap" style="background:var(--surface-2)">
+              <div class="flex items-center gap-6 mono text-[11.5px]" style="color:var(--ink-2)">
+                <span>Revenue <b style="color:var(--ink)">$642M</b></span>
+                <span>EBITDA margin <b style="color:var(--ink)">24.6%</b></span>
+                <span>EPS <b style="color:var(--ink)">$1.38</b></span>
+              </div>
+              <span class="lbl">4 of 4 headline metrics beat</span>
+            </div>
+          </div>
+
+          <!-- headline KPIs -->
+          <div class="flex items-end justify-between gap-4 flex-wrap mb-4 mt-6">
+            <div>
+              <h2 class="display text-[24px]">Headline results</h2>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">The four numbers the Board reads first · <span class="mono" x-text="view.toLowerCase()"></span></p>
+            </div>
+            <button class="btn btn-outline btn-sm" @click="go('financials')">Guidance detail <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <template x-for="(k,i) in kpis" :key="k.t">
+              <div class="card p-5">
+                <div class="flex items-center justify-between">
+                  <span class="lbl" x-text="k.t"></span>
+                  <span class="chip" :class="k.pos?'chip-pos':'chip-neg'">
+                    <i :data-lucide="k.pos?'arrow-up-right':'arrow-down-right'" class="w-3 h-3"></i><span x-text="k.d"></span>
+                  </span>
+                </div>
+                <div class="serif text-[34px] leading-none mt-3" x-text="k.v"></div>
+                <div class="text-[11.5px] mono mt-2" style="color:var(--ink-3)" x-text="k.gd"></div>
+                <div class="mt-3" style="height:28px"><canvas :id="'ksp'+i" class="spark"></canvas></div>
+              </div>
+            </template>
+          </div>
+
+          <!-- trend + mix -->
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-6">
+            <div class="card xl:col-span-2 p-5">
+              <div class="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <h2 class="display text-[18px]">Revenue &amp; margin, the long arc</h2>
+                  <div class="lbl mt-1" x-text="view+' view · revenue ($M) and EBITDA margin (%)'"></div>
+                </div>
+                <div class="flex items-center gap-4 text-[11px]" style="color:var(--ink-2)">
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-2.5 rounded-sm" style="background:var(--accent)"></span>Revenue</span>
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-0.5" style="background:var(--flat)"></span>EBITDA %</span>
+                </div>
+              </div>
+              <div class="relative mt-4" style="height:288px"><canvas id="ovTrend"></canvas></div>
+            </div>
+
+            <div class="card p-5">
+              <div class="flex items-center justify-between"><h2 class="display text-[18px]">Revenue mix</h2><span class="lbl">By segment · $M</span></div>
+              <div class="relative mt-4 mx-auto" style="height:184px;max-width:184px"><canvas id="ovMix"></canvas></div>
+              <div class="mt-5 space-y-2.5">
+                <template x-for="s in segMix" :key="s.l">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="'background:'+s.c"></span>
+                    <span class="text-[12.5px] flex-1" style="color:var(--ink-2)" x-text="s.l"></span>
+                    <span class="num text-[12.5px]" x-text="'$'+s.v"></span>
+                    <span class="num text-[11px] w-10 text-right" style="color:var(--ink-3)" x-text="Math.round(s.v/642*100)+'%'"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </section>
+
+          <!-- headline scorecard (BI data table w/ inline-editable status) -->
+          <section class="card overflow-hidden mt-6">
+            <div class="flex items-center justify-between gap-3 p-5 pb-4 flex-wrap" style="border-bottom:1px solid var(--line)">
+              <div>
+                <h2 class="display text-[18px]">Headline scorecard</h2>
+                <div class="lbl mt-1">Set the Board-facing status per metric</div>
+              </div>
+              <span class="chip chip-flat" x-text="guidance.length+' metrics'"></span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:720px">
+                <thead><tr>
+                  <th style="width:26%">Metric</th><th>Actual</th><th>Guidance low</th><th>Guidance high</th><th>Δ vs high</th><th style="text-align:right">Board status</th>
+                </tr></thead>
+                <tbody>
+                  <template x-for="(g,gi) in guidance" :key="'ovrow'+g.m">
+                    <tr class="clickable" @click="openLine(gi)">
+                      <td><span class="font-semibold text-[13px]" x-text="g.m"></span></td>
+                      <td class="num" x-text="fmtV(g,g.act)"></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="fmtV(g,g.low)"></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="fmtV(g,g.high)"></td>
+                      <td class="num" :class="(g.act-g.high)>=0?'pos':'neg'" x-text="deltaHigh(g)"></td>
+                      <td style="text-align:right" @click.stop>
+                        <select class="field isel !h-8 !w-[132px] ml-auto !text-[11px] !px-2.5 mono" x-model="g.status"
+                                @change="notify(g.m+' status → '+g.status)" :style="'font-weight:500;color:'+statusColor(g.status)">
+                          <option>Ahead</option><option>In line</option><option>Watch</option><option>Behind</option>
+                        </select>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div class="flex items-center justify-between gap-3 px-5 py-3.5 flex-wrap" style="background:var(--surface-2)">
+              <span class="lbl">Positive Δ vs high = beat the top of the range</span>
+              <span class="mono text-[11px]" style="color:var(--ink-3)">Click a row to open the guidance editor</span>
+            </div>
+          </section>
+        </section>
+
+        <!-- ============================================================ FINANCIALS ============================================================ -->
+        <section x-show="page==='financials'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[24px] sm:text-[28px]">Guidance vs. actual</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Where we landed against the range we gave the Street · <span class="mono" x-text="period"></span></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="flex items-center gap-4 text-[11px] mr-1" style="color:var(--ink-2)">
+                <span class="flex items-center gap-1.5"><span class="w-3.5 h-2.5 rounded-sm" style="background:var(--accent-soft);border:1px solid var(--accent)"></span>Guidance range</span>
+                <span class="flex items-center gap-1.5"><span class="w-0.5 h-3.5 rounded" style="background:var(--ink)"></span>Actual</span>
+              </div>
+              <button class="btn btn-primary btn-sm" @click="openModal()"><i data-lucide="plus" class="w-4 h-4"></i> New pack</button>
+            </div>
+          </div>
+
+          <!-- bullet charts -->
+          <div class="card divide-y mt-4">
+            <template x-for="(g,gi) in guidance" :key="g.m">
+              <div class="p-5" :style="gi>0 ? 'border-top:1px solid var(--line)' : ''">
+                <div class="flex items-baseline justify-between gap-4 flex-wrap">
+                  <div class="flex items-baseline gap-3">
+                    <span class="font-semibold text-[14px]" x-text="g.m"></span>
+                    <span class="chip" :class="statusChipCls(g)" x-text="statusLabel(g)"></span>
+                    <span x-show="g.highlight" class="chip chip-accent"><i data-lucide="star" class="w-3 h-3"></i> Board highlight</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <div class="num text-[15px]"><b x-text="fmtV(g,g.act)"></b>
+                      <span style="color:var(--ink-3)" class="text-[11.5px]"> vs <span x-text="fmtV(g,g.low)+'–'+fmtV(g,g.high)"></span></span>
+                    </div>
+                    <button class="iconbtn !w-8 !h-8" @click="openLine(gi)" aria-label="Edit guidance line"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                  </div>
+                </div>
+
+                <div class="bullet mt-3">
+                  <div class="bullet-band" :style="'left:'+pos(g,g.low)+'%;width:'+(pos(g,g.high)-pos(g,g.low))+'%'"></div>
+                  <div class="bullet-fill" :style="'width:'+pos(g,g.act)+'%'"></div>
+                  <div class="bullet-mark" :style="'left:calc('+pos(g,g.act)+'% - 1.5px)'"></div>
+                </div>
+                <div class="flex justify-between mono text-[10px] mt-1" style="color:var(--ink-3)">
+                  <span x-text="fmtV(g,g.dmin)"></span><span x-text="fmtV(g,g.dmax)"></span>
+                </div>
+
+                <!-- editable talking point -->
+                <div class="mt-3 flex items-start gap-2">
+                  <i data-lucide="quote" class="w-3.5 h-3.5 mt-1 shrink-0" style="color:var(--accent-ink)"></i>
+                  <template x-if="editTp!==gi">
+                    <p class="text-[12.5px] edit-ln" style="color:var(--ink-2)" tabindex="0" role="button"
+                       @click="startTp(gi)" @keydown.enter.prevent="startTp(gi)" x-text="g.tp" title="Click to edit the board talking point"></p>
+                  </template>
+                  <template x-if="editTp===gi">
+                    <div class="flex-1">
+                      <input class="field !h-9 text-[12.5px]" x-model="tpDraft" @keydown.enter="saveTp()" @keydown.escape="editTp=null" x-init="$nextTick(()=>$el.focus())" />
+                      <div class="flex items-center gap-2 mt-2">
+                        <button class="btn btn-primary btn-sm" @click="saveTp()"><i data-lucide="check" class="w-3.5 h-3.5"></i> Save</button>
+                        <button class="btn btn-outline btn-sm" @click="editTp=null">Cancel</button>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- guidance scorecard table -->
+          <section class="card overflow-hidden mt-6">
+            <div class="flex items-center justify-between gap-3 p-5 pb-4 flex-wrap" style="border-bottom:1px solid var(--line)">
+              <div>
+                <h2 class="display text-[18px]">Guidance scorecard</h2>
+                <div class="lbl mt-1">Click a row to edit · set the Board-facing status</div>
+              </div>
+              <span class="chip chip-flat" x-text="guidance.filter(g=>g.highlight).length+' highlighted'"></span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:760px">
+                <thead><tr>
+                  <th style="width:24%">Metric</th><th>Actual</th><th>Low</th><th>High</th><th>Δ vs high</th><th style="text-align:center">Highlight</th><th style="text-align:right">Board status</th>
+                </tr></thead>
+                <tbody>
+                  <template x-for="(g,gi) in guidance" :key="'fnrow'+g.m">
+                    <tr class="clickable" @click="openLine(gi)">
+                      <td><span class="font-semibold text-[13px]" x-text="g.m"></span></td>
+                      <td class="num" x-text="fmtV(g,g.act)"></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="fmtV(g,g.low)"></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="fmtV(g,g.high)"></td>
+                      <td class="num" :class="(g.act-g.high)>=0?'pos':'neg'" x-text="deltaHigh(g)"></td>
+                      <td style="text-align:center"><i x-show="g.highlight" data-lucide="star" class="w-4 h-4 inline" style="color:var(--accent-ink)"></i><span x-show="!g.highlight" style="color:var(--ink-3)">—</span></td>
+                      <td style="text-align:right" @click.stop>
+                        <select class="field isel !h-8 !w-[132px] ml-auto !text-[11px] !px-2.5 mono" x-model="g.status"
+                                @change="notify(g.m+' status → '+g.status)" :style="'font-weight:500;color:'+statusColor(g.status)">
+                          <option>Ahead</option><option>In line</option><option>Watch</option><option>Behind</option>
+                        </select>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- ============================================================ SEGMENTS ============================================================ -->
+        <section x-show="page==='segments'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[24px] sm:text-[28px]">Revenue mix</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">By segment and by geography · $M · this quarter</p>
+            </div>
+            <button class="btn btn-outline btn-sm" @click="notify('Segment detail exported — mockup')"><i data-lucide="download" class="w-4 h-4"></i> Export</button>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card p-5">
+              <div class="flex items-center justify-between"><h2 class="display text-[18px]">By segment</h2><span class="lbl">$M</span></div>
+              <div class="relative mt-4 mx-auto" style="height:196px;max-width:196px"><canvas id="segMix"></canvas></div>
+              <div class="mt-5 space-y-2.5">
+                <template x-for="s in segMix" :key="'sd'+s.l">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="'background:'+s.c"></span>
+                    <span class="text-[12.5px] flex-1" style="color:var(--ink-2)" x-text="s.l"></span>
+                    <span class="num text-[12.5px]" x-text="'$'+s.v"></span>
+                    <span class="num text-[11px] w-10 text-right" style="color:var(--ink-3)" x-text="Math.round(s.v/642*100)+'%'"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <div class="card xl:col-span-2 p-5">
+              <div class="flex items-center justify-between"><h2 class="display text-[18px]">By geography</h2><span class="lbl">$M · this quarter</span></div>
+              <div class="relative mt-4" style="height:280px"><canvas id="segGeo"></canvas></div>
+            </div>
+          </section>
+
+          <!-- segment detail table -->
+          <section class="card overflow-hidden mt-6">
+            <div class="p-5 pb-4" style="border-bottom:1px solid var(--line)"><h2 class="display text-[18px]">Segment detail</h2><div class="lbl mt-1">Revenue, growth, and gross margin by segment</div></div>
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:640px">
+                <thead><tr><th style="width:30%">Segment</th><th>Revenue</th><th>YoY growth</th><th>Gross margin</th><th style="text-align:right">Momentum</th></tr></thead>
+                <tbody>
+                  <template x-for="s in segDetail" :key="s.l">
+                    <tr>
+                      <td><div class="flex items-center gap-2.5"><span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="'background:'+s.c"></span><span class="font-semibold text-[13px]" x-text="s.l"></span></div></td>
+                      <td class="num" x-text="'$'+s.v+'M'"></td>
+                      <td class="num" :class="s.g>=0?'pos':'neg'" x-text="(s.g>=0?'+':'−')+Math.abs(s.g)+'%'"></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="s.gm+'%'"></td>
+                      <td style="text-align:right"><span class="chip" :class="s.g>=15?'chip-pos':s.g>=0?'chip-accent':'chip-neg'" x-text="s.g>=15?'Accelerating':s.g>=0?'Steady':'Softening'"></span></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- ============================================================ KPIs ============================================================ -->
+        <section x-show="page==='kpis'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[24px] sm:text-[28px]">Operating scorecard</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">The efficiency metrics the Board watches quarter to quarter</p>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mt-4">
+            <template x-for="o in opKpis" :key="o.t">
+              <div class="card p-4">
+                <div class="lbl" x-text="o.t"></div>
+                <div class="serif text-[26px] leading-none mt-2" x-text="o.v"></div>
+                <div class="flex items-center gap-1.5 mt-2">
+                  <span class="chip" :class="o.pos?'chip-pos':'chip-neg'"><i :data-lucide="o.pos?'arrow-up-right':'arrow-down-right'" class="w-3 h-3"></i><span x-text="o.d"></span></span>
+                </div>
+                <div class="text-[10.5px] mt-2" style="color:var(--ink-3)" x-text="o.s"></div>
+              </div>
+            </template>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-6">
+            <div class="card xl:col-span-2 p-5">
+              <div class="flex items-start justify-between gap-3 flex-wrap">
+                <div><h2 class="display text-[18px]">Efficiency trend</h2><div class="lbl mt-1">Net revenue retention (%) &amp; Rule of 40</div></div>
+                <div class="flex items-center gap-4 text-[11px]" style="color:var(--ink-2)">
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-0.5" style="background:var(--accent)"></span>NRR %</span>
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-0.5" style="background:var(--link)"></span>Rule of 40</span>
+                </div>
+              </div>
+              <div class="relative mt-4" style="height:280px"><canvas id="kpiTrend"></canvas></div>
+            </div>
+            <div class="card p-5 flex flex-col justify-center gap-4">
+              <div>
+                <div class="lbl">Net revenue retention</div>
+                <div class="serif text-[38px] leading-none mt-1.5">114%</div>
+                <div class="text-[11.5px] mono mt-1 pos">+3 pts vs prior year</div>
+              </div>
+              <div class="hairline"></div>
+              <div>
+                <div class="lbl">Rule of 40</div>
+                <div class="serif text-[38px] leading-none mt-1.5">48.9</div>
+                <div class="text-[11.5px] mono mt-1" style="color:var(--ink-3)">Growth 24.3% + FCF margin 19.9%</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- quarterly operating table -->
+          <section class="card overflow-hidden mt-6">
+            <div class="p-5 pb-4" style="border-bottom:1px solid var(--line)"><h2 class="display text-[18px]">Quarterly operating metrics</h2><div class="lbl mt-1">Trailing four quarters</div></div>
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:680px">
+                <thead><tr><th style="width:28%">Metric</th><th>Q3·25</th><th>Q4·25</th><th>Q1·26</th><th>Q2·26</th><th style="text-align:right">Trend</th></tr></thead>
+                <tbody>
+                  <template x-for="r in opRows" :key="r.l">
+                    <tr>
+                      <td><span class="font-semibold text-[13px]" x-text="r.l"></span></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="r.q[0]"></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="r.q[1]"></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="r.q[2]"></td>
+                      <td class="num font-semibold" x-text="r.q[3]"></td>
+                      <td style="text-align:right"><span class="chip" :class="r.up?'chip-pos':'chip-neg'"><i :data-lucide="r.up?'trending-up':'trending-down'" class="w-3 h-3"></i> <span x-text="r.up?'Up':'Down'"></span></span></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- ============================================================ NARRATIVE ============================================================ -->
+        <section x-show="page==='narrative'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[24px] sm:text-[28px]">Board talking points</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">CFO commentary · click any point to edit · <span class="mono" x-text="filteredNarrative.length+' of '+narrative.length"></span></p>
+            </div>
+            <button class="btn btn-primary btn-sm" @click="openModal()"><i data-lucide="plus" class="w-4 h-4"></i> Add talking point</button>
+          </div>
+
+          <div class="flex items-center gap-2 flex-wrap mt-4">
+            <span class="lbl mr-1">Filter</span>
+            <template x-for="f in ['All','Key message','Approved','Draft']" :key="f">
+              <button class="chipbtn" :class="{'on': narrFilter===f}" @click="narrFilter=f" x-text="f"></button>
+            </template>
+            <div class="relative ml-auto"><i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+              <input type="text" class="field !h-9 !w-40 sm:!w-56 !pl-8 text-[12px]" placeholder="Search points" x-model="narrQ" /></div>
+          </div>
+
+          <div class="space-y-3 mt-4">
+            <template x-for="(n,ni) in filteredNarrative" :key="n.id">
+              <div class="card p-5">
+                <div class="flex items-start gap-4">
+                  <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mono text-[12px]" style="background:var(--accent-soft);color:var(--accent-ink)" x-text="n.au"></div>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap mb-1.5">
+                      <span class="lbl" x-text="n.topic"></span>
+                      <span class="w-1 h-1 rounded-full" style="background:var(--ink-3)"></span>
+                      <span class="mono text-[10.5px]" style="color:var(--ink-3)" x-text="n.who"></span>
+                    </div>
+                    <template x-if="editNarr!==n.id">
+                      <p class="text-[14px] edit-ln leading-relaxed" tabindex="0" role="button"
+                         @click="startNarr(n.id)" @keydown.enter.prevent="startNarr(n.id)" x-text="n.t" title="Click to edit"></p>
+                    </template>
+                    <template x-if="editNarr===n.id">
+                      <div>
+                        <textarea class="field text-[13.5px]" x-model="narrDraft" @keydown.escape="editNarr=null" x-init="$nextTick(()=>$el.focus())"></textarea>
+                        <div class="flex items-center gap-2 mt-2">
+                          <button class="btn btn-primary btn-sm" @click="saveNarr()"><i data-lucide="check" class="w-3.5 h-3.5"></i> Save</button>
+                          <button class="btn btn-outline btn-sm" @click="editNarr=null">Cancel</button>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                  <select class="field isel !h-8 !w-[128px] !text-[11px] !px-2.5 mono shrink-0" x-model="n.status" @change="notify(n.topic+' → '+n.status)" :style="'font-weight:500;color:'+narrColor(n.status)">
+                    <option>Key message</option><option>Approved</option><option>Draft</option>
+                  </select>
+                </div>
+              </div>
+            </template>
+            <div x-show="filteredNarrative.length===0" class="card p-10 text-center">
+              <i data-lucide="message-square-dashed" class="w-8 h-8 mx-auto" style="color:var(--ink-3)"></i>
+              <p class="text-[13px] mt-3" style="color:var(--ink-2)">No talking points match this filter.</p>
+              <button class="btn btn-outline btn-sm mt-3 mx-auto" @click="narrFilter='All';narrQ=''">Clear filters</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ DISTRIBUTION ============================================================ -->
+        <section x-show="page==='distribution'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[24px] sm:text-[28px]">Distribution</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Who receives the pack, on what channel, and how often</p>
+            </div>
+            <button class="btn btn-primary btn-sm" @click="notify('Board pack sent to '+recipients.filter(r=>r.send).length+' recipients — mockup')"><i data-lucide="send" class="w-4 h-4"></i> Send now</button>
+          </div>
+
+          <section class="card p-5 mt-4">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <div class="lbl mb-1.5">Delivery cadence</div>
+                <div class="text-[13px]" style="color:var(--ink-2)">How often the standing distribution list receives the pack</div>
+              </div>
+              <div class="seg">
+                <template x-for="c in ['Monthly','Quarterly','On close']" :key="c">
+                  <button :class="{'on': cadence===c}" @click="cadence=c; notify('Cadence → '+c)" x-text="c"></button>
+                </template>
+              </div>
+            </div>
+          </section>
+
+          <section class="card overflow-hidden mt-4">
+            <div class="flex items-center justify-between gap-3 p-5 pb-4 flex-wrap">
+              <div class="flex items-center gap-2"><h2 class="display text-[18px]">Recipients</h2><span class="chip chip-flat" x-text="recipients.filter(r=>r.send).length+' active'"></span></div>
+              <div class="relative"><i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+                <input type="text" class="field !h-9 !w-40 sm:!w-52 !pl-8 text-[12px]" placeholder="Search recipient" x-model="recipQ" /></div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:760px">
+                <thead><tr><th style="width:26%">Recipient</th><th style="text-align:left">Role</th><th style="text-align:left">Channel</th><th style="text-align:center">Access</th><th style="text-align:right">Deliver</th></tr></thead>
+                <tbody>
+                  <template x-for="r in filteredRecipients" :key="r.name">
+                    <tr>
+                      <td>
+                        <div class="flex items-center gap-2.5">
+                          <div class="w-8 h-8 rounded-lg flex items-center justify-center mono text-[10px] shrink-0" style="background:var(--surface-2);color:var(--ink-2)" x-text="r.name.split(' ').map(w=>w[0]).slice(0,2).join('')"></div>
+                          <span class="font-semibold text-[13px]" x-text="r.name"></span>
+                        </div>
+                      </td>
+                      <td style="text-align:left;color:var(--ink-2)" x-text="r.role"></td>
+                      <td style="text-align:left" @click.stop>
+                        <select class="field isel !h-8 !w-[128px] !text-[11px] !px-2.5 mono" x-model="r.channel" @change="notify(r.name+' → '+r.channel)">
+                          <option>Secure email</option><option>Board portal</option><option>Print + courier</option>
+                        </select>
+                      </td>
+                      <td style="text-align:center"><span class="chip" :class="r.access==='Full'?'chip-accent':'chip-flat'" x-text="r.access"></span></td>
+                      <td style="text-align:right">
+                        <button class="switch ml-auto" :class="{'on': r.send}" @click="r.send=!r.send; notify(r.name+(r.send?' will receive':' removed from')+' the pack')" role="switch" :aria-checked="r.send" :aria-label="'Deliver to '+r.name"></button>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div class="flex items-center justify-between gap-3 px-5 py-3.5 flex-wrap" style="background:var(--surface-2)">
+              <span class="lbl">Toggle a recipient to add or remove them from the standing list</span>
+              <span class="mono text-[11px]" style="color:var(--ink-3)" x-text="'Next delivery · '+cadence.toLowerCase()"></span>
+            </div>
+          </section>
+        </section>
+
+        <!-- ============================================================ SETTINGS ============================================================ -->
+        <section x-show="page==='settings'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[24px] sm:text-[28px]">Settings</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Pack identity, fiscal period, and appearance</p>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
+            <div class="card p-5">
+              <h2 class="display text-[18px]">Reporting company</h2>
+              <div class="mt-4 space-y-4">
+                <div>
+                  <label class="flbl">Company name</label>
+                  <template x-if="!editCompany">
+                    <div class="flex items-center gap-2">
+                      <span class="serif text-[22px] edit-ln" tabindex="0" role="button" @click="startCompany()" @keydown.enter.prevent="startCompany()" x-text="company" title="Click to edit"></span>
+                      <button class="iconbtn !w-8 !h-8" @click="startCompany()" aria-label="Edit company name"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                    </div>
+                  </template>
+                  <template x-if="editCompany">
+                    <div class="flex items-center gap-2">
+                      <input class="field" x-model="companyDraft" @keydown.enter="saveCompany()" @keydown.escape="editCompany=false" x-init="$nextTick(()=>$el.focus())" />
+                      <button class="btn btn-primary btn-sm" @click="saveCompany()"><i data-lucide="check" class="w-4 h-4"></i></button>
+                      <button class="btn btn-outline btn-sm" @click="editCompany=false">Cancel</button>
+                    </div>
+                  </template>
+                </div>
+                <div>
+                  <label class="flbl">Fiscal period</label>
+                  <select class="field isel" x-model="period" @change="notify('Fiscal period → '+period)">
+                    <option>Q2 · FY2026</option><option>Q1 · FY2026</option><option>Q4 · FY2025</option><option>FY2026 · Full year</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="flbl">Reporting currency</label>
+                  <select class="field isel" @change="notify('Currency → '+$event.target.value)">
+                    <option>USD · US Dollar</option><option>EUR · Euro</option><option>GBP · Pound Sterling</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-5">
+              <h2 class="display text-[18px]">Appearance &amp; delivery</h2>
+              <div class="mt-2 divide-y" style="--tw-divide-opacity:1">
+                <div class="kv">
+                  <div><div class="text-[13px] font-semibold">Edition</div><div class="text-[11.5px]" style="color:var(--ink-3)" x-text="edition==='dark'?'Boardroom — the in-room read':'Ivory — the printed hand-out'"></div></div>
+                  <div class="seg">
+                    <button :class="{'on': edition==='dark'}" @click="edition='dark'">Boardroom</button>
+                    <button :class="{'on': edition==='light'}" @click="edition='light'">Ivory</button>
+                  </div>
+                </div>
+                <div class="kv">
+                  <div><div class="text-[13px] font-semibold">Confidential watermark</div><div class="text-[11.5px]" style="color:var(--ink-3)">Stamp every page of the pack</div></div>
+                  <button class="switch" :class="{'on': setWatermark}" @click="setWatermark=!setWatermark" role="switch" :aria-checked="setWatermark"></button>
+                </div>
+                <div class="kv">
+                  <div><div class="text-[13px] font-semibold">Auto-append appendix</div><div class="text-[11.5px]" style="color:var(--ink-3)">Reconciliations &amp; footnotes</div></div>
+                  <button class="switch" :class="{'on': setAppendix}" @click="setAppendix=!setAppendix" role="switch" :aria-checked="setAppendix"></button>
+                </div>
+                <div class="kv">
+                  <div><div class="text-[13px] font-semibold">Rounding</div><div class="text-[11.5px]" style="color:var(--ink-3)">Figures shown to</div></div>
+                  <div class="stepper">
+                    <button @click="setRound=Math.max(0,setRound-1)" aria-label="Fewer decimals">−</button>
+                    <input class="mono" type="text" :value="setRound+' dp'" readonly />
+                    <button @click="setRound=Math.min(2,setRound+1)" aria-label="More decimals">+</button>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-primary btn-block mt-5" @click="notify('Settings saved — mockup')"><i data-lucide="check" class="w-4 h-4"></i> Save settings</button>
+            </div>
+          </section>
+        </section>
+
+        <footer class="flex items-center justify-between flex-wrap gap-2 pt-2 pb-2">
+          <span class="lbl" style="color:var(--ink-3)">Quorum · Board &amp; Investor Reporting · v1.0</span>
+          <span class="mono text-[11px]" style="color:var(--ink-3)">Figures illustrative · not for distribution</span>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ===== MOBILE NAV DRAWER ===== -->
+<div x-show="mobileNav" x-transition.opacity class="fixed inset-0 z-40 lg:hidden scrim" @click="mobileNav=false"></div>
+<aside x-show="mobileNav" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
+       class="fixed inset-y-0 left-0 z-50 w-72 chrome flex flex-col lg:hidden">
+  <div class="flex items-center justify-between px-4 border-b chrome-seam" style="height:64px;border-bottom-width:1px">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:var(--accent);color:var(--on-accent)"><span class="serif text-[16px] leading-none" style="margin-top:1px">Q</span></div>
+      <span class="serif text-[17px]" style="color:var(--chrome-ink)">Quorum</span>
+    </div>
+    <button class="iconbtn chrome-icon" @click="mobileNav=false" aria-label="Close navigation"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <nav class="p-3 space-y-0.5 flex-1 overflow-y-auto">
+    <template x-for="(n,i) in nav" :key="'m'+n.k">
+      <a class="nav-item" :class="{'on': page===n.k}" href="#" @click.prevent="go(n.k); mobileNav=false">
+        <span class="nav-num" x-text="String(i+1).padStart(2,'0')"></span>
+        <i :data-lucide="n.i" class="w-[18px] h-[18px]"></i><span x-text="n.t"></span>
+      </a>
+    </template>
+  </nav>
+  <div class="p-3 border-t chrome-seam" style="border-top-width:1px">
+    <button class="btn btn-primary btn-block" @click="openModal(); mobileNav=false"><i data-lucide="plus" class="w-4 h-4"></i> New board pack</button>
+  </div>
+</aside>
+
+<!-- ===== EDIT DRAWER (guidance line) ===== -->
+<div x-show="drawerOpen" x-transition.opacity class="fixed inset-0 z-[55] scrim" @click="drawerOpen=false"></div>
+<aside x-show="drawerOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+       class="fixed inset-y-0 right-0 z-[60] w-full sm:w-[440px] flex flex-col" style="background:var(--surface);border-left:1px solid var(--line-2);box-shadow:var(--shadow-lg)">
+  <div class="flex items-center justify-between px-5 border-b" style="height:64px;border-color:var(--line)">
+    <div><div class="lbl">Edit guidance line</div><div class="serif text-[18px]" x-text="editForm.m"></div></div>
+    <button class="iconbtn" @click="drawerOpen=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <div class="flex-1 overflow-y-auto p-5 space-y-4">
+    <div><label class="flbl">Metric name</label><input class="field" type="text" x-model="editForm.m" /></div>
+    <div><label class="flbl">Actual</label><input class="field mono" type="number" step="any" x-model.number="editForm.act" /></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="flbl">Guidance low</label><input class="field mono" type="number" step="any" x-model.number="editForm.low" /></div>
+      <div><label class="flbl">Guidance high</label><input class="field mono" type="number" step="any" x-model.number="editForm.high" /></div>
+    </div>
+    <div class="rounded-lg p-3.5 flex items-center justify-between" style="background:var(--surface-2)">
+      <span class="lbl">Result vs range</span>
+      <span class="chip" :class="(+editForm.act> +editForm.high)?'chip-pos':(+editForm.act>= +editForm.low?'chip-accent':'chip-neg')"
+            x-text="(+editForm.act> +editForm.high)?'Above range':(+editForm.act>= +editForm.low?'In range':'Below range')"></span>
+    </div>
+    <div><label class="flbl">Board status</label>
+      <select class="field isel" x-model="editForm.status"><option>Ahead</option><option>In line</option><option>Watch</option><option>Behind</option></select></div>
+    <div class="flex items-center justify-between py-1">
+      <div><div class="text-[13px] font-semibold">Highlight for board</div><div class="text-[11.5px]" style="color:var(--ink-3)">Star this line in the pack</div></div>
+      <button class="switch" :class="{'on': editForm.highlight}" @click="editForm.highlight=!editForm.highlight" role="switch" :aria-checked="editForm.highlight"></button>
+    </div>
+    <div><label class="flbl">Board commentary</label><textarea class="field" x-model="editForm.tp" placeholder="The one-line story for this metric…"></textarea></div>
+  </div>
+  <div class="p-5 border-t flex items-center gap-2" style="border-color:var(--line)">
+    <button class="btn btn-outline flex-1" @click="drawerOpen=false">Cancel</button>
+    <button class="btn btn-primary flex-1" @click="saveLine()"><i data-lucide="check" class="w-4 h-4"></i> Save line</button>
+  </div>
+</aside>
+
+<!-- ===== MODAL (New board pack) ===== -->
+<div x-show="modalOpen" x-transition.opacity class="fixed inset-0 z-[70] scrim flex items-start sm:items-center justify-center p-4 overflow-y-auto" @click="modalOpen=false">
+  <div @click.stop x-show="modalOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       class="card w-full max-w-lg my-8" style="box-shadow:var(--shadow-lg)">
+    <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color:var(--line)">
+      <div><div class="lbl">Board reporting</div><div class="serif text-[19px]">New board pack</div></div>
+      <button class="iconbtn" @click="modalOpen=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+      <div><label class="flbl">Pack title</label><input class="field" type="text" x-model="mForm.title" placeholder="e.g. Q3 FY2026 Board Pack" /></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="flbl">Period</label>
+          <select class="field isel" x-model="mForm.period"><option>Q3 · FY2026</option><option>Q2 · FY2026</option><option>FY2026 · Full year</option></select></div>
+        <div><label class="flbl">Audience</label>
+          <select class="field isel" x-model="mForm.audience"><option>Board of Directors</option><option>Audit Committee</option><option>Investors</option></select></div>
+      </div>
+      <div><label class="flbl">Key message</label><textarea class="field" x-model="mForm.msg" placeholder="The one-line story this pack should tell…"></textarea></div>
+      <div><label class="flbl">Board copies</label>
+        <div class="stepper"><button @click="mForm.copies=Math.max(1,mForm.copies-1)" aria-label="Fewer copies">−</button>
+          <input class="mono" type="number" x-model.number="mForm.copies" /><button @click="mForm.copies++" aria-label="More copies">+</button></div>
+      </div>
+      <div><label class="flbl">Tags</label>
+        <div class="flex flex-wrap gap-2">
+          <template x-for="tg in ['Guidance','Segments','KPIs','Narrative','Appendix']" :key="tg">
+            <button class="chipbtn" :class="{'on': mForm.tags.includes(tg)}" @click="toggleTag(tg)" x-text="tg"></button>
+          </template>
+        </div>
+      </div>
+      <div class="flex items-center justify-between py-1">
+        <div><div class="text-[13px] font-semibold">Mark confidential</div><div class="text-[11.5px]" style="color:var(--ink-3)">Watermark &amp; restrict distribution</div></div>
+        <button class="switch" :class="{'on': mForm.confidential}" @click="mForm.confidential=!mForm.confidential" role="switch" :aria-checked="mForm.confidential"></button>
+      </div>
+    </div>
+    <div class="px-5 py-4 border-t flex items-center gap-2" style="border-color:var(--line)">
+      <button class="btn btn-outline flex-1" @click="modalOpen=false">Cancel</button>
+      <button class="btn btn-primary flex-1" @click="createPack()"><i data-lucide="check" class="w-4 h-4"></i> Create pack</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="fixed bottom-4 right-4 z-[80] space-y-2 w-[calc(100%-2rem)] sm:w-auto sm:max-w-sm" aria-live="polite">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="toast px-3.5 py-3 flex items-start gap-3" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+      <i data-lucide="check-circle-2" class="w-4 h-4 mt-0.5 shrink-0" style="color:var(--accent-ink)"></i>
+      <span class="text-[13px]" style="color:var(--ink)" x-text="t.msg"></span>
+    </div>
+  </template>
+</div>
+
+<script>
+function quorum() {
+  return {
+    edition: 'dark',
+    page: 'overview',
+    view: 'Quarter',
+    views: ['Quarter', 'Full year', 'vs Guidance'],
+    period: 'Q2 · FY2026',
+    company: 'Halcyon Systems, Inc.',
+    mobileNav: false, modalOpen: false, drawerOpen: false,
+    editCover: false, coverDraft: '',
+    coverMsg: 'We beat guidance on every headline metric — Platform net-new and disciplined opex carried the quarter.',
+    editTp: null, tpDraft: '',
+    editNarr: null, narrDraft: '',
+    editCompany: false, companyDraft: '',
+    narrFilter: 'All', narrQ: '',
+    cadence: 'Quarterly', recipQ: '',
+    setWatermark: true, setAppendix: true, setRound: 1,
+    mForm: { title:'', period:'Q3 · FY2026', audience:'Board of Directors', msg:'', copies:9, tags:['Guidance','KPIs'], confidential:true },
+    editForm: {}, drawerRef: null,
+    toasts: [], _tid: 0, charts: {},
+
+    nav: [
+      { k:'overview',     t:'Overview',      i:'book-open' },
+      { k:'financials',   t:'Financials',    i:'target' },
+      { k:'segments',     t:'Segments',      i:'pie-chart' },
+      { k:'kpis',         t:'KPIs',          i:'gauge' },
+      { k:'narrative',    t:'Narrative',     i:'quote' },
+      { k:'distribution', t:'Distribution',  i:'send' },
+      { k:'settings',     t:'Settings',      i:'settings' },
+    ],
+
+    kpis: [
+      { t:'Revenue',        v:'$642M', gd:'Guidance $615–635M', d:'+1.1% vs high', pos:true,  sp:[588,604,612,619,628,642] },
+      { t:'EBITDA margin',  v:'24.6%', gd:'Guidance 22–24%',    d:'+60 bps',       pos:true,  sp:[23.4,23.8,24.0,24.1,24.4,24.6] },
+      { t:'EPS (diluted)',  v:'$1.38', gd:'Guidance $1.28–1.34',d:'+$0.04',        pos:true,  sp:[1.26,1.29,1.31,1.34,1.36,1.38] },
+      { t:'Free cash flow', v:'$128M', gd:'Guidance $110–125M', d:'+$3M',          pos:true,  sp:[98,104,112,118,122,128] },
+    ],
+
+    guidance: [
+      { m:'Revenue',        u:'$M', act:642,  low:615,  high:635,  dmin:590,  dmax:660,  status:'Ahead',   highlight:true,  tp:'Beat the top of the range on strong Platform net-new; a modest FX tailwind.' },
+      { m:'EBITDA margin',  u:'%',  act:24.6, low:22,   high:24,   dmin:20,   dmax:26,   status:'Ahead',   highlight:true,  tp:'Operating leverage from a richer Services mix; opex growth held below revenue.' },
+      { m:'EPS (diluted)',  u:'$',  act:1.38, low:1.28, high:1.34, dmin:1.15, dmax:1.45, status:'Ahead',   highlight:false, tp:'Buyback lowered the share count ahead of plan, adding roughly two cents.' },
+      { m:'Free cash flow', u:'$M', act:128,  low:110,  high:125,  dmin:95,   dmax:140,  status:'In line', highlight:false, tp:'Collections timing and lower capex intensity; watch Q3 seasonality.' },
+    ],
+
+    segMix: [
+      { l:'Platform',  v:295, c:'#CBB681' },
+      { l:'Services',  v:180, c:'#AEB6C4' },
+      { l:'Licensing', v:103, c:'#4FB783' },
+      { l:'Other',     v:64,  c:'#7FA8DA' },
+    ],
+    segDetail: [
+      { l:'Platform',  v:295, g:24, gm:82, c:'#CBB681' },
+      { l:'Services',  v:180, g:11, gm:58, c:'#AEB6C4' },
+      { l:'Licensing', v:103, g:6,  gm:91, c:'#4FB783' },
+      { l:'Other',     v:64,  g:-3, gm:47, c:'#7FA8DA' },
+    ],
+    geo: { labels:['North America','EMEA','APAC','Latin America'], vals:[312,196,98,36] },
+
+    opKpis: [
+      { t:'NRR',            v:'114%',  d:'+3 pts', pos:true,  s:'Net revenue retention' },
+      { t:'Rule of 40',     v:'48.9',  d:'+2.1',   pos:true,  s:'Growth + FCF margin' },
+      { t:'Gross margin',   v:'78.4%', d:'+40 bps',pos:true,  s:'Blended, all segments' },
+      { t:'Magic number',   v:'1.15',  d:'+0.08',  pos:true,  s:'Net-new ARR / S&M' },
+      { t:'Net-new ARR',    v:'$54M',  d:'+9%',    pos:true,  s:'Added this quarter' },
+      { t:'Logo retention', v:'96.2%', d:'−0.3 pt',pos:false, s:'Trailing twelve months' },
+    ],
+    opRows: [
+      { l:'NRR (%)',           q:['109','111','112','114'], up:true },
+      { l:'Rule of 40',        q:['44.1','45.6','46.8','48.9'], up:true },
+      { l:'Gross margin (%)',  q:['77.6','77.9','78.0','78.4'], up:true },
+      { l:'Magic number',      q:['1.02','1.07','1.09','1.15'], up:true },
+      { l:'Logo retention (%)',q:['96.8','96.6','96.5','96.2'], up:false },
+    ],
+    kpiTrend: { labels:['Q3·24','Q4·24','Q1·25','Q2·25','Q3·25','Q4·25','Q1·26','Q2·26'],
+      nrr:[106,107,108,108,109,111,112,114], r40:[41.2,42.0,42.8,43.5,44.1,45.6,46.8,48.9] },
+
+    narrative: [
+      { id:1, topic:'Revenue',   au:'IR', who:'CFO · reviewed', status:'Key message', t:'We grew 24% year over year and beat the top of our guidance range — the fifth consecutive quarter above the midpoint.' },
+      { id:2, topic:'Margins',   au:'FP', who:'FP&A · reviewed', status:'Key message', t:'EBITDA margin expanded 60 basis points on a richer Services mix and disciplined hiring; we held opex growth below revenue.' },
+      { id:3, topic:'Capital',   au:'TR', who:'Treasury', status:'Approved', t:'We returned $40M to shareholders via buyback and ended the quarter with $128M of free cash flow and no net debt.' },
+      { id:4, topic:'Outlook',   au:'IR', who:'Draft for review', status:'Draft', t:'We are raising full-year guidance modestly; Q3 carries typical seasonality in Services that we have reflected in the range.' },
+      { id:5, topic:'Risk',      au:'FP', who:'Draft for review', status:'Draft', t:'FX remains a watch item into H2; a stronger dollar would trim reported revenue by an estimated 1 to 2 points.' },
+    ],
+
+    recipients: [
+      { name:'Eleanor Vance',   role:'Board Chair',        channel:'Board portal',    access:'Full',    send:true },
+      { name:'Marcus Reid',     role:'Lead Independent Dir.', channel:'Board portal', access:'Full',    send:true },
+      { name:'Priya Nair',      role:'Audit Committee Chair', channel:'Secure email', access:'Full',    send:true },
+      { name:'David Osei',      role:'Compensation Chair',  channel:'Secure email',    access:'Full',    send:true },
+      { name:'Lena Fischer',    role:'Independent Director', channel:'Print + courier', access:'Full',   send:true },
+      { name:'Corporate Secretary', role:'Governance',      channel:'Board portal',    access:'Redacted',send:true },
+      { name:'External Auditor', role:'Observer',           channel:'Secure email',    access:'Redacted',send:false },
+    ],
+
+    // ---------- getters ----------
+    get filteredNarrative() {
+      const q = this.narrQ.trim().toLowerCase();
+      return this.narrative.filter(n => (this.narrFilter === 'All' || n.status === this.narrFilter) && (!q || n.t.toLowerCase().includes(q) || n.topic.toLowerCase().includes(q)));
+    },
+    get filteredRecipients() {
+      const q = this.recipQ.trim().toLowerCase();
+      return this.recipients.filter(r => !q || r.name.toLowerCase().includes(q) || r.role.toLowerCase().includes(q));
+    },
+
+    // ---------- formatting ----------
+    fmtV(g, n) {
+      if (g.u === '$M') return '$' + n + 'M';
+      if (g.u === '%')  return (+n).toFixed(1) + '%';
+      if (g.u === '$')  return '$' + (+n).toFixed(2);
+      return '' + n;
+    },
+    pos(g, v) { return Math.max(0, Math.min(100, (v - g.dmin) / (g.dmax - g.dmin) * 100)); },
+    deltaHigh(g) {
+      const d = g.act - g.high;
+      const s = d >= 0 ? '+' : '−';
+      if (g.u === '%') return s + Math.abs(d).toFixed(1) + ' pt';
+      if (g.u === '$') return s + '$' + Math.abs(d).toFixed(2);
+      return s + '$' + Math.abs(d) + 'M';
+    },
+    statusLabel(g) { return g.act > g.high ? 'Above range' : (g.act >= g.low ? 'In range' : 'Below range'); },
+    statusChipCls(g) { return g.act > g.high ? 'chip-pos' : (g.act >= g.low ? 'chip-accent' : 'chip-neg'); },
+    statusColor(s) { return { 'Ahead':'var(--pos)', 'In line':'var(--accent-ink)', 'Watch':'var(--warn)', 'Behind':'var(--neg)' }[s] || 'var(--ink)'; },
+    narrColor(s) { return { 'Key message':'var(--accent-ink)', 'Approved':'var(--pos)', 'Draft':'var(--ink-3)' }[s] || 'var(--ink)'; },
+
+    // ---------- actions ----------
+    toggleEdition() { this.edition = this.edition === 'dark' ? 'light' : 'dark'; },
+    setView(v) { this.view = v; this.notify('View → ' + v); },
+    go(k) { this.page = k; if (this.$refs.main) this.$refs.main.scrollTop = 0; },
+    closeAll() { this.mobileNav = false; this.modalOpen = false; this.drawerOpen = false; this.editCover = false; this.editTp = null; this.editNarr = null; this.editCompany = false; },
+
+    startCover() { this.coverDraft = this.coverMsg; this.editCover = true; },
+    saveCover() { if (this.coverDraft.trim()) this.coverMsg = this.coverDraft.trim(); this.editCover = false; this.notify('Board headline updated'); },
+    startTp(i) { this.editTp = i; this.tpDraft = this.guidance[i].tp; this.$nextTick(() => lucide.createIcons()); },
+    saveTp() { if (this.editTp === null) return; if (this.tpDraft.trim()) this.guidance[this.editTp].tp = this.tpDraft.trim(); this.notify('Talking point saved'); this.editTp = null; },
+    startNarr(id) { this.editNarr = id; this.narrDraft = this.narrative.find(n=>n.id===id).t; this.$nextTick(() => lucide.createIcons()); },
+    saveNarr() { if (this.editNarr === null) return; const n = this.narrative.find(x=>x.id===this.editNarr); if (n && this.narrDraft.trim()) n.t = this.narrDraft.trim(); this.notify('Talking point saved'); this.editNarr = null; },
+    startCompany() { this.companyDraft = this.company; this.editCompany = true; },
+    saveCompany() { if (this.companyDraft.trim()) this.company = this.companyDraft.trim(); this.editCompany = false; this.notify('Company name updated'); },
+
+    toggleTag(t) { this.mForm.tags = this.mForm.tags.includes(t) ? this.mForm.tags.filter(x=>x!==t) : [...this.mForm.tags, t]; },
+    openModal() { this.modalOpen = true; this.$nextTick(() => lucide.createIcons()); },
+    createPack() { this.modalOpen = false; this.notify('Board pack “' + (this.mForm.title.trim() || this.mForm.period) + '” created'); },
+
+    openLine(i) { this.drawerRef = this.guidance[i]; this.editForm = Object.assign({}, this.guidance[i]); this.drawerOpen = true; this.$nextTick(() => lucide.createIcons()); },
+    saveLine() { if (this.drawerRef) Object.assign(this.drawerRef, this.editForm); this.drawerOpen = false; this.notify('Saved ' + this.editForm.m); this.$nextTick(() => lucide.createIcons()); },
+
+    notify(msg) {
+      const id = ++this._tid;
+      this.toasts.push({ id, msg });
+      this.$nextTick(() => lucide.createIcons());
+      setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 2600);
+    },
+
+    init() {
+      this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); });
+      this.$watch('edition', () => this.$nextTick(() => { lucide.createIcons(); this.recolor(); }));
+      this.$watch('view', () => this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); }));
+      this.$watch('page', (p) => this.$nextTick(() => { lucide.createIcons(); this.renderFor(p); }));
+      ['mobileNav','modalOpen','drawerOpen','editCover','editTp','editNarr','editCompany','narrFilter','narrQ','recipQ','page'].forEach(k =>
+        this.$watch(k, () => this.$nextTick(() => lucide.createIcons())));
+    },
+
+    css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); },
+
+    // ---------- charts ----------
+    renderFor(page) {
+      Chart.defaults.font.family = "'DM Mono', monospace";
+      Chart.defaults.font.size = 10;
+      const map = {
+        overview: () => { this.drawKpiSparks(); this.drawOvTrend(); this.drawDoughnut('ovMix'); },
+        segments: () => { this.drawDoughnut('segMix'); this.drawGeo('segGeo'); },
+        kpis:     () => { this.drawKpiTrend(); },
+      };
+      (map[page] || (()=>{}))();
+    },
+    recolor() { Object.values(this.charts).forEach(c => { try { c.destroy(); } catch(e){} }); this.charts = {}; this.renderFor(this.page); },
+
+    _mk(id, cfg) {
+      const el = document.getElementById(id); if (!el || el.offsetParent === null) return;
+      const prev = Chart.getChart(el); if (prev) prev.destroy();
+      this.charts[id] = new Chart(el.getContext('2d'), cfg);
+    },
+    _grad(ctx, area, color) { const g = ctx.createLinearGradient(0, area.top, 0, area.bottom); g.addColorStop(0, color+'55'); g.addColorStop(1, color+'00'); return g; },
+    _tt() { return { backgroundColor:this.css('--surface'), borderColor:this.css('--line-2'), borderWidth:1, titleColor:this.css('--ink'), bodyColor:this.css('--ink-2'), padding:9, cornerRadius:8, titleFont:{family:"'DM Sans'"}, bodyFont:{family:"'DM Mono'"} }; },
+    _axis(fmt) { return { grid:{ color:this.css('--line') }, ticks:{ color:this.css('--ink-3'), callback:fmt } }; },
+
+    drawKpiSparks() {
+      this.kpis.forEach((k, i) => {
+        const col = k.pos ? this.css('--pos') : this.css('--neg');
+        this._mk('ksp'+i, { type:'line', data:{ labels:k.sp.map((_,j)=>j), datasets:[{ data:k.sp, borderColor:col, borderWidth:1.6, tension:0.4, pointRadius:0, fill:true,
+          backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, col) : col+'22' }]},
+          options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
+      });
+    },
+
+    _trendData() {
+      const t = {
+        'Quarter':     { labels:['Q3·24','Q4·24','Q1·25','Q2·25','Q3·25','Q4·25','Q1·26','Q2·26'], rev:[512,548,556,571,588,604,619,642], mgn:[21.8,22.4,22.1,22.9,23.4,23.8,24.1,24.6] },
+        'Full year':   { labels:['FY22','FY23','FY24','FY25','FY26e'], rev:[1740,1985,2210,2382,2560], mgn:[19.2,20.6,21.7,23.0,24.2] },
+        'vs Guidance': { labels:['Q1·26','Q2·26','Q3·26e','Q4·26e'], rev:[619,642,655,672], mgn:[24.1,24.6,24.8,25.1] },
+      };
+      return t[this.view];
+    },
+    drawOvTrend() {
+      const t = this._trendData();
+      const acc = this.css('--accent'), sil = this.css('--flat');
+      this._mk('ovTrend', { data:{ labels:t.labels, datasets:[
+        { type:'bar', label:'Revenue', data:t.rev, backgroundColor:acc, borderRadius:5, barPercentage:0.62, categoryPercentage:0.72, yAxisID:'y', order:2 },
+        { type:'line', label:'EBITDA %', data:t.mgn, borderColor:sil, borderWidth:2, tension:0.35, pointRadius:0, pointHoverRadius:4, yAxisID:'y1', order:1 } ]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false,
+          plugins:{ legend:{display:false}, tooltip:{ ...this._tt(), callbacks:{ label:(c)=> c.dataset.label==='Revenue' ? '  Revenue: $'+c.parsed.y.toLocaleString()+'M' : '  EBITDA: '+c.parsed.y+'%' } } },
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} },
+            y:{ ...this._axis((v)=>'$'+(v>=1000?(v/1000).toFixed(1)+'B':v+'M')), beginAtZero:true },
+            y1:{ position:'right', grid:{display:false}, ticks:{color:this.css('--ink-3'), callback:(v)=>v+'%'}, min:0, max:40 } } } });
+    },
+
+    drawDoughnut(id) {
+      this._mk(id, { type:'doughnut', data:{ labels:this.segMix.map(s=>s.l), datasets:[{ data:this.segMix.map(s=>s.v), backgroundColor:this.segMix.map(s=>s.c), borderColor:this.css('--surface'), borderWidth:3, hoverOffset:6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'66%', animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>'  '+c.label+' · $'+c.parsed+'M' }}} } });
+    },
+
+    drawGeo(id) {
+      const acc = this.css('--accent');
+      this._mk(id, { type:'bar', data:{ labels:this.geo.labels, datasets:[{ data:this.geo.vals, backgroundColor:acc, borderRadius:5, barThickness:26 }]},
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false,
+          plugins:{ legend:{display:false}, tooltip:{ ...this._tt(), callbacks:{ label:(c)=>'  $'+c.parsed.x+'M' } } },
+          scales:{ x:{ ...this._axis((v)=>'$'+v+'M'), beginAtZero:true }, y:{ grid:{display:false}, ticks:{color:this.css('--ink-2'), font:{size:11, family:"'DM Sans'"}} } } } });
+    },
+
+    drawKpiTrend() {
+      const acc = this.css('--accent'), lnk = this.css('--link');
+      this._mk('kpiTrend', { data:{ labels:this.kpiTrend.labels, datasets:[
+        { type:'line', label:'NRR %', data:this.kpiTrend.nrr, borderColor:acc, borderWidth:2, tension:0.35, pointRadius:0, pointHoverRadius:4, yAxisID:'y', fill:true,
+          backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, acc) : acc+'22' },
+        { type:'line', label:'Rule of 40', data:this.kpiTrend.r40, borderColor:lnk, borderWidth:2, borderDash:[5,4], tension:0.35, pointRadius:0, pointHoverRadius:4, yAxisID:'y1' } ]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false,
+          plugins:{ legend:{display:false}, tooltip:{ ...this._tt(), callbacks:{ label:(c)=> c.dataset.label==='NRR %' ? '  NRR: '+c.parsed.y+'%' : '  Rule of 40: '+c.parsed.y } } },
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} },
+            y:{ ...this._axis((v)=>v+'%'), min:100, max:118 },
+            y1:{ position:'right', grid:{display:false}, ticks:{color:this.css('--ink-3')}, min:38, max:52 } } } });
+    },
+  };
+}
+</script>
+</body>
+</html>

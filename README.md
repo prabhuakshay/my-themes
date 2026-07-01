@@ -8,7 +8,7 @@ Self-contained, zero-build themes — each with a full design spec and a live, i
 
 [**▶ Browse the live gallery**](https://prabhuakshay.github.io/my-themes/)
 
-![Themes](https://img.shields.io/badge/themes-13-161616)
+![Themes](https://img.shields.io/badge/themes-19-161616)
 ![License](https://img.shields.io/badge/license-MIT-0f62fe)
 ![Build](https://img.shields.io/badge/build-zero--build-525252)
 
@@ -37,8 +37,14 @@ intent behind every token and component is documented, not just demonstrated.
 | **[Prism](./themes/prism/)** | Marketing / campaign analytics — the *spectrum*: bright white, magenta + a five-hue spectrum, channel mix & campaigns. Bricolage Grotesque. Daylight + Nightshift. | [Demo](https://prabhuakshay.github.io/my-themes/themes/prism/) · [Spec](./themes/prism/prism.md) · [README](./themes/prism/README.md) |
 | **[Dossier](./themes/dossier/)** | Legal / contract lifecycle — the *case file*: serif-led porcelain, burgundy + navy, hairline rules, renewals & obligations. Spectral. Daylight + Lamplight. | [Demo](https://prabhuakshay.github.io/my-themes/themes/dossier/) · [Spec](./themes/dossier/dossier.md) · [README](./themes/dossier/README.md) |
 | **[Sterling](./themes/sterling/)** | Corporate finance / office of the CFO — the *ledger*: ink-navy binder, gilt accent, statement tables that tie out, favorable/unfavorable variance, the month-end close. Hanken Grotesk. Statement + Ledger. | [Demo](https://prabhuakshay.github.io/my-themes/themes/sterling/) · [Spec](./themes/sterling/sterling.md) · [README](./themes/sterling/README.md) |
+| **[Pro Forma](./themes/pro-forma/)** | Corporate finance / FP&A — driver-based modeling, the *model*: graph-paper canvas, formula-indigo, a live formula bar, an editable driver grid that re-sims 12 months, a sensitivity tornado. DM Sans. Model + Terminal. | [Demo](https://prabhuakshay.github.io/my-themes/themes/pro-forma/) · [Spec](./themes/pro-forma/pro-forma.md) · [README](./themes/pro-forma/README.md) |
+| **[Compound](./themes/compound/)** | Capital allocation / capex — a *portfolio of bets*: warm granite, bronze-gold, a hurdle-rate ranking with Fund/Hold/Reject, NPV/IRR/payback. Libre Franklin. Deployed + Reserve. | [Demo](https://prabhuakshay.github.io/my-themes/themes/compound/) · [Spec](./themes/compound/compound.md) · [README](./themes/compound/README.md) |
+| **[Confluence](./themes/confluence/)** | Multi-entity consolidation — *many books, one truth*: steel-indigo, an entity rollup that ties out, intercompany eliminations, a group-close heatmap, FX translation. Albert Sans. | [Demo](https://prabhuakshay.github.io/my-themes/themes/confluence/) · [Spec](./themes/confluence/confluence.md) · [README](./themes/confluence/README.md) |
+| **[Zero](./themes/zero/)** | Zero-based budgeting / spend — the *cost meter*: austere concrete, approve-green / cut-red, a cost-package approval register, a savings tracker. Instrument Sans. Concrete + Graphite. | [Demo](https://prabhuakshay.github.io/my-themes/themes/zero/) · [Spec](./themes/zero/zero.md) · [README](./themes/zero/README.md) |
+| **[Quorum](./themes/quorum/)** | Board / investor-relations reporting — the *board pack*: charcoal boardroom, champagne, guidance-vs-actual bullets, a narrative deck. DM Serif Display. Boardroom + Ivory. | [Demo](https://prabhuakshay.github.io/my-themes/themes/quorum/) · [Spec](./themes/quorum/quorum.md) · [README](./themes/quorum/README.md) |
+| **[Bedrock](./themes/bedrock/)** | Financial metrics semantic layer — the *source of truth*: graphite-teal, a certified metric catalog, a lineage graph, freshness & governance. Lexend. Reference + Vault. | [Demo](https://prabhuakshay.github.io/my-themes/themes/bedrock/) · [Spec](./themes/bedrock/bedrock.md) · [README](./themes/bedrock/README.md) |
 
-> _Thirteen full systems — each a distinct pole for the same enterprise user, and each a complete,
+> _Nineteen full systems — each a distinct pole for the same enterprise user, and each a complete,
 > token-driven, light + dark app demo with its own written spec. More land in their own folders
 > under [`themes/`](./themes)._
 

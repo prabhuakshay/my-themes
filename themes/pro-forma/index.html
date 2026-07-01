@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Pro Forma — Driver-Based Financial Model (FP&A)</title>
+<meta name="description" content="Pro Forma — a driver-based financial modeling design system for FP&A. The model is the product: an editable driver grid that recomputes live, projection statements, scenario compare, an EBITDA sensitivity tornado, a report library, and a signature live formula bar. Model (light) + Terminal (dark) editions." />
+<meta name="theme-color" content="#181C13" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23181C13'/%3E%3Cpath d='M8 9h16M8 9v14h16V9M14 9v14M8 16h16' stroke='%233B5BDB' stroke-width='1.6'/%3E%3Cpath d='M18.5 12.5l3 3-3 3' stroke='%2312A594' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: { fontFamily: {
+      sans: ['"DM Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      mono: ['"DM Mono"', 'ui-monospace', 'monospace'],
+    } } },
+  };
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<style>
+  /* ============================================================
+     PRO FORMA — EDITION TOKENS
+     Thesis: "the model is the product." A spreadsheet re-imagined
+     as assumptions -> outputs. "Model" (light) is the hero — a
+     graph-paper worksheet. "Terminal" (dark) is the after-hours
+     copy. Formula indigo is the brand; mint/rose is the semantic
+     positive/negative core. An edition swap is one class on <body>.
+     ============================================================ */
+
+  :root, .light {
+    color-scheme: light;
+    --canvas:#F6F8F4; --surface:#FFFFFF; --surface-2:#EFF3EB;
+    --grid:#E9EFE3; --line:#E1E8DB; --line-2:#C8D3BF;
+    --ink:#1A1F17; --ink-2:#54604B; --ink-3:#8B9682;
+    --chrome:#181C13; --chrome-2:#242A1D; --chrome-line:#31382A;
+    --chrome-ink:#EEF2E9; --chrome-ink-2:#9AA58C;
+    --accent:#3B5BDB; --accent-2:#2F49B0; --accent-ink:#2F49B0;
+    --accent-soft:#E7EBFB; --on-accent:#FFFFFF;
+    --link:#2F49B0;
+    --pos:#0F8F80; --pos-soft:#DCF1EE; --neg:#C43A4D; --neg-soft:#F8E3E6;
+    --flat:#6C7860; --warn:#9A7413; --warn-soft:#F4EBD4;
+    --r:9px; --r-sm:6px;
+    --shadow:0 1px 2px rgba(26,31,23,.05), 0 2px 8px rgba(26,31,23,.06);
+    --shadow-lg:0 12px 34px rgba(26,31,23,.16), 0 3px 10px rgba(26,31,23,.10);
+    --scrim:rgba(26,31,23,.46);
+  }
+
+  .dark {
+    color-scheme: dark;
+    --canvas:#10130C; --surface:#171B11; --surface-2:#1F2418;
+    --grid:rgba(255,255,255,.032); --line:#272E1D; --line-2:#38412A;
+    --ink:#EAEEE2; --ink-2:#A4AF97; --ink-3:#6E7962;
+    --chrome:#0C0F08; --chrome-2:#171B11; --chrome-line:#242A1A;
+    --chrome-ink:#EAEEE2; --chrome-ink-2:#8C9680;
+    --accent:#6C86F0; --accent-2:#87A0F5; --accent-ink:#8DA2F3;
+    --accent-soft:rgba(108,134,240,.16); --on-accent:#0A0F22;
+    --link:#8DA2F3;
+    --pos:#2CC4B0; --pos-soft:rgba(44,196,176,.16); --neg:#E7677A; --neg-soft:rgba(231,103,122,.16);
+    --flat:#96A188; --warn:#DFB24E; --warn-soft:rgba(223,178,78,.15);
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 26px rgba(0,0,0,.46);
+    --shadow-lg:0 14px 44px rgba(0,0,0,.6), 0 4px 12px rgba(0,0,0,.5);
+    --scrim:rgba(3,5,2,.66);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    background: var(--canvas); color: var(--ink);
+    font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  [x-cloak] { display: none !important; }
+  .mono, .num { font-family: 'DM Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .num { letter-spacing: -.01em; }
+
+  /* Signature: the worksheet is graph paper */
+  .graph {
+    background-color: var(--canvas);
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px),
+                      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  a, button, select, input, textarea, [tabindex] { outline: none; }
+  a:focus-visible, button:focus-visible, select:focus-visible,
+  input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm);
+  }
+
+  .lbl { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+  .display { font-weight: 700; letter-spacing: -.02em; }
+  .chrome { background: var(--chrome); color: var(--chrome-ink); }
+  .chrome-seam { border-color: var(--chrome-line) !important; }
+  .pos { color: var(--pos); } .neg { color: var(--neg); } .flat { color: var(--flat); }
+
+  .nav-item { position: relative; display: flex; align-items: center; gap: 11px; height: 40px;
+    padding: 0 13px; border-radius: var(--r-sm); color: var(--chrome-ink-2); cursor: pointer;
+    font-weight: 500; transition: background .12s, color .12s; }
+  .nav-item:hover { background: var(--chrome-2); color: var(--chrome-ink); }
+  .nav-item.on { background: var(--chrome-2); color: var(--chrome-ink); font-weight: 600; }
+  .nav-item.on::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 3px; background: var(--accent); border-radius: 0 3px 3px 0; }
+  .nav-item.on i { color: var(--accent); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px;
+    padding: 0 15px; border-radius: var(--r-sm); font-weight: 600; font-size: 13px;
+    border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+    transition: background .12s, border-color .12s, transform .06s; }
+  .btn:active { transform: scale(.985); }
+  .btn-primary { background: var(--accent); color: var(--on-accent); }
+  .btn-primary:hover { background: var(--accent-2); }
+  .btn-outline { background: transparent; color: var(--ink); border-color: var(--line-2); }
+  .btn-outline:hover { background: var(--surface-2); }
+  .btn-ghost { background: var(--surface-2); color: var(--ink); }
+  .btn-ghost:hover { background: var(--line); }
+  .btn-sm { height: 32px; padding: 0 11px; font-size: 12px; }
+  .btn-block { width: 100%; }
+  .iconbtn { width: 38px; height: 38px; border-radius: var(--r-sm); display: flex; align-items: center;
+    justify-content: center; color: var(--ink-2); cursor: pointer; border: 1px solid transparent; background: transparent; }
+  .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
+  .chrome-icon { color: var(--chrome-ink-2); background: var(--chrome-2); }
+  .chrome-icon:hover { background: var(--chrome-line); color: var(--chrome-ink); }
+
+  .field, .isel, textarea.field { width: 100%; background: var(--surface-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 11px; font-size: 13px;
+    font-family: 'DM Sans', sans-serif; }
+  .field, .isel { height: 38px; }
+  textarea.field { padding: 9px 11px; min-height: 78px; resize: vertical; line-height: 1.5; }
+  .field::placeholder, textarea.field::placeholder { color: var(--ink-3); }
+  .isel { appearance: none; -webkit-appearance: none; padding-right: 30px; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+    background-position: calc(100% - 15px) 16px, calc(100% - 10px) 16px; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  .flbl { font-size: 11px; font-weight: 600; color: var(--ink-2); margin-bottom: 5px; display: block; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; height: 21px; padding: 0 8px;
+    border-radius: 5px; font-family: 'DM Mono', monospace; font-size: 10.5px; font-weight: 500; letter-spacing: .02em; }
+  .chip-pos { color: var(--pos); background: var(--pos-soft); }
+  .chip-neg { color: var(--neg); background: var(--neg-soft); }
+  .chip-flat { color: var(--flat); background: var(--surface-2); }
+  .chip-warn { color: var(--warn); background: var(--warn-soft); }
+  .chip-accent { color: var(--accent-ink); background: var(--accent-soft); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  .chipbtn { cursor: pointer; border: 1px solid var(--line-2); background: transparent; color: var(--ink-2);
+    height: 30px; padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 600; transition: .12s; }
+  .chipbtn:hover { background: var(--surface-2); }
+  .chipbtn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+
+  .switch { width: 40px; height: 23px; border-radius: 999px; background: var(--line-2); position: relative;
+    cursor: pointer; transition: background .15s; flex: none; border: 0; }
+  .switch.on { background: var(--accent); }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 19px; height: 19px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+  .switch.on::after { transform: translateX(17px); }
+
+  /* segmented control */
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px; }
+  .seg button { height: 28px; padding: 0 12px; border: 0; background: transparent; color: var(--ink-2);
+    font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; border-radius: 4px; cursor: pointer; letter-spacing: .03em; }
+  .seg button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+  /* the editable driver cell — a spreadsheet cell */
+  .cell { display: inline-flex; align-items: center; border: 1px solid var(--line-2); border-radius: var(--r-sm);
+    background: var(--surface-2); overflow: hidden; height: 36px; }
+  .cell:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .cell button { width: 30px; height: 100%; border: 0; background: transparent; color: var(--ink-3); cursor: pointer;
+    font-size: 15px; line-height: 1; flex: none; }
+  .cell button:hover { background: var(--line); color: var(--ink); }
+  .cell input { width: 74px; height: 100%; border: 0; background: transparent; text-align: right; color: var(--ink);
+    font-family: 'DM Mono', monospace; font-variant-numeric: tabular-nums; font-weight: 500; font-size: 13px; padding: 0 8px; }
+  .cell input::-webkit-outer-spin-button, .cell input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  /* stepper (wide) */
+  .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: var(--surface-2); overflow: hidden; }
+  .stepper button { width: 36px; height: 38px; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; font-size: 17px; line-height: 1; }
+  .stepper button:hover { background: var(--line); color: var(--ink); }
+  .stepper input { width: 92px; height: 38px; border: 0; background: transparent; text-align: center; color: var(--ink);
+    font-family: 'DM Mono', monospace; font-variant-numeric: tabular-nums; }
+
+  /* tables */
+  table { border-collapse: collapse; width: 100%; }
+  .tbl th { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--ink-3); text-align: right; padding: 9px 12px; white-space: nowrap;
+    border-bottom: 1px solid var(--line); user-select: none; }
+  .tbl th.sortable { cursor: pointer; }
+  .tbl th:first-child, .tbl td:first-child { text-align: left; }
+  .tbl td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  .tbl tbody tr { transition: background .1s; }
+  .tbl tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+  .tbl tbody tr:hover { background: var(--surface-2); }
+  .tbl tbody tr.clickable { cursor: pointer; }
+  .tbl tbody tr:last-child td { border-bottom: 0; }
+  .tbl tfoot td { padding: 11px 12px; border-top: 2px solid var(--ink); text-align: right; font-weight: 700; white-space: nowrap; }
+  .tbl tfoot td:first-child { text-align: left; }
+
+  /* statement table */
+  .stmt th { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--ink-3); text-align: right; padding: 8px 14px; white-space: nowrap;
+    border-bottom: 1px solid var(--line-2); }
+  .stmt th:first-child { text-align: left; }
+  .stmt td { padding: 7px 14px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  .stmt td:first-child { text-align: left; }
+  .stmt tr:last-child td { border-bottom: 0; }
+  .stmt .row-sub td { font-weight: 700; border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); background: var(--surface-2); }
+  .stmt .row-total td { font-weight: 700; border-top: 2px solid var(--ink); border-bottom: 0; padding-top: 10px; padding-bottom: 10px; font-size: 14px; }
+  .indent-1 { padding-left: 30px !important; color: var(--ink-2); font-weight: 500; }
+
+  .toast { background: var(--surface); border: 1px solid var(--line-2); border-left: 3px solid var(--accent);
+    box-shadow: var(--shadow-lg); border-radius: var(--r-sm); }
+  .scrim { background: var(--scrim); backdrop-filter: blur(2px); }
+  .spark { display: block; }
+  .track { height: 7px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .track > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+  .mini { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .mini > span { display: block; height: 100%; border-radius: 999px; }
+  .kv { display: flex; align-items: baseline; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .kv:last-child { border-bottom: 0; }
+
+  /* formula bar */
+  .formula { font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: -.01em; }
+  .formula .op { color: var(--accent-ink); font-weight: 500; }
+  .tk { color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px;
+    padding: 1px 7px; white-space: nowrap; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+
+<body x-data="proforma()" x-cloak x-init="init()" :class="edition" @keydown.escape.window="closeAll()">
+
+<div class="h-screen flex flex-col">
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="chrome border-b chrome-seam shrink-0 flex items-center gap-3 px-3 sm:px-4" style="height:60px;border-bottom-width:1px">
+    <button class="iconbtn chrome-icon lg:hidden" @click="mobileNav=true" aria-label="Open navigation">
+      <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
+
+    <div class="flex items-center gap-2.5 select-none">
+      <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background:var(--accent);color:var(--on-accent)">
+        <i data-lucide="function-square" class="w-5 h-5"></i>
+      </div>
+      <div class="leading-none">
+        <div class="display text-[17px]" style="color:var(--chrome-ink)">Pro Forma</div>
+        <div class="lbl mt-1" style="font-size:8.5px;color:var(--chrome-ink-2)">Driver Model &middot; FP&amp;A</div>
+      </div>
+    </div>
+
+    <div class="hidden md:flex items-center gap-2 ml-4">
+      <div class="seg" style="background:var(--chrome-2);border-color:var(--chrome-line)">
+        <template x-for="p in ['Monthly','Quarterly']" :key="p">
+          <button :class="{'on': period===p}" @click="setPeriod(p)" x-text="p"
+                  :style="period===p ? 'background:var(--chrome-line);color:var(--chrome-ink)' : 'color:var(--chrome-ink-2)'"></button>
+        </template>
+      </div>
+      <div class="flex items-center gap-2 h-9 px-3 rounded-md" style="background:var(--chrome-2)">
+        <i data-lucide="calendar-range" class="w-4 h-4" style="color:var(--chrome-ink-2)"></i>
+        <span class="mono text-[12px] font-medium" style="color:var(--chrome-ink)">Plan &middot; FY2026</span>
+      </div>
+    </div>
+
+    <div class="flex-1"></div>
+
+    <div class="hidden sm:flex items-center gap-2.5 px-3 h-9 rounded-md" style="background:var(--chrome-2)">
+      <span class="dot" style="background:var(--pos)"></span>
+      <span class="mono text-[11px] font-medium" style="color:var(--chrome-ink)">MODEL v3.2</span>
+      <span class="mono text-[11px]" style="color:var(--chrome-ink-2)">recomputed live</span>
+    </div>
+
+    <button class="btn btn-primary btn-sm hidden sm:inline-flex" @click="openModal()">
+      <i data-lucide="plus" class="w-4 h-4"></i> New driver
+    </button>
+    <button class="iconbtn chrome-icon" @click="toggleEdition()" :aria-label="'Switch to '+(edition==='light'?'Terminal':'Model')+' edition'">
+      <i :data-lucide="edition==='light' ? 'moon' : 'sun'" class="w-5 h-5"></i>
+    </button>
+    <button class="iconbtn chrome-icon relative" aria-label="Notifications">
+      <i data-lucide="bell" class="w-5 h-5"></i>
+      <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style="background:var(--accent)"></span>
+    </button>
+    <div class="w-9 h-9 rounded-md hidden sm:flex items-center justify-center mono text-[12px] font-medium shrink-0"
+         style="background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--line-2)">DK</div>
+  </header>
+
+  <div class="flex flex-1 min-h-0">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="chrome border-r chrome-seam w-60 shrink-0 hidden lg:flex flex-col" style="border-right-width:1px">
+      <nav class="p-3 flex-1 min-h-0 overflow-y-auto">
+        <div class="lbl px-3 pt-1 pb-2" style="color:var(--chrome-ink-2)">Workspace</div>
+        <div class="space-y-0.5">
+          <template x-for="n in nav" :key="n.k">
+            <a class="nav-item" :class="{'on': page===n.k}" href="#" @click.prevent="go(n.k)">
+              <i :data-lucide="n.i" class="w-[18px] h-[18px]"></i>
+              <span x-text="n.t"></span>
+              <span x-show="n.badge" class="ml-auto mono text-[10px] px-1.5 py-0.5 rounded"
+                    style="background:var(--chrome-line);color:var(--chrome-ink-2)" x-text="n.badge"></span>
+            </a>
+          </template>
+        </div>
+      </nav>
+      <div class="p-3 border-t chrome-seam" style="border-top-width:1px">
+        <label class="lbl block mb-1.5 px-1" style="color:var(--chrome-ink-2)">Scenario</label>
+        <select class="isel" style="background:var(--chrome-2);color:var(--chrome-ink);border-color:var(--chrome-line)"
+                x-model="scenario" @change="loadScenario()">
+          <option>Base</option><option>Upside</option><option>Downside</option>
+        </select>
+        <div class="flex items-center gap-2 mt-2.5 px-1">
+          <i data-lucide="git-branch" class="w-3.5 h-3.5" style="color:var(--chrome-ink-2)"></i>
+          <span class="text-[11px]" style="color:var(--chrome-ink-2)">USD thousands &middot; illustrative</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="flex-1 min-w-0 overflow-y-auto graph">
+      <div class="p-3 sm:p-4 lg:p-5 space-y-4 max-w-[1600px] mx-auto">
+
+        <!-- ================= OVERVIEW ================= -->
+        <section x-show="page==='overview'">
+          <!-- heading + rename -->
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <div class="flex items-center gap-2">
+                <h1 class="display text-[22px] sm:text-[26px]">
+                  <template x-if="!editName">
+                    <button class="underline decoration-dotted underline-offset-4 decoration-[var(--line-2)]" @click="startRename()" x-text="modelName" :title="'Rename model'"></button>
+                  </template>
+                  <template x-if="editName">
+                    <span class="inline-flex items-center gap-1 align-middle">
+                      <input class="field !h-9 !w-64 !text-[18px] font-semibold inline" x-model="nameDraft"
+                             @keydown.enter="saveRename()" @keydown.escape="editName=false" x-init="$nextTick(()=>$el.focus())" />
+                      <button class="iconbtn !w-8 !h-8" @click="saveRename()" aria-label="Save name"><i data-lucide="check" class="w-4 h-4" style="color:var(--pos)"></i></button>
+                      <button class="iconbtn !w-8 !h-8" @click="editName=false" aria-label="Cancel"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </span>
+                  </template>
+                </h1>
+                <span class="chip chip-accent"><i data-lucide="git-commit-horizontal" class="w-3 h-3"></i> v3.2</span>
+              </div>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">
+                Driver-based plan &middot; <span x-text="scenario"></span> scenario &middot; <span class="mono">edit any assumption to recompute</span>
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-outline btn-sm" @click="notify('Model exported (XLSX) — mockup')"><i data-lucide="download" class="w-4 h-4"></i> Export</button>
+              <button class="btn btn-primary btn-sm" @click="resetModel()"><i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset drivers</button>
+            </div>
+          </div>
+
+          <!-- ===== FORMULA BAR (signature) ===== -->
+          <div class="card p-3.5 flex items-center gap-3 flex-wrap mt-4" style="border-left:3px solid var(--accent)">
+            <span class="w-8 h-8 rounded-md flex items-center justify-center shrink-0 mono font-medium"
+                  style="background:var(--accent-soft);color:var(--accent-ink)">fx</span>
+            <div class="formula flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+              <span class="tk" style="color:var(--accent-ink)">Revenue</span>
+              <span class="op">=</span>
+              <span class="tk">Price</span><span class="op">&times;</span><span class="tk">Volume</span>
+              <span class="op">&times;</span><span>(1</span><span class="op">&minus;</span><span class="tk">Churn</span><span>)</span>
+              <span class="op">+</span><span class="tk">New&nbsp;logos</span><span class="op">&times;</span><span class="tk">Price</span>
+              <span class="op ml-1">&rarr;</span>
+              <span class="tk num" style="border-color:var(--accent);color:var(--accent-ink)" x-text="usdM(model.rev)"></span>
+            </div>
+            <span class="chip chip-pos shrink-0"><i data-lucide="check" class="w-3 h-3"></i> Balances</span>
+          </div>
+
+          <!-- ===== KPI TILES ===== -->
+          <section class="grid grid-cols-2 xl:grid-cols-4 gap-3 mt-4">
+            <template x-for="(k,i) in kpis" :key="k.t">
+              <div class="card p-3.5">
+                <div class="flex items-center justify-between">
+                  <span class="lbl" x-text="k.t"></span>
+                  <i :data-lucide="k.i" class="w-4 h-4" style="color:var(--ink-3)"></i>
+                </div>
+                <div class="num display text-[22px] mt-2" x-text="k.v"></div>
+                <div class="flex items-center gap-1.5 mt-1.5">
+                  <span class="chip" :class="k.fav?'chip-pos':'chip-neg'">
+                    <i :data-lucide="k.fav?'arrow-up-right':'arrow-down-right'" class="w-3 h-3"></i><span x-text="k.d"></span>
+                  </span>
+                  <span class="text-[10.5px] mono" style="color:var(--ink-3)">vs prior</span>
+                </div>
+                <div class="mt-2.5" style="height:28px"><canvas :id="'ovKsp'+i" class="spark"></canvas></div>
+              </div>
+            </template>
+          </section>
+
+          <!-- ===== DRIVER PREVIEW + SENSITIVITY ===== -->
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="flex items-center justify-between gap-3 p-4 pb-3 flex-wrap border-b" style="border-color:var(--line)">
+                <div>
+                  <h2 class="display text-[16px]">Assumptions &mdash; Key Drivers</h2>
+                  <div class="lbl mt-0.5">Edit a value &middot; outputs recompute live</div>
+                </div>
+                <button class="btn btn-outline btn-sm" @click="go('drivers')">All drivers <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="tbl" style="min-width:640px">
+                  <thead>
+                    <tr>
+                      <th style="width:28%">Driver</th>
+                      <th style="text-align:left">Role in formula</th>
+                      <th style="text-align:center">Value</th>
+                      <th>Unit</th>
+                      <th>vs prior</th>
+                      <th style="width:120px">EBITDA sens.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="d in drivers.slice(0,5)" :key="'ov'+d.k">
+                      <tr>
+                        <td><span class="font-semibold text-[13px]" x-text="d.t"></span></td>
+                        <td style="text-align:left">
+                          <span class="mono text-[11.5px]" style="color:var(--ink-2)">
+                            <span class="op" style="color:var(--accent-ink)" x-text="d.sym"></span>&nbsp;<span x-text="d.role"></span>
+                          </span>
+                        </td>
+                        <td style="text-align:center">
+                          <div class="cell mx-auto">
+                            <button @click="bump(d,-1)" :aria-label="'Decrease '+d.t">&minus;</button>
+                            <input type="number" :step="d.step" :min="d.min" x-model.number="d.val" @input="onEdit()" :aria-label="d.t+' value'" />
+                            <button @click="bump(d,1)" :aria-label="'Increase '+d.t">+</button>
+                          </div>
+                        </td>
+                        <td class="mono" style="color:var(--ink-3)" x-text="d.unit"></td>
+                        <td>
+                          <span class="chip" :class="priorChip(d).cls">
+                            <i :data-lucide="priorChip(d).icon" class="w-3 h-3"></i><span x-text="priorChip(d).txt"></span>
+                          </span>
+                        </td>
+                        <td>
+                          <div class="flex items-center gap-2 justify-end">
+                            <div class="mini flex-1" style="max-width:64px"><span :style="'width:'+sensPct(d.k)+'%;background:'+sensColor(d.k)"></span></div>
+                            <span class="num text-[11px]" style="color:var(--ink-2)" x-text="usd0(sensAbs(d.k))"></span>
+                          </div>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colspan="2">Modeled annual revenue</td>
+                      <td colspan="2" class="num" style="text-align:right" x-text="usdM(model.rev)"></td>
+                      <td class="num" style="color:var(--ink-2)">GM <span x-text="model.grossPct.toFixed(1)+'%'"></span></td>
+                      <td class="num" x-text="'EBITDA '+usdM(model.ebitda)"></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            <div class="card p-4 flex flex-col">
+              <div class="flex items-center justify-between">
+                <div><h2 class="display text-[15px]">Sensitivity</h2><div class="lbl mt-0.5">EBITDA &middot; &plusmn;10% per driver</div></div>
+                <button class="chipbtn !h-7" @click="go('sensitivity')">what-if</button>
+              </div>
+              <div class="flex items-center gap-4 mt-2 mb-1">
+                <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-2.5 rounded-sm" style="background:var(--pos)"></span>upside</span>
+                <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-2.5 rounded-sm" style="background:var(--neg)"></span>downside</span>
+              </div>
+              <div class="relative mt-1 flex-1" style="height:260px"><canvas id="ovTornado"></canvas></div>
+            </div>
+          </section>
+
+          <!-- ===== PROJECTION + MIX ===== -->
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 p-4">
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <div><h2 class="display text-[16px]">Revenue Projection</h2><div class="lbl mt-0.5"><span x-text="period"></span> &middot; modeled vs plan &middot; $K</div></div>
+                <div class="flex items-center gap-4">
+                  <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-2.5 rounded-sm" style="background:var(--accent)"></span>Modeled</span>
+                  <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-0.5" style="background:var(--ink-2)"></span>Plan</span>
+                </div>
+              </div>
+              <div class="relative mt-3" style="height:280px"><canvas id="ovProj"></canvas></div>
+            </div>
+
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Cost Mix</h2><span class="lbl">by driver &middot; $K</span></div>
+              <div class="relative mt-3 mx-auto" style="height:178px;max-width:178px"><canvas id="ovMix"></canvas></div>
+              <div class="mt-4 space-y-1.5">
+                <template x-for="c in costMix" :key="c.l">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="'background:'+c.c"></span>
+                    <span class="text-[12px] flex-1" style="color:var(--ink-2)" x-text="c.l"></span>
+                    <span class="num text-[12px] font-medium" x-text="usd0(c.v)"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= DRIVERS ================= -->
+        <section x-show="page==='drivers'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Drivers</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">The full assumptions grid &middot; edit a cell to recompute &middot; click a row to open the driver</p></div>
+            <button class="btn btn-primary btn-sm" @click="openModal()"><i data-lucide="plus" class="w-4 h-4"></i> New driver</button>
+          </div>
+
+          <section class="card p-4 mt-4">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="lbl mr-1">Category</span>
+                <template x-for="g in ['All','Revenue','Retention','Growth','Cost']" :key="g">
+                  <button class="chipbtn" :class="{'on': driverCat===g}" @click="driverCat=g" x-text="g"></button>
+                </template>
+              </div>
+              <div class="relative">
+                <i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+                <input type="text" class="field !h-9 !w-40 sm:!w-56 !pl-8 text-[12px]" placeholder="Search drivers" x-model="driverQ" />
+              </div>
+            </div>
+          </section>
+
+          <section class="card overflow-hidden mt-4">
+            <div class="flex items-center justify-between gap-3 p-4 pb-3 flex-wrap border-b" style="border-color:var(--line)">
+              <div class="flex items-center gap-2"><h2 class="display text-[16px]">Assumption Register</h2><span class="chip chip-flat" x-text="filteredDrivers.length+' drivers'"></span></div>
+              <span class="chip chip-accent"><i data-lucide="pencil" class="w-3 h-3"></i> editable</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:820px">
+                <thead>
+                  <tr>
+                    <th style="width:22%">Driver</th>
+                    <th style="text-align:center">Category</th>
+                    <th style="text-align:left">Role in formula</th>
+                    <th style="text-align:center">Value</th>
+                    <th>Unit</th>
+                    <th>vs prior</th>
+                    <th style="width:120px">EBITDA sens.</th>
+                    <th style="text-align:right">Edit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="d in filteredDrivers" :key="'dr'+d.k">
+                    <tr class="clickable" @click="openDriver(d)">
+                      <td><span class="font-semibold text-[13px]" x-text="d.t"></span></td>
+                      <td style="text-align:center"><span class="chip chip-flat" x-text="d.cat"></span></td>
+                      <td style="text-align:left">
+                        <span class="mono text-[11.5px]" style="color:var(--ink-2)">
+                          <span class="op" style="color:var(--accent-ink)" x-text="d.sym"></span>&nbsp;<span x-text="d.role"></span>
+                        </span>
+                      </td>
+                      <td style="text-align:center" @click.stop>
+                        <div class="cell mx-auto">
+                          <button @click="bump(d,-1)" :aria-label="'Decrease '+d.t">&minus;</button>
+                          <input type="number" :step="d.step" :min="d.min" x-model.number="d.val" @input="onEdit()" :aria-label="d.t+' value'" />
+                          <button @click="bump(d,1)" :aria-label="'Increase '+d.t">+</button>
+                        </div>
+                      </td>
+                      <td class="mono" style="color:var(--ink-3)" x-text="d.unit"></td>
+                      <td>
+                        <span class="chip" :class="priorChip(d).cls">
+                          <i :data-lucide="priorChip(d).icon" class="w-3 h-3"></i><span x-text="priorChip(d).txt"></span>
+                        </span>
+                      </td>
+                      <td>
+                        <div class="flex items-center gap-2 justify-end">
+                          <div class="mini flex-1" style="max-width:64px"><span :style="'width:'+sensPct(d.k)+'%;background:'+sensColor(d.k)"></span></div>
+                          <span class="num text-[11px]" style="color:var(--ink-2)" x-text="usd0(sensAbs(d.k))"></span>
+                        </div>
+                      </td>
+                      <td style="text-align:right" @click.stop>
+                        <button class="iconbtn !w-8 !h-8 ml-auto" @click="openDriver(d)" :aria-label="'Edit '+d.t"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="3">Modeled outputs</td>
+                    <td colspan="2" class="num" x-text="usdM(model.rev)+' rev'"></td>
+                    <td class="num" style="color:var(--ink-2)">GM <span x-text="model.grossPct.toFixed(1)+'%'"></span></td>
+                    <td colspan="2" class="num" x-text="'EBITDA '+usdM(model.ebitda)"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-1 p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">EBITDA Leverage</h2><span class="lbl">$K swing</span></div>
+              <div class="lbl mt-1" style="text-transform:none;letter-spacing:0">How far a &plusmn;10% move on each driver pushes EBITDA.</div>
+              <div class="relative mt-3" style="height:300px"><canvas id="drvChart"></canvas></div>
+            </div>
+            <div class="card xl:col-span-2 p-4">
+              <h2 class="display text-[15px]">Driver Notes</h2>
+              <div class="mt-3 space-y-2">
+                <template x-for="d in drivers" :key="'note'+d.k">
+                  <div class="flex items-start gap-3 p-2.5 rounded-md" style="background:var(--surface-2)">
+                    <div class="w-8 h-8 rounded-md flex items-center justify-center mono text-[13px] shrink-0" style="background:var(--accent-soft);color:var(--accent-ink)" x-text="d.sym"></div>
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-2 flex-wrap"><span class="font-semibold text-[13px]" x-text="d.t"></span>
+                        <span class="mono text-[11px]" style="color:var(--ink-3)" x-text="d.formula"></span></div>
+                      <div class="text-[12px] mt-0.5" style="color:var(--ink-2)" x-text="d.note || 'No note — click the driver row to add one.'"></div>
+                    </div>
+                    <span class="num text-[12px] shrink-0" x-text="d.val+' '+d.unit"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= PROJECTIONS ================= -->
+        <section x-show="page==='projections'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Projections</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Output statement &middot; <span x-text="scenario"></span> scenario &middot; USD thousands &middot; derived from drivers</p></div>
+            <div class="flex items-center gap-2">
+              <div class="seg"><template x-for="h in [12,24,36]" :key="h"><button :class="{'on': horizon===h}" @click="horizon=h" x-text="h+' mo'"></button></template></div>
+              <button class="btn btn-outline btn-sm" @click="notify('Statement exported (XLSX) — mockup')"><i data-lucide="download" class="w-4 h-4"></i> Export</button>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="flex items-center justify-between gap-3 p-4 pb-3 flex-wrap border-b" style="border-color:var(--line)">
+                <div><h2 class="display text-[16px]">Modeled P&amp;L</h2><div class="lbl mt-0.5">Annualized &middot; recomputes with drivers</div></div>
+                <span class="chip chip-pos"><i data-lucide="check" class="w-3 h-3"></i> Ties out</span>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="stmt num" style="min-width:520px">
+                  <thead><tr><th style="width:52%">Line item</th><th>Modeled</th><th>Plan</th><th>% Rev</th></tr></thead>
+                  <tbody>
+                    <template x-for="r in pnl" :key="'pnl'+r.l">
+                      <tr :class="r.type==='sub' ? 'row-sub' : r.type==='total' ? 'row-total' : ''">
+                        <td :class="r.indent ? 'indent-1' : ''" x-text="r.l"></td>
+                        <td x-text="fmtK(r.a)"></td>
+                        <td style="color:var(--ink-2)" x-text="fmtK(r.b)"></td>
+                        <td style="color:var(--ink-3)" x-text="model.rev ? (r.a/model.rev*100).toFixed(1)+'%' : '—'"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+              <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-t flex-wrap" style="border-color:var(--line);background:var(--surface-2)">
+                <span class="lbl">Margins</span>
+                <div class="flex items-center gap-4 mono text-[11.5px]" style="color:var(--ink-2)">
+                  <span>Gross <b style="color:var(--ink)" x-text="model.grossPct.toFixed(1)+'%'"></b></span>
+                  <span>EBITDA <b style="color:var(--ink)" x-text="model.ebitdaPct.toFixed(1)+'%'"></b></span>
+                  <span>Net <b style="color:var(--ink)" x-text="(model.netIncome/model.rev*100).toFixed(1)+'%'"></b></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <div class="card p-4">
+                <div class="flex items-center justify-between"><h2 class="display text-[15px]">Revenue Trend</h2><span class="lbl"><span x-text="horizon"></span> mo &middot; $K</span></div>
+                <div class="relative mt-3" style="height:210px"><canvas id="projTrend"></canvas></div>
+              </div>
+              <div class="card p-4">
+                <div class="flex items-center justify-between"><h2 class="display text-[15px]">Cash Runway</h2><span class="chip chip-pos" x-text="Math.round(model.cashEOP/1000)+'M EOP'"></span></div>
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                  <div class="rounded-md p-2.5" style="background:var(--surface-2)"><div class="lbl">Net income</div><div class="num text-[15px] font-bold mt-0.5" x-text="usdM(model.netIncome)"></div></div>
+                  <div class="rounded-md p-2.5" style="background:var(--surface-2)"><div class="lbl">EBITDA</div><div class="num text-[15px] font-bold mt-0.5" x-text="usdM(model.ebitda)"></div></div>
+                  <div class="rounded-md p-2.5" style="background:var(--surface-2)"><div class="lbl">Opex</div><div class="num text-[15px] font-bold mt-0.5" x-text="usd0(model.opex)"></div></div>
+                  <div class="rounded-md p-2.5" style="background:var(--surface-2)"><div class="lbl">Capex</div><div class="num text-[15px] font-bold mt-0.5" x-text="usd0(vals.capex)"></div></div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= SCENARIOS ================= -->
+        <section x-show="page==='scenarios'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Scenarios</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Base &middot; Upside &middot; Downside &mdash; each a full preset of the driver grid</p></div>
+            <button class="btn btn-primary btn-sm" @click="openModal()"><i data-lucide="plus" class="w-4 h-4"></i> New scenario</button>
+          </div>
+
+          <section class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+            <template x-for="s in scenarioRows" :key="s.name">
+              <div class="card p-4" :style="s.name===scenario ? 'border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)' : ''">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2"><i data-lucide="git-branch" class="w-4 h-4" style="color:var(--accent-ink)"></i><span class="display text-[15px]" x-text="s.name"></span></div>
+                  <span x-show="s.name===scenario" class="chip chip-accent">active</span>
+                </div>
+                <div class="num display text-[22px] mt-2.5" x-text="usdM(s.rev)"></div>
+                <div class="lbl mt-0.5" style="text-transform:none;letter-spacing:.02em">modeled revenue</div>
+                <div class="mt-3 space-y-1.5">
+                  <div class="kv"><span class="text-[12px]" style="color:var(--ink-2)">EBITDA</span><span class="num text-[12px] font-medium" x-text="usdM(s.ebitda)"></span></div>
+                  <div class="kv"><span class="text-[12px]" style="color:var(--ink-2)">EBITDA %</span><span class="num text-[12px] font-medium" x-text="s.ebitdaPct.toFixed(1)+'%'"></span></div>
+                  <div class="kv"><span class="text-[12px]" style="color:var(--ink-2)">Cash EOP</span><span class="num text-[12px] font-medium" x-text="usdM(s.cashEOP)"></span></div>
+                </div>
+                <button class="btn btn-outline btn-sm btn-block mt-3" @click="scenario=s.name; loadScenario()" x-show="s.name!==scenario">Load scenario</button>
+                <div class="btn btn-ghost btn-sm btn-block mt-3" x-show="s.name===scenario" style="cursor:default">Loaded</div>
+              </div>
+            </template>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="p-4 pb-3 border-b" style="border-color:var(--line)"><h2 class="display text-[16px]">Scenario Compare</h2><div class="lbl mt-0.5">Outputs across presets &middot; $K</div></div>
+              <div class="overflow-x-auto">
+                <table class="tbl" style="min-width:560px">
+                  <thead><tr><th style="width:34%">Metric</th><th>Base</th><th>Upside</th><th>Downside</th><th>Range</th></tr></thead>
+                  <tbody>
+                    <template x-for="m in compareRows" :key="m.t">
+                      <tr>
+                        <td><span class="font-semibold" x-text="m.t"></span></td>
+                        <td class="num" x-text="m.Base"></td>
+                        <td class="num pos" x-text="m.Upside"></td>
+                        <td class="num neg" x-text="m.Downside"></td>
+                        <td class="num" style="color:var(--ink-2)" x-text="m.range"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Revenue &amp; EBITDA</h2><span class="lbl">by scenario</span></div>
+              <div class="relative mt-3" style="height:300px"><canvas id="scnChart"></canvas></div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= SENSITIVITY ================= -->
+        <section x-show="page==='sensitivity'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Sensitivity</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Tornado &amp; what-if &middot; how EBITDA moves when a driver flexes</p></div>
+          </div>
+
+          <!-- what-if panel -->
+          <section class="card p-4 mt-4">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+              <div class="flex items-center gap-3 flex-wrap">
+                <div><label class="flbl">Driver</label>
+                  <select class="isel !w-52" x-model="whatKey"><template x-for="d in drivers" :key="'w'+d.k"><option :value="d.k" x-text="d.t"></option></template></select></div>
+                <div><label class="flbl">Shock</label>
+                  <div class="stepper">
+                    <button @click="whatShock=Math.max(-50,whatShock-5)" aria-label="Decrease shock">&minus;</button>
+                    <input class="mono" type="text" :value="(whatShock>0?'+':'')+whatShock+'%'" readonly />
+                    <button @click="whatShock=Math.min(50,whatShock+5)" aria-label="Increase shock">+</button>
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-4 flex-wrap">
+                <div class="text-right"><div class="lbl">Base EBITDA</div><div class="num text-[16px] font-bold mt-0.5" x-text="usdM(model.ebitda)"></div></div>
+                <i data-lucide="arrow-right" class="w-5 h-5" style="color:var(--ink-3)"></i>
+                <div class="text-right"><div class="lbl">Shocked EBITDA</div><div class="num text-[16px] font-bold mt-0.5" x-text="usdM(whatEbitda)"></div></div>
+                <div class="text-right rounded-md px-3 py-1.5" :style="'background:'+(whatDelta>=0?'var(--pos-soft)':'var(--neg-soft)')">
+                  <div class="lbl">Delta</div>
+                  <div class="num text-[16px] font-bold mt-0.5" :class="whatDelta>=0?'pos':'neg'" x-text="(whatDelta>=0?'+':'−')+usd0(Math.abs(whatDelta)).replace('$','$')"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 p-4 flex flex-col">
+              <div class="flex items-center justify-between">
+                <div><h2 class="display text-[16px]">EBITDA Tornado</h2><div class="lbl mt-0.5">&plusmn;10% per driver &middot; sorted by span</div></div>
+                <div class="flex items-center gap-4">
+                  <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-2.5 rounded-sm" style="background:var(--pos)"></span>upside</span>
+                  <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-2.5 rounded-sm" style="background:var(--neg)"></span>downside</span>
+                </div>
+              </div>
+              <div class="relative mt-3 flex-1" style="height:340px"><canvas id="snsTornado"></canvas></div>
+            </div>
+            <div class="card overflow-hidden">
+              <div class="p-4 pb-3 border-b" style="border-color:var(--line)"><h2 class="display text-[15px]">Swing Table</h2><div class="lbl mt-0.5">EBITDA at &plusmn;10%</div></div>
+              <div class="overflow-x-auto">
+                <table class="tbl" style="min-width:280px">
+                  <thead><tr><th>Driver</th><th>&minus;10%</th><th>+10%</th><th>Span</th></tr></thead>
+                  <tbody>
+                    <template x-for="r in sens" :key="'sw'+r.key">
+                      <tr>
+                        <td><span class="font-semibold text-[12.5px]" x-text="r.t"></span></td>
+                        <td class="num" :class="r.lo>=0?'pos':'neg'" x-text="(r.lo>=0?'+':'−')+usd0(Math.abs(r.lo)).replace('$','$')"></td>
+                        <td class="num" :class="r.hi>=0?'pos':'neg'" x-text="(r.hi>=0?'+':'−')+usd0(Math.abs(r.hi)).replace('$','$')"></td>
+                        <td class="num font-medium" x-text="usd0(r.span)"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= REPORTS ================= -->
+        <section x-show="page==='reports'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Reports</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Standard model packs &amp; ad-hoc generation</p></div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="xl:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <template x-for="r in reports" :key="r.n">
+                <div class="card p-4 flex items-start gap-3">
+                  <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background:var(--accent-soft);color:var(--accent-ink)"><i :data-lucide="r.i" class="w-5 h-5"></i></div>
+                  <div class="min-w-0 flex-1">
+                    <div class="font-semibold text-[14px]" x-text="r.n"></div>
+                    <div class="text-[11.5px] mt-0.5" style="color:var(--ink-3)" x-text="r.d"></div>
+                    <div class="flex items-center gap-2 mt-2.5">
+                      <button class="btn btn-ghost btn-sm" @click="notify('Generating '+r.n+' — mockup')"><i data-lucide="play" class="w-3.5 h-3.5"></i> Generate</button>
+                      <button class="iconbtn !w-8 !h-8" @click="notify('Opened '+r.n)" aria-label="Open"><i data-lucide="external-link" class="w-4 h-4"></i></button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- custom generation form -->
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Generate Custom</h2>
+              <div class="mt-3 space-y-3">
+                <div><label class="flbl">Report type</label>
+                  <select class="isel"><option>3-statement model</option><option>Driver register</option><option>Scenario comparison</option><option>Sensitivity report</option><option>KPI scorecard</option></select></div>
+                <div><label class="flbl">Horizon</label>
+                  <div class="seg w-full"><template x-for="h in ['12 mo','24 mo','36 mo']" :key="h"><button class="flex-1" :class="{'on': repHorizon===h}" @click="repHorizon=h" x-text="h"></button></template></div></div>
+                <div><label class="flbl">Format</label>
+                  <select class="isel"><option>Excel (XLSX)</option><option>PDF</option><option>Google Slides</option></select></div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Include charts</div><div class="text-[11px]" style="color:var(--ink-3)">Tornado &amp; trend</div></div>
+                  <button class="switch" :class="{'on': repCharts}" @click="repCharts=!repCharts" role="switch" :aria-checked="repCharts"></button>
+                </div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Lock assumptions</div><div class="text-[11px]" style="color:var(--ink-3)">Snapshot driver values</div></div>
+                  <button class="switch" :class="{'on': repLock}" @click="repLock=!repLock" role="switch" :aria-checked="repLock"></button>
+                </div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Email to board</div><div class="text-[11px]" style="color:var(--ink-3)">On generation</div></div>
+                  <button class="switch" :class="{'on': repEmail}" @click="repEmail=!repEmail" role="switch" :aria-checked="repEmail"></button>
+                </div>
+                <div x-show="repEmail"><label class="flbl">Recipients</label><input class="field" type="text" placeholder="board@company.com" /></div>
+                <div><label class="flbl">Notes</label><textarea class="field" placeholder="Optional context for this report…"></textarea></div>
+                <button class="btn btn-primary btn-block" @click="notify('Report queued — mockup')"><i data-lucide="file-output" class="w-4 h-4"></i> Generate report</button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= SETTINGS ================= -->
+        <section x-show="page==='settings'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Settings</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Model preferences &amp; edition</p></div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Model</h2>
+              <div class="mt-3 space-y-3">
+                <div>
+                  <label class="flbl">Model name</label>
+                  <template x-if="!editName">
+                    <button class="field text-left flex items-center justify-between" @click="startRename()">
+                      <span x-text="modelName"></span><i data-lucide="pencil" class="w-4 h-4" style="color:var(--ink-3)"></i>
+                    </button>
+                  </template>
+                  <template x-if="editName">
+                    <div class="flex items-center gap-2">
+                      <input class="field" x-model="nameDraft" @keydown.enter="saveRename()" @keydown.escape="editName=false" x-init="$nextTick(()=>$el.focus())" />
+                      <button class="iconbtn" @click="saveRename()" aria-label="Save name"><i data-lucide="check" class="w-4 h-4" style="color:var(--pos)"></i></button>
+                      <button class="iconbtn" @click="editName=false" aria-label="Cancel"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                  </template>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div><label class="flbl">Reporting currency</label><select class="isel"><option>USD</option><option>EUR</option><option>GBP</option></select></div>
+                  <div><label class="flbl">Fiscal year start</label><select class="isel"><option>January</option><option>April</option><option>July</option></select></div>
+                </div>
+                <div><label class="flbl">Units</label>
+                  <div class="seg w-full"><template x-for="u in ['Thousands','Millions']" :key="u"><button class="flex-1" :class="{'on': units===u}" @click="units=u" x-text="u"></button></template></div></div>
+                <div>
+                  <label class="flbl">Decimal places</label>
+                  <div class="stepper">
+                    <button @click="decimals=Math.max(0,decimals-1)" aria-label="Fewer decimals">&minus;</button>
+                    <input class="mono" type="text" :value="decimals" readonly />
+                    <button @click="decimals=Math.min(3,decimals+1)" aria-label="More decimals">+</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Preferences</h2>
+              <div class="mt-3 space-y-1">
+                <div class="flex items-center justify-between py-2.5 border-b" style="border-color:var(--line)">
+                  <div><div class="text-[13px] font-semibold">Edition</div><div class="text-[11px]" style="color:var(--ink-3)">Model (light) or Terminal (dark)</div></div>
+                  <div class="seg"><template x-for="e in [['light','Model'],['dark','Terminal']]" :key="e[0]"><button :class="{'on': edition===e[0]}" @click="edition=e[0]" x-text="e[1]"></button></template></div>
+                </div>
+                <div class="flex items-center justify-between py-2.5 border-b" style="border-color:var(--line)">
+                  <div><div class="text-[13px] font-semibold">Auto-recompute</div><div class="text-[11px]" style="color:var(--ink-3)">Recalculate on every driver edit</div></div>
+                  <button class="switch" :class="{'on': autoRecompute}" @click="autoRecompute=!autoRecompute" role="switch" :aria-checked="autoRecompute"></button>
+                </div>
+                <div class="flex items-center justify-between py-2.5 border-b" style="border-color:var(--line)">
+                  <div><div class="text-[13px] font-semibold">Show formula bar</div><div class="text-[11px]" style="color:var(--ink-3)">The live fx bar on Overview</div></div>
+                  <button class="switch" :class="{'on': showFormula}" @click="showFormula=!showFormula" role="switch" :aria-checked="showFormula"></button>
+                </div>
+                <div class="flex items-center justify-between py-2.5">
+                  <div><div class="text-[13px] font-semibold">Round to nearest $K</div><div class="text-[11px]" style="color:var(--ink-3)">Hide sub-thousand precision</div></div>
+                  <button class="switch" :class="{'on': roundK}" @click="roundK=!roundK" role="switch" :aria-checked="roundK"></button>
+                </div>
+                <button class="btn btn-primary btn-block mt-3" @click="notify('Preferences saved — mockup')"><i data-lucide="check" class="w-4 h-4"></i> Save preferences</button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <footer class="flex items-center justify-between flex-wrap gap-2 pt-1 pb-3">
+          <span class="lbl" style="color:var(--ink-3)">Pro Forma &middot; Driver Model &middot; v3.2</span>
+          <span class="mono text-[11px]" style="color:var(--ink-3)">Figures illustrative &middot; not guidance</span>
+        </footer>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ===== MOBILE NAV DRAWER ===== -->
+<div x-show="mobileNav" x-transition.opacity class="fixed inset-0 z-40 lg:hidden scrim" @click="mobileNav=false"></div>
+<aside x-show="mobileNav" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
+       class="fixed inset-y-0 left-0 z-50 w-72 chrome flex flex-col lg:hidden">
+  <div class="flex items-center justify-between px-4 border-b chrome-seam" style="height:60px;border-bottom-width:1px">
+    <div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-md flex items-center justify-center" style="background:var(--accent);color:var(--on-accent)"><i data-lucide="function-square" class="w-4 h-4"></i></div>
+      <span class="display text-[16px]" style="color:var(--chrome-ink)">Pro Forma</span></div>
+    <button class="iconbtn chrome-icon" @click="mobileNav=false" aria-label="Close navigation"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <nav class="p-3 space-y-0.5 flex-1 overflow-y-auto">
+    <template x-for="n in nav" :key="'m'+n.k">
+      <a class="nav-item" :class="{'on': page===n.k}" href="#" @click.prevent="go(n.k); mobileNav=false"><i :data-lucide="n.i" class="w-[18px] h-[18px]"></i><span x-text="n.t"></span></a>
+    </template>
+  </nav>
+  <div class="p-3 border-t chrome-seam space-y-2" style="border-top-width:1px">
+    <label class="lbl block px-1" style="color:var(--chrome-ink-2)">Scenario</label>
+    <select class="isel" style="background:var(--chrome-2);color:var(--chrome-ink);border-color:var(--chrome-line)"
+            x-model="scenario" @change="loadScenario()">
+      <option>Base</option><option>Upside</option><option>Downside</option>
+    </select>
+    <button class="btn btn-primary btn-block" @click="openModal(); mobileNav=false"><i data-lucide="plus" class="w-4 h-4"></i> New driver</button>
+  </div>
+</aside>
+
+<!-- ===== EDIT DRAWER (driver) ===== -->
+<div x-show="drawerOpen" x-transition.opacity class="fixed inset-0 z-[55] scrim" @click="drawerOpen=false"></div>
+<aside x-show="drawerOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+       class="fixed inset-y-0 right-0 z-[60] w-full sm:w-[420px] flex flex-col" style="background:var(--surface);border-left:1px solid var(--line-2);box-shadow:var(--shadow-lg)">
+  <div class="flex items-center justify-between px-4 border-b" style="height:60px;border-color:var(--line)">
+    <div><div class="lbl">Edit driver</div><div class="display text-[16px]" x-text="editForm.t"></div></div>
+    <button class="iconbtn" @click="drawerOpen=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <div class="flex-1 overflow-y-auto p-4 space-y-3.5">
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="flbl">Driver name</label><input class="field" type="text" x-model="editForm.t" /></div>
+      <div><label class="flbl">Unit</label><input class="field mono" type="text" x-model="editForm.unit" /></div>
+    </div>
+    <div><label class="flbl">Category</label>
+      <select class="isel" x-model="editForm.cat"><option>Revenue</option><option>Retention</option><option>Growth</option><option>Cost</option></select></div>
+    <div>
+      <label class="flbl">Base value</label>
+      <div class="stepper">
+        <button @click="editForm.val=Math.max(editForm.bmin||0,(+editForm.val||0)-(editForm.step||1))" aria-label="Decrease">&minus;</button>
+        <input class="mono" type="number" x-model.number="editForm.val" />
+        <button @click="editForm.val=(+editForm.val||0)+(editForm.step||1)" aria-label="Increase">+</button>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="flbl">Min bound</label><input class="field mono" type="number" x-model.number="editForm.bmin" /></div>
+      <div><label class="flbl">Max bound</label><input class="field mono" type="number" x-model.number="editForm.bmax" /></div>
+    </div>
+    <div><label class="flbl">Formula fragment</label><input class="field mono" type="text" x-model="editForm.formula" /></div>
+    <div class="rounded-md p-3 flex items-center justify-between" style="background:var(--surface-2)">
+      <span class="lbl">Within bounds</span>
+      <span class="chip" :class="(editForm.val>=(editForm.bmin||0) && editForm.val<=(editForm.bmax||1e9)) ? 'chip-pos':'chip-neg'"
+            x-text="(editForm.val>=(editForm.bmin||0) && editForm.val<=(editForm.bmax||1e9)) ? 'in range':'out of range'"></span>
+    </div>
+    <div><label class="flbl">Note</label><textarea class="field" x-model="editForm.note" placeholder="Rationale for this assumption…"></textarea></div>
+    <div class="flex items-center justify-between py-1">
+      <div><div class="text-[13px] font-semibold">Apply to forecast</div><div class="text-[11px]" style="color:var(--ink-3)">Include in the 12-month recompute</div></div>
+      <button class="switch" :class="{'on': editForm.apply}" @click="editForm.apply=!editForm.apply" role="switch" :aria-checked="editForm.apply"></button>
+    </div>
+  </div>
+  <div class="p-4 border-t flex items-center gap-2" style="border-color:var(--line)">
+    <button class="btn btn-outline flex-1" @click="drawerOpen=false">Cancel</button>
+    <button class="btn btn-primary flex-1" @click="saveDriver()"><i data-lucide="check" class="w-4 h-4"></i> Save &amp; recompute</button>
+  </div>
+</aside>
+
+<!-- ===== MODAL (New driver / scenario) ===== -->
+<div x-show="modalOpen" x-transition.opacity class="fixed inset-0 z-[70] scrim flex items-start sm:items-center justify-center p-4 overflow-y-auto" @click="modalOpen=false">
+  <div @click.stop x-show="modalOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       class="card w-full max-w-lg my-8" style="box-shadow:var(--shadow-lg)">
+    <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color:var(--line)">
+      <div><div class="lbl">Driver grid</div><div class="display text-[17px]">New Driver</div></div>
+      <button class="iconbtn" @click="modalOpen=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="p-5 space-y-3.5 max-h-[70vh] overflow-y-auto">
+      <div><label class="flbl">Driver name</label><input class="field" type="text" x-model="nd.name" placeholder="e.g. Expansion revenue" /></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="flbl">Category</label>
+          <select class="isel" x-model="nd.cat"><option>Revenue</option><option>Retention</option><option>Growth</option><option>Cost</option></select></div>
+        <div><label class="flbl">Unit</label><input class="field mono" type="text" x-model="nd.unit" placeholder="$/mo" /></div>
+      </div>
+      <div><label class="flbl">Base value</label>
+        <div class="stepper"><button @click="nd.val=Math.max(0,nd.val-10)" aria-label="Decrease">&minus;</button>
+          <input class="mono" type="number" x-model.number="nd.val" /><button @click="nd.val+=10" aria-label="Increase">+</button></div>
+      </div>
+      <div><label class="flbl">Growth % / mo</label>
+        <div class="stepper"><button @click="nd.growth=Math.max(-20,nd.growth-1)" aria-label="Decrease">&minus;</button>
+          <input class="mono" type="text" :value="(nd.growth>0?'+':'')+nd.growth+'%'" readonly /><button @click="nd.growth=Math.min(20,nd.growth+1)" aria-label="Increase">+</button></div>
+      </div>
+      <div><label class="flbl">Note</label><textarea class="field" x-model="nd.note" placeholder="Rationale for this assumption…"></textarea></div>
+      <div><label class="flbl">Tags</label>
+        <div class="flex flex-wrap gap-2">
+          <template x-for="tg in ['Bull case','Bear case','Board input','Bottoms-up','Benchmark']" :key="tg">
+            <button class="chipbtn" :class="{'on': nd.tags.includes(tg)}" @click="toggleTag(tg)" x-text="tg"></button>
+          </template>
+        </div>
+      </div>
+      <div class="flex items-center justify-between py-1">
+        <div><div class="text-[13px] font-semibold">Lock &amp; recurring</div><div class="text-[11px]" style="color:var(--ink-3)">Carry into every period</div></div>
+        <button class="switch" :class="{'on': nd.lock}" @click="nd.lock=!nd.lock" role="switch" :aria-checked="nd.lock"></button>
+      </div>
+    </div>
+    <div class="px-5 py-4 border-t flex items-center gap-2" style="border-color:var(--line)">
+      <button class="btn btn-outline flex-1" @click="modalOpen=false">Cancel</button>
+      <button class="btn btn-primary flex-1" @click="createDriver()"><i data-lucide="check" class="w-4 h-4"></i> Add driver</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="fixed bottom-4 right-4 z-[80] space-y-2 w-[calc(100%-2rem)] sm:w-auto sm:max-w-sm">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="toast px-3.5 py-3 flex items-start gap-3" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+      <i data-lucide="function-square" class="w-4 h-4 mt-0.5 shrink-0" style="color:var(--accent-ink)"></i>
+      <span class="text-[13px]" style="color:var(--ink)" x-text="t.msg"></span>
+    </div>
+  </template>
+</div>
+
+<script>
+function proforma() {
+  return {
+    edition: 'light',
+    page: 'overview',
+    period: 'Monthly',
+    scenario: 'Base',
+    horizon: 12,
+    mobileNav: false, modalOpen: false, drawerOpen: false,
+    editName: false, modelName: 'FY2026 Operating Plan', nameDraft: '',
+    driverCat: 'All', driverQ: '',
+    whatKey: 'price', whatShock: 10,
+    repHorizon: '12 mo', repCharts: true, repLock: false, repEmail: false,
+    units: 'Thousands', decimals: 1, autoRecompute: true, showFormula: true, roundK: true,
+    editForm: {}, drawerRef: null,
+    nd: { name:'', cat:'Revenue', unit:'$/mo', val:100, growth:3, note:'', tags:[], lock:false },
+    toasts: [], _tid: 0, charts: {},
+
+    nav: [
+      { k:'overview',    t:'Overview',    i:'layout-dashboard' },
+      { k:'drivers',     t:'Drivers',     i:'sliders-horizontal', badge:'8' },
+      { k:'projections', t:'Projections', i:'line-chart' },
+      { k:'scenarios',   t:'Scenarios',   i:'git-branch', badge:'3' },
+      { k:'sensitivity', t:'Sensitivity', i:'activity' },
+      { k:'reports',     t:'Reports',     i:'folder-open' },
+      { k:'settings',    t:'Settings',    i:'settings' },
+    ],
+
+    // driver defaults (Base scenario)
+    drivers: [
+      { k:'price',     t:'Price / ARPU', sym:'×', role:'per customer / mo', unit:'$/mo', cat:'Revenue',   val:1200, prior:1160, step:25,  min:0, goodUp:true,  bmin:800,  bmax:1600, formula:'Rev = Price × Volume', note:'List price net of standard discount.', apply:true },
+      { k:'volume',    t:'Volume',       sym:'×', role:'active customers',   unit:'cust', cat:'Revenue',   val:4200, prior:4050, step:50,  min:0, goodUp:true,  bmin:3000, bmax:5500, formula:'active base, start of year', note:'Beginning active accounts.', apply:true },
+      { k:'churn',     t:'Churn',        sym:'−', role:'monthly attrition',  unit:'%/mo', cat:'Retention', val:2.4,  prior:2.7,  step:0.1, min:0, goodUp:false, dec:1, bmin:0.5, bmax:6, formula:'net logo attrition / mo', note:'Blended gross churn.', apply:true },
+      { k:'newlogos',  t:'New logos',    sym:'+', role:'added per month',    unit:'/mo',  cat:'Growth',    val:180,  prior:150,  step:10,  min:0, goodUp:true,  bmin:0,   bmax:400,  formula:'gross adds / mo', note:'Sales-driven new bookings.', apply:true },
+      { k:'headcount', t:'Headcount',    sym:'−', role:'fully-loaded FTEs',  unit:'FTE',  cat:'Cost',      val:240,  prior:225,  step:5,   min:0, goodUp:null, bmin:150, bmax:360,  formula:'Opex = HC × Load', note:'Total company FTEs.', apply:true },
+      { k:'salaryLoad',t:'Loaded cost',  sym:'×', role:'$K per FTE / yr',    unit:'$K',   cat:'Cost',      val:165,  prior:160,  step:5,   min:0, goodUp:false, bmin:120, bmax:220,  formula:'fully-loaded per FTE', note:'Salary + benefits + overhead.', apply:true },
+      { k:'capex',     t:'Capex',        sym:'−', role:'annual investment',  unit:'$K',   cat:'Cost',      val:3200, prior:3000, step:100, min:0, goodUp:false, bmin:0,   bmax:8000, formula:'Cash = EBITDA − Capex', note:'Platform & equipment.', apply:true },
+      { k:'taxRate',   t:'Tax rate',     sym:'−', role:'effective rate',     unit:'%',    cat:'Cost',      val:25,   prior:25,   step:1,   min:0, goodUp:false, dec:0, bmin:0, bmax:40, formula:'Net = EBIT × (1 − Tax)', note:'Blended effective tax.', apply:true },
+    ],
+
+    presets: {
+      Base:     { price:1200, volume:4200, churn:2.4, newlogos:180, headcount:240, salaryLoad:165, capex:3200, taxRate:25 },
+      Upside:   { price:1320, volume:4500, churn:1.8, newlogos:230, headcount:250, salaryLoad:168, capex:3400, taxRate:25 },
+      Downside: { price:1100, volume:3900, churn:3.2, newlogos:120, headcount:260, salaryLoad:172, capex:3000, taxRate:25 },
+    },
+
+    reports: [
+      { n:'Board Model Pack',      d:'Generated Jun 28', i:'presentation' },
+      { n:'Driver Register',       d:'Generated Jun 27', i:'sliders-horizontal' },
+      { n:'Scenario Comparison',   d:'Generated Jun 26', i:'git-branch' },
+      { n:'Sensitivity Report',    d:'Generated Jun 25', i:'activity' },
+      { n:'3-Statement Export',    d:'Due Jul 15',       i:'table' },
+      { n:'KPI Scorecard',         d:'Generated Jun 24', i:'gauge' },
+    ],
+
+    // ---------- core model math ----------
+    get vals() { const o={}; this.drivers.forEach(x=>o[x.k]=x.val); return o; },
+    get priorVals() { const o={}; this.drivers.forEach(x=>o[x.k]=x.prior); return o; },
+
+    simSeries(d, n) {
+      let c = d.volume, arr = [];
+      for (let m=0; m<n; m++) { c = c*(1 - d.churn/100) + d.newlogos; arr.push(c*d.price/1000); }
+      return arr;
+    },
+    calc(d) {
+      const months = this.simSeries(d, 12);
+      const rev = months.reduce((s,x)=>s+x,0);
+      const grossPct = Math.max(66, Math.min(86, 78 + (d.volume-4200)/4200*4 - (d.churn-2.4)*1.6));
+      const cogs = rev * (1 - grossPct/100);
+      const grossProfit = rev - cogs;
+      const opex = d.headcount * d.salaryLoad;
+      const ebitda = grossProfit - opex;
+      const ebitdaPct = rev ? ebitda/rev*100 : 0;
+      const da = 2900;
+      const ebit = ebitda - da;
+      const tax = Math.max(0, ebit) * d.taxRate/100;
+      const netIncome = ebit - tax;
+      const cashEOP = 15000 + ebitda*0.68 - d.capex;
+      return { rev, months, grossPct, cogs, grossProfit, opex, ebitda, ebitdaPct, da, ebit, tax, netIncome, cashEOP };
+    },
+    get model()      { return this.calc(this.vals); },
+    get priorModel() { return this.calc(this.priorVals); },
+
+    // sensitivity: EBITDA swing from ±10% on each driver
+    ebitdaWith(key, mult) { return this.calc({ ...this.vals, [key]: this.vals[key]*mult }).ebitda; },
+    get sens() {
+      const base = this.model.ebitda;
+      const rows = this.drivers.map(dr => {
+        const hi = this.ebitdaWith(dr.k, 1.1) - base;
+        const lo = this.ebitdaWith(dr.k, 0.9) - base;
+        return { key:dr.k, t:dr.t, lo, hi, span: Math.abs(hi-lo) };
+      });
+      rows.sort((a,b)=>b.span-a.span);
+      return rows;
+    },
+    sensAbs(key) { const r=this.sens.find(x=>x.key===key); return r ? Math.round(r.span) : 0; },
+    sensPct(key) { const max=Math.max(...this.sens.map(s=>s.span),1); return Math.round(this.sensAbs(key)/max*100); },
+    sensColor(key) { const dr=this.drivers.find(x=>x.k===key); return dr && dr.goodUp===false ? 'var(--neg)' : 'var(--accent)'; },
+
+    // what-if
+    get whatEbitda() { return this.calc({ ...this.vals, [this.whatKey]: this.vals[this.whatKey]*(1+this.whatShock/100) }).ebitda; },
+    get whatDelta() { return this.whatEbitda - this.model.ebitda; },
+
+    // scenarios
+    get scenarioRows() {
+      return ['Base','Upside','Downside'].map(name => {
+        const m = this.calc(this.presets[name]);
+        return { name, rev:m.rev, ebitda:m.ebitda, ebitdaPct:m.ebitdaPct, cashEOP:m.cashEOP, netIncome:m.netIncome };
+      });
+    },
+    get compareRows() {
+      const r = {}; this.scenarioRows.forEach(s => r[s.name]=s);
+      const mk = (t, fmt, key) => {
+        const vals = ['Base','Upside','Downside'].map(n=>r[n][key]);
+        const range = Math.max(...vals)-Math.min(...vals);
+        return { t, Base:fmt(r.Base[key]), Upside:fmt(r.Upside[key]), Downside:fmt(r.Downside[key]), range:fmt(range) };
+      };
+      return [
+        mk('Revenue',    v=>this.usdM(v), 'rev'),
+        mk('EBITDA',     v=>this.usdM(v), 'ebitda'),
+        mk('EBITDA %',   v=>v.toFixed(1)+'%', 'ebitdaPct'),
+        mk('Net income', v=>this.usdM(v), 'netIncome'),
+        mk('Cash EOP',   v=>this.usdM(v), 'cashEOP'),
+      ];
+    },
+
+    // P&L statement (annual, derived)
+    get pnl() {
+      const m = this.model, pm = this.priorModel;
+      return [
+        { l:'Revenue',            a:m.rev,         b:pm.rev,         type:'sub' },
+        { l:'Cost of revenue',    a:-m.cogs,       b:-pm.cogs,       indent:true },
+        { l:'Gross Profit',       a:m.grossProfit, b:pm.grossProfit, type:'sub' },
+        { l:'Operating expense',  a:-m.opex,       b:-pm.opex,       indent:true },
+        { l:'EBITDA',             a:m.ebitda,      b:pm.ebitda,      type:'sub' },
+        { l:'Depreciation & amort', a:-m.da,       b:-pm.da,         indent:true },
+        { l:'Operating Income',   a:m.ebit,        b:pm.ebit,        type:'sub' },
+        { l:'Income tax',         a:-m.tax,        b:-pm.tax,        indent:true },
+        { l:'Net Income',         a:m.netIncome,   b:pm.netIncome,   type:'total' },
+      ];
+    },
+
+    // cost mix doughnut
+    get costMix() {
+      const m = this.model, d = this.vals;
+      return [
+        { l:'Headcount opex',     v: Math.round(m.opex),        c:'#3B5BDB' },
+        { l:'COGS / infra',       v: Math.round(m.cogs),        c:'#0F8F80' },
+        { l:'Tooling & software', v: Math.round(d.headcount*8), c:'#9A7413' },
+        { l:'Facilities & other', v: 2400,                      c:'#8B9682' },
+      ];
+    },
+
+    // KPI tiles
+    get kpis() {
+      const m=this.model, pm=this.priorModel;
+      const rev  = { t:'Modeled Revenue', i:'circle-dollar-sign', v:this.usdM(m.rev),      cur:m.rev,      prev:pm.rev },
+            gm   = { t:'Gross Margin',     i:'percent',            v:m.grossPct.toFixed(1)+'%', cur:m.grossPct, prev:pm.grossPct, pts:true },
+            eb   = { t:'EBITDA',           i:'trending-up',        v:this.usdM(m.ebitda),   cur:m.ebitda,   prev:pm.ebitda },
+            cash = { t:'Cash EOP',         i:'landmark',           v:this.usdM(m.cashEOP),  cur:m.cashEOP,  prev:pm.cashEOP };
+      return [rev,gm,eb,cash].map(k => {
+        const delta = k.cur - k.prev;
+        const fav = delta >= 0;
+        const d = k.pts ? (delta>=0?'+':'−')+Math.abs(delta).toFixed(1)+' pt'
+                        : (delta>=0?'+':'−')+Math.abs(k.prev?delta/k.prev*100:0).toFixed(1)+'%';
+        return { ...k, fav, d, spark: this.ramp(k.cur) };
+      });
+    },
+    ramp(v) { const f=[.90,.93,.905,.955,.945,1]; return f.map(x=>v*x); },
+
+    // ---------- filters ----------
+    get filteredDrivers() {
+      const q = this.driverQ.trim().toLowerCase();
+      return this.drivers.filter(d => (this.driverCat==='All' || d.cat===this.driverCat) && (!q || d.t.toLowerCase().includes(q) || d.role.toLowerCase().includes(q)));
+    },
+
+    // ---------- formatting ----------
+    usdM(k) { return '$'+(k/1000).toLocaleString('en-US',{minimumFractionDigits:1, maximumFractionDigits:1})+'M'; },
+    usd0(k) { return '$'+Math.round(k).toLocaleString('en-US')+'K'; },
+    fmtK(k) { const r=Math.round(k); return r===0 ? '—' : (r<0?'−':'')+'$'+Math.abs(r).toLocaleString('en-US')+'K'; },
+    priorChip(d) {
+      const delta = d.val - d.prior;
+      if (Math.abs(delta) < (d.step||1)/2) return { cls:'chip-flat', icon:'minus', txt:'flat' };
+      const pctv = d.prior ? delta/d.prior*100 : 0;
+      const up = delta > 0;
+      const good = d.goodUp === null ? null : (up === d.goodUp);
+      const cls = good === null ? 'chip-flat' : (good ? 'chip-pos' : 'chip-neg');
+      const icon = up ? 'arrow-up-right' : 'arrow-down-right';
+      return { cls, icon, txt:(up?'+':'−')+Math.abs(pctv).toFixed(1)+'%' };
+    },
+
+    // ---------- actions ----------
+    setPeriod(p) { this.period = p; this.notify('View → '+p); },
+    toggleEdition() { this.edition = this.edition === 'light' ? 'dark' : 'light'; },
+    go(k) { this.page = k; },
+    closeAll() { this.modalOpen=false; this.drawerOpen=false; this.mobileNav=false; this.editName=false; },
+    bump(d, dir) { const step = d.step||1; let v = (+d.val||0) + dir*step; v = Math.max(d.min??0, +v.toFixed(d.dec||0)); d.val = v; this.onEdit(); },
+    onEdit() { /* charts re-render via modelKey watcher */ },
+    startRename() { this.nameDraft = this.modelName; this.editName = true; },
+    saveRename() { if (this.nameDraft.trim()) this.modelName = this.nameDraft.trim(); this.editName = false; this.notify('Model renamed'); },
+    loadScenario() { const p = this.presets[this.scenario]; if (!p) return; this.drivers.forEach(d => { if (p[d.k]!==undefined) d.val = p[d.k]; }); this.notify(this.scenario+' scenario loaded · recomputed'); },
+    resetModel() { this.scenario = 'Base'; this.loadScenario(); },
+
+    openModal() { this.nd = { name:'', cat:'Revenue', unit:'$/mo', val:100, growth:3, note:'', tags:[], lock:false };
+      this.modalOpen = true; this.$nextTick(() => lucide.createIcons()); },
+    toggleTag(t) { this.nd.tags = this.nd.tags.includes(t) ? this.nd.tags.filter(x=>x!==t) : [...this.nd.tags, t]; },
+    createDriver() {
+      const name = this.nd.name.trim() || 'New driver';
+      const key = 'd'+(++this._tid);
+      this.drivers.push({ k:key, t:name, sym:'+', role:this.nd.note||'custom assumption', unit:this.nd.unit||'', cat:this.nd.cat,
+        val:this.nd.val, prior:this.nd.val, step:10, min:0, goodUp:this.nd.cat==='Cost'?false:true,
+        bmin:0, bmax:Math.max(this.nd.val*3,100), formula:name+' driver', note:this.nd.note, apply:true });
+      this.modalOpen = false; this.notify('Driver "'+name+'" added · recomputed');
+    },
+
+    openDriver(d) { this.drawerRef = d; this.editForm = Object.assign({}, d); this.drawerOpen = true; this.$nextTick(() => lucide.createIcons()); },
+    saveDriver() { if (this.drawerRef) Object.assign(this.drawerRef, this.editForm); this.drawerOpen = false; this.notify('Saved '+this.editForm.t+' · 12-mo recompute'); },
+
+    notify(msg) {
+      const id = ++this._tid; this.toasts.push({ id, msg });
+      this.$nextTick(() => lucide.createIcons());
+      setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 2600);
+    },
+
+    get modelKey() { return this.drivers.map(d=>d.val).join(',')+'|'+this.period+'|'+this.horizon+'|'+this.scenario; },
+
+    init() {
+      this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); });
+      this.$watch('edition', () => this.$nextTick(() => { lucide.createIcons(); this.recolor(); }));
+      this.$watch('page', (p) => this.$nextTick(() => { lucide.createIcons(); this.renderFor(p); }));
+      this.$watch('modelKey', () => this.$nextTick(() => this.renderFor(this.page)));
+      ['mobileNav','modalOpen','drawerOpen','scenario','driverCat','driverQ','repEmail','whatKey'].forEach(k =>
+        this.$watch(k, () => this.$nextTick(() => lucide.createIcons())));
+    },
+
+    // ---------- charts ----------
+    css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); },
+    renderFor(page) {
+      Chart.defaults.font.family = "'DM Mono', monospace";
+      Chart.defaults.font.size = 10;
+      const map = {
+        overview:    () => { this.drawOvSparks(); this.drawTornado('ovTornado'); this.drawProjection('ovProj'); this.drawMix('ovMix'); },
+        drivers:     () => { this.drawDrvChart(); },
+        projections: () => { this.drawProjTrend(); },
+        scenarios:   () => { this.drawScnChart(); },
+        sensitivity: () => { this.drawTornado('snsTornado'); },
+      };
+      (map[page] || (()=>{}))();
+    },
+    recolor() { Object.values(this.charts).forEach(c => { try { c.destroy(); } catch(e){} }); this.charts = {}; this.renderFor(this.page); },
+
+    _mk(id, cfg) {
+      const el = document.getElementById(id); if (!el || el.offsetParent === null) return;
+      const prev = Chart.getChart(el); if (prev) prev.destroy();
+      this.charts[id] = new Chart(el.getContext('2d'), cfg);
+    },
+    _grad(ctx, area, color) { const g = ctx.createLinearGradient(0, area.top, 0, area.bottom); g.addColorStop(0, color+'44'); g.addColorStop(1, color+'00'); return g; },
+    _tt() { return { backgroundColor:this.css('--surface'), borderColor:this.css('--line-2'), borderWidth:1, titleColor:this.css('--ink'), bodyColor:this.css('--ink-2'), padding:8 }; },
+    _axis(fmt) { return { grid:{ color:this.css('--line') }, ticks:{ color:this.css('--ink-3'), callback:fmt } }; },
+
+    drawOvSparks() {
+      this.kpis.forEach((k,i) => {
+        const col = k.fav ? this.css('--pos') : this.css('--neg');
+        this._mk('ovKsp'+i, { type:'line', data:{ labels:k.spark.map((_,j)=>j), datasets:[{ data:k.spark, borderColor:col, borderWidth:1.6, tension:0.4, pointRadius:0, fill:true,
+          backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, col) : col+'22' }]},
+          options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
+      });
+    },
+    drawTornado(id) {
+      const rows = this.sens;
+      const bars = rows.map(r => [Math.min(r.lo,r.hi), Math.max(r.lo,r.hi)]);
+      const cols = rows.map(r => { const dr=this.drivers.find(x=>x.k===r.key); return dr && dr.goodUp===false ? this.css('--neg') : this.css('--pos'); });
+      this._mk(id, { type:'bar', data:{ labels:rows.map(r=>r.t), datasets:[{ data:bars, backgroundColor:cols, borderRadius:3, barThickness:20 }]},
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false,
+          plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>{ const v=c.raw; const f=x=>(x<0?'−$':'+$')+Math.abs(Math.round(x))+'K'; return ' '+f(v[0])+' … '+f(v[1]); } }}},
+          scales:{ x:{ ...this._axis((v)=>(v>=0?'+':'−')+'$'+Math.abs(v/1000).toFixed(1)+'M'), grid:{ color:(c)=> c.tick.value===0 ? this.css('--line-2') : this.css('--line') } },
+                   y:{ grid:{display:false}, ticks:{ color:this.css('--ink-2'), font:{size:11} } } } } });
+    },
+    drawProjection(id) {
+      const acc = this.css('--accent'), ink = this.css('--ink-2');
+      const m = this.model.months, pm = this.priorModel.months;
+      let labels, cur, plan;
+      if (this.period === 'Quarterly') {
+        const agg = a => [0,1,2,3].map(q => a.slice(q*3,q*3+3).reduce((s,x)=>s+x,0));
+        labels = ['Q1','Q2','Q3','Q4']; cur = agg(m); plan = agg(pm);
+      } else {
+        labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; cur = m; plan = pm;
+      }
+      this._mk(id, { data:{ labels, datasets:[
+        { type:'line', label:'Modeled', data:cur, borderColor:acc, borderWidth:2, tension:0.35, pointRadius:0, pointHoverRadius:4, fill:true,
+          backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, acc) : acc+'22', order:2 },
+        { type:'line', label:'Plan', data:plan, borderColor:ink, borderWidth:2, borderDash:[5,4], pointRadius:0, tension:0.35, order:1 } ]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'index',intersect:false},
+          plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.dataset.label+': $'+Math.round(c.parsed.y).toLocaleString()+'K' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} }, y:{ ...this._axis((v)=>'$'+(v/1000).toFixed(1)+'M') } } } });
+    },
+    drawMix(id) {
+      const mix = this.costMix;
+      this._mk(id, { type:'doughnut', data:{ labels:mix.map(o=>o.l), datasets:[{ data:mix.map(o=>o.v), backgroundColor:mix.map(o=>o.c), borderColor:this.css('--surface'), borderWidth:3, hoverOffset:6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'64%', animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.label+' · $'+Math.round(c.parsed).toLocaleString()+'K' }}} } });
+    },
+    drawDrvChart() {
+      const rows = this.sens;
+      const cols = rows.map(r => { const dr=this.drivers.find(x=>x.k===r.key); return dr && dr.goodUp===false ? this.css('--neg') : this.css('--accent'); });
+      this._mk('drvChart', { type:'bar', data:{ labels:rows.map(r=>r.t), datasets:[{ data:rows.map(r=>Math.round(r.span)), backgroundColor:cols, borderRadius:3, barThickness:18 }]},
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false,
+          plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' EBITDA swing $'+Math.round(c.parsed.x).toLocaleString()+'K' }}},
+          scales:{ x:{ ...this._axis((v)=>'$'+(v/1000).toFixed(1)+'M') }, y:{ grid:{display:false}, ticks:{ color:this.css('--ink-2'), font:{size:11} } } } } });
+    },
+    drawProjTrend() {
+      const acc = this.css('--accent'), ink = this.css('--ink-2');
+      const n = this.horizon;
+      const cur = this.simSeries(this.vals, n), plan = this.simSeries(this.priorVals, n);
+      const labels = n<=12 ? ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+                           : Array.from({length:n}, (_,i)=>'M'+(i+1));
+      this._mk('projTrend', { data:{ labels, datasets:[
+        { type:'line', label:'Modeled', data:cur, borderColor:acc, borderWidth:2, tension:0.35, pointRadius:0, pointHoverRadius:3, fill:true,
+          backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, acc) : acc+'22', order:2 },
+        { type:'line', label:'Plan', data:plan, borderColor:ink, borderWidth:2, borderDash:[5,4], pointRadius:0, tension:0.35, order:1 } ]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'index',intersect:false},
+          plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.dataset.label+': $'+Math.round(c.parsed.y).toLocaleString()+'K' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3'), maxTicksLimit:12} }, y:{ ...this._axis((v)=>'$'+(v/1000).toFixed(1)+'M') } } } });
+    },
+    drawScnChart() {
+      const acc = this.css('--accent'), pos = this.css('--pos');
+      const rows = this.scenarioRows;
+      this._mk('scnChart', { type:'bar', data:{ labels:rows.map(r=>r.name), datasets:[
+        { label:'Revenue', data:rows.map(r=>Math.round(r.rev)), backgroundColor:acc, borderRadius:4, barPercentage:0.62, categoryPercentage:0.68 },
+        { label:'EBITDA',  data:rows.map(r=>Math.round(r.ebitda)), backgroundColor:pos, borderRadius:4, barPercentage:0.62, categoryPercentage:0.68 } ]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false,
+          plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.dataset.label+': $'+(c.parsed.y/1000).toFixed(1)+'M' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-2'), font:{size:11}} }, y:{ ...this._axis((v)=>'$'+(v/1000).toFixed(0)+'M') } } } });
+    },
+  };
+}
+</script>
+</body>
+</html>

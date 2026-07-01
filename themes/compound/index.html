@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Compound — Capital Allocation Design System</title>
+<meta name="description" content="Compound — a capital-allocation design system for capex and project finance. A portfolio of competing investment bets ranked by the hurdle rate: NPV, IRR, payback, and a fund / hold / reject decision. A full app shell — overview, projects, pipeline, capital, analysis, reports, settings — with a new-proposal modal and an edit drawer. Deployed and Reserve editions." />
+<meta name="theme-color" content="#2A241A" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232A241A'/%3E%3Crect x='7' y='18' width='4' height='7' rx='1' fill='%239A7B1F'/%3E%3Crect x='14' y='13' width='4' height='12' rx='1' fill='%232F6D46'/%3E%3Crect x='21' y='8' width='4' height='17' rx='1' fill='%239A7B1F'/%3E%3Cpath d='M7 15l7-4 7-5' stroke='%23E9DFC4' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: { fontFamily: {
+      sans: ['"Libre Franklin"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      mono: ['"Roboto Mono"', 'ui-monospace', 'monospace'],
+    } } },
+  };
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<style>
+  /* ============================================================
+     COMPOUND — EDITION TOKENS
+     Thesis: capital compounds when it's allocated well. A dashboard
+     is a portfolio of competing bets ranked against the hurdle rate.
+     "Deployed" (light) is the hero — a warm granite ledger on stone.
+     "Reserve" (dark) is the after-hours copy. Bronze-gold is the
+     brand; invest-green / hold-gray / reject-red is the decision
+     semantic. An edition swap is one class on <body>.
+     ============================================================ */
+
+  :root, .light {
+    color-scheme: light;
+    --canvas:#F3F1EA; --surface:#FFFFFF; --surface-2:#F1EEE4;
+    --line:#E3DECF; --line-2:#CFC7B2;
+    --ink:#221E17; --ink-2:#5C5445; --ink-3:#8A8172;
+    --chrome:#2A241A; --chrome-2:#3A3324; --chrome-line:#4A412E;
+    --chrome-ink:#F3EFE4; --chrome-ink-2:#B3A88F;
+    --accent:#9A7B1F; --accent-2:#846914; --accent-ink:#7A6013;
+    --accent-soft:#F3E9CC; --on-accent:#FFFFFF;
+    --link:#7A6013;
+    --fav:#2F6D46; --fav-soft:#E2EEE7; --fav-ink:#2A6340;
+    --unfav:#B0483B; --unfav-soft:#F6E6E3; --unfav-ink:#9E4136;
+    --hold:#6E6858; --hold-soft:#ECE9DF; --hold-ink:#615B4C;
+    --warn:#9A7B1F;
+    --r:9px; --r-sm:6px;
+    --shadow:0 1px 2px rgba(34,30,23,.05), 0 2px 8px rgba(34,30,23,.06);
+    --shadow-lg:0 14px 36px rgba(34,30,23,.16), 0 3px 10px rgba(34,30,23,.10);
+    --scrim:rgba(34,30,23,.46);
+  }
+
+  .dark {
+    color-scheme: dark;
+    --canvas:#191510; --surface:#221D16; --surface-2:#2B2519;
+    --line:#352E20; --line-2:#473E2C;
+    --ink:#EFE9DC; --ink-2:#B7AD98; --ink-3:#847B69;
+    --chrome:#120F0A; --chrome-2:#221D15; --chrome-line:#332C1C;
+    --chrome-ink:#EFE9DC; --chrome-ink-2:#9E937D;
+    --accent:#C9A544; --accent-2:#D9B75C; --accent-ink:#D0AB4A;
+    --accent-soft:rgba(201,165,68,.15); --on-accent:#1A1509;
+    --link:#D9B75C;
+    --fav:#4FA972; --fav-soft:rgba(79,169,114,.16); --fav-ink:#5BB57E;
+    --unfav:#D2685A; --unfav-soft:rgba(210,104,90,.16); --unfav-ink:#DC7A6C;
+    --hold:#A79C86; --hold-soft:rgba(167,156,134,.14); --hold-ink:#B3A890;
+    --warn:#D0AB4A;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 26px rgba(0,0,0,.46);
+    --shadow-lg:0 16px 46px rgba(0,0,0,.6), 0 4px 12px rgba(0,0,0,.5);
+    --scrim:rgba(8,6,3,.66);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: 'Libre Franklin', ui-sans-serif, system-ui, sans-serif;
+    background: var(--canvas); color: var(--ink);
+    font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  [x-cloak] { display: none !important; }
+  .mono { font-family: 'Roboto Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .num  { font-family: 'Roboto Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  a, button, select, input, textarea, [tabindex] { outline: none; }
+  a:focus-visible, button:focus-visible, select:focus-visible,
+  input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--link); outline-offset: 2px; border-radius: var(--r-sm);
+  }
+
+  .lbl { font-family: 'Roboto Mono', monospace; font-size: 10px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+  .display { font-weight: 800; letter-spacing: -.02em; }
+  .chrome { background: var(--chrome); color: var(--chrome-ink); }
+  .chrome-seam { border-color: var(--chrome-line) !important; }
+  .fav { color: var(--fav-ink); } .unfav { color: var(--unfav-ink); } .hold { color: var(--hold-ink); }
+
+  .nav-item { position: relative; display: flex; align-items: center; gap: 11px; height: 40px;
+    padding: 0 13px; border-radius: var(--r-sm); color: var(--chrome-ink-2); cursor: pointer;
+    font-weight: 500; transition: background .12s, color .12s; }
+  .nav-item:hover { background: var(--chrome-2); color: var(--chrome-ink); }
+  .nav-item.on { background: var(--chrome-2); color: var(--chrome-ink); font-weight: 600; }
+  .nav-item.on::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 3px; background: var(--accent); border-radius: 0 3px 3px 0; }
+  .nav-item.on i { color: var(--accent); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px;
+    padding: 0 15px; border-radius: var(--r-sm); font-weight: 600; font-size: 13px;
+    border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+    transition: background .12s, border-color .12s, transform .06s; }
+  .btn:active { transform: scale(.985); }
+  .btn-primary { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+  .btn-primary:hover { background: var(--accent-2); }
+  .btn-outline { background: transparent; color: var(--ink); border-color: var(--line-2); }
+  .btn-outline:hover { background: var(--surface-2); }
+  .btn-ghost { background: var(--surface-2); color: var(--ink); }
+  .btn-ghost:hover { background: var(--line); }
+  .btn-sm { height: 32px; padding: 0 11px; font-size: 12px; }
+  .btn-block { width: 100%; }
+  .iconbtn { width: 38px; height: 38px; border-radius: var(--r-sm); display: flex; align-items: center;
+    justify-content: center; color: var(--ink-2); cursor: pointer; border: 1px solid transparent; background: transparent; }
+  .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
+  .chrome-icon { color: var(--chrome-ink-2); background: var(--chrome-2); }
+  .chrome-icon:hover { background: var(--chrome-line); color: var(--chrome-ink); }
+
+  .isel { width: 100%; background: var(--surface-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--r-sm); height: 38px; padding: 0 30px 0 11px;
+    font-size: 13px; font-family: 'Libre Franklin', sans-serif; appearance: none; -webkit-appearance: none; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+    background-position: calc(100% - 15px) 16px, calc(100% - 10px) 16px; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  .field { width: 100%; background: var(--surface-2); color: var(--ink); border: 1px solid var(--line);
+    border-radius: var(--r-sm); height: 38px; padding: 0 11px; font-size: 13px; font-family: 'Libre Franklin', sans-serif; }
+  .field::placeholder { color: var(--ink-3); }
+  textarea.field { height: auto; padding: 9px 11px; min-height: 78px; resize: vertical; line-height: 1.5; }
+  textarea.field::placeholder { color: var(--ink-3); }
+  .flbl { font-size: 11px; font-weight: 700; color: var(--ink-2); margin-bottom: 5px; display: block; letter-spacing: .01em; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; height: 21px; padding: 0 8px;
+    border-radius: 5px; font-family: 'Roboto Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: .03em; }
+  .chip-fav { color: var(--fav-ink); background: var(--fav-soft); }
+  .chip-unfav { color: var(--unfav-ink); background: var(--unfav-soft); }
+  .chip-hold { color: var(--hold-ink); background: var(--hold-soft); }
+  .chip-gold { color: var(--accent-ink); background: var(--accent-soft); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  /* filter chips (toggle) */
+  .chipbtn { cursor: pointer; border: 1px solid var(--line-2); background: transparent; color: var(--ink-2);
+    height: 32px; padding: 0 13px; border-radius: 999px; font-size: 12px; font-weight: 600; transition: .12s;
+    display: inline-flex; align-items: center; gap: 7px; }
+  .chipbtn:hover { background: var(--surface-2); }
+  .chipbtn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+
+  /* toggle switch */
+  .switch { width: 40px; height: 23px; border-radius: 999px; background: var(--line-2); position: relative;
+    cursor: pointer; transition: background .15s; flex: none; border: 0; }
+  .switch.on { background: var(--accent); }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 19px; height: 19px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+  .switch.on::after { transform: translateX(17px); }
+
+  /* stepper */
+  .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: var(--surface-2); overflow: hidden; }
+  .stepper button { width: 36px; height: 38px; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; font-size: 17px; line-height: 1; }
+  .stepper button:hover { background: var(--line); color: var(--ink); }
+  .stepper input { width: 84px; height: 38px; border: 0; background: transparent; text-align: center; color: var(--ink);
+    font-family: 'Roboto Mono', monospace; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  /* segmented control */
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px; }
+  .seg button { height: 28px; padding: 0 12px; border: 0; background: transparent; color: var(--ink-2);
+    font-family: 'Roboto Mono', monospace; font-size: 11px; font-weight: 700; border-radius: 4px; cursor: pointer; letter-spacing: .02em; }
+  .seg button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+  /* data table */
+  table { border-collapse: collapse; width: 100%; }
+  .tbl th { font-family: 'Roboto Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-3); text-align: right; padding: 9px 12px; white-space: nowrap;
+    border-bottom: 1px solid var(--line-2); user-select: none; }
+  .tbl th.sortable { cursor: pointer; }
+  .tbl th.sortable:hover { color: var(--ink); }
+  .tbl th:first-child, .tbl td:first-child { text-align: left; }
+  .tbl td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  .tbl tbody tr { transition: background .1s; }
+  .tbl tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+  .tbl tbody tr:hover { background: var(--surface-2); }
+  .tbl tbody tr:last-child td { border-bottom: 0; }
+  .tbl tbody tr.clickable { cursor: pointer; }
+  .tbl tbody tr.sel { background: var(--accent-soft) !important; }
+  .rowmark { border-left: 3px solid transparent; }
+
+  /* decision select in-row */
+  .dsel { appearance: none; -webkit-appearance: none; cursor: pointer; height: 28px; width: 104px;
+    border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface-2);
+    font-family: 'Roboto Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: .02em;
+    padding: 0 26px 0 12px; text-align: left;
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position: calc(100% - 13px) 12px, calc(100% - 9px) 12px; background-size: 4px 4px, 4px 4px; background-repeat: no-repeat; }
+
+  .toast { background: var(--surface); border: 1px solid var(--line-2); border-left: 3px solid var(--accent);
+    box-shadow: var(--shadow-lg); border-radius: var(--r-sm); }
+  .scrim { background: var(--scrim); backdrop-filter: blur(2px); }
+  .track { height: 7px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .track > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+  .spark { display: block; }
+  .rank { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px;
+    border-radius: 6px; font-family: 'Roboto Mono', monospace; font-size: 11px; font-weight: 700;
+    background: var(--surface-2); color: var(--ink-2); }
+  .kv { display: flex; align-items: baseline; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .kv:last-child { border-bottom: 0; }
+  .stage-rail { position: relative; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+
+<body x-data="compound()" x-cloak x-init="init()" :class="edition" @keydown.escape.window="closeAll()">
+
+<div class="h-screen flex flex-col">
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="chrome border-b chrome-seam shrink-0 flex items-center gap-3 px-3 sm:px-4" style="height:60px;border-bottom-width:1px">
+    <button class="iconbtn chrome-icon lg:hidden" @click="mobileNav=true" aria-label="Open navigation">
+      <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
+
+    <div class="flex items-center gap-2.5 select-none">
+      <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background:var(--accent);color:var(--on-accent)">
+        <i data-lucide="bar-chart-big" class="w-5 h-5"></i>
+      </div>
+      <div class="leading-none">
+        <div class="display text-[17px]" style="color:var(--chrome-ink)" x-text="portfolioName"></div>
+        <div class="lbl mt-1" style="font-size:8.5px;color:var(--chrome-ink-2)">Capital Allocation</div>
+      </div>
+    </div>
+
+    <div class="hidden md:flex items-center gap-2 ml-4">
+      <div class="flex items-center gap-2 h-9 px-3 rounded-md" style="background:var(--chrome-2)">
+        <i data-lucide="calendar" class="w-4 h-4" style="color:var(--chrome-ink-2)"></i>
+        <span class="mono text-[12px] font-bold" style="color:var(--chrome-ink)">Capex Cycle · FY2026</span>
+      </div>
+    </div>
+
+    <div class="flex-1"></div>
+
+    <div class="hidden sm:flex items-center gap-2.5 px-3 h-9 rounded-md" style="background:var(--chrome-2)">
+      <i data-lucide="ruler" class="w-4 h-4" style="color:var(--accent)"></i>
+      <span class="mono text-[11px] font-bold" style="color:var(--chrome-ink)" x-text="'HURDLE '+hurdle.toFixed(1)+'%'"></span>
+      <span class="mono text-[11px]" style="color:var(--chrome-ink-2)" x-text="funded.length+' funded'"></span>
+    </div>
+
+    <button class="btn btn-primary btn-sm hidden sm:inline-flex" @click="openModal()">
+      <i data-lucide="plus" class="w-4 h-4"></i> New proposal
+    </button>
+    <button class="iconbtn chrome-icon" @click="toggleEdition()" :aria-label="'Switch to '+(edition==='light'?'Reserve (dark)':'Deployed (light)')+' edition'">
+      <i :data-lucide="edition==='light' ? 'moon' : 'sun'" class="w-5 h-5"></i>
+    </button>
+    <button class="iconbtn chrome-icon relative" aria-label="Notifications">
+      <i data-lucide="bell" class="w-5 h-5"></i>
+      <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style="background:var(--accent)"></span>
+    </button>
+    <div class="w-9 h-9 rounded-md hidden sm:flex items-center justify-center mono text-[12px] font-bold shrink-0"
+         style="background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--line-2)">IC</div>
+  </header>
+
+  <div class="flex flex-1 min-h-0">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="chrome border-r chrome-seam w-60 shrink-0 hidden lg:flex flex-col" style="border-right-width:1px">
+      <nav class="p-3 flex-1 min-h-0 overflow-y-auto">
+        <div class="lbl px-3 pt-1 pb-2" style="color:var(--chrome-ink-2)">Portfolio</div>
+        <div class="space-y-0.5">
+          <template x-for="n in nav" :key="n.k">
+            <a class="nav-item" :class="{'on': page===n.k}" href="#" @click.prevent="go(n.k)">
+              <i :data-lucide="n.i" class="w-[18px] h-[18px]"></i>
+              <span x-text="n.t"></span>
+              <span x-show="n.badge" class="ml-auto mono text-[10px] px-1.5 py-0.5 rounded"
+                    style="background:var(--chrome-line);color:var(--chrome-ink-2)" x-text="n.badge"></span>
+            </a>
+          </template>
+        </div>
+      </nav>
+      <div class="p-3 border-t chrome-seam" style="border-top-width:1px">
+        <div class="rounded-md p-3" style="background:var(--chrome-2)">
+          <div class="lbl" style="color:var(--chrome-ink-2)">Available to allocate</div>
+          <div class="num display text-[19px] mt-1" style="color:var(--accent)" x-text="'$'+available.toFixed(0)+'M'"></div>
+          <div class="track mt-2" style="background:var(--chrome-line)"><span :style="'width:'+(deployed/budget*100)+'%'"></span></div>
+          <div class="mono text-[10px] mt-1.5" style="color:var(--chrome-ink-2)" x-text="'$'+deployed.toFixed(0)+'M of $'+budget+'M committed'"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="flex-1 min-w-0 overflow-y-auto">
+      <div class="p-3 sm:p-4 lg:p-5 space-y-4 max-w-[1600px] mx-auto">
+
+        <!-- ================= OVERVIEW ================= -->
+        <section x-show="page==='overview'">
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Capital Allocation</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">
+                FY2026 capex cycle · USD millions · ranked against the <span class="font-semibold" style="color:var(--accent-ink)" x-text="hurdle.toFixed(1)+'% hurdle rate'"></span> · <span class="mono">illustrative</span>
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-outline btn-sm" @click="notify('Committee pack exported — mockup')"><i data-lucide="download" class="w-4 h-4"></i> Committee pack</button>
+              <button class="btn btn-primary btn-sm" @click="fundAllAboveHurdle()"><i data-lucide="check-check" class="w-4 h-4"></i> Fund above hurdle</button>
+            </div>
+          </div>
+
+          <!-- ===== KPI TILES ===== -->
+          <section class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mt-4">
+            <template x-for="(k,i) in kpis" :key="k.t">
+              <div class="card p-3.5">
+                <div class="flex items-center justify-between">
+                  <span class="lbl" x-text="k.t"></span>
+                  <i :data-lucide="k.i" class="w-4 h-4" style="color:var(--ink-3)"></i>
+                </div>
+                <div class="num display text-[20px] mt-2" x-text="k.v"></div>
+                <div class="flex items-center gap-1.5 mt-1.5">
+                  <span class="chip" :class="k.tone==='fav'?'chip-fav':k.tone==='hold'?'chip-hold':'chip-gold'">
+                    <i :data-lucide="k.icon" class="w-3 h-3"></i><span x-text="k.d"></span>
+                  </span>
+                  <span class="text-[10.5px] mono" style="color:var(--ink-3)" x-text="k.sub"></span>
+                </div>
+                <div class="mt-2.5" style="height:28px"><canvas :id="'ksp'+i" class="spark"></canvas></div>
+              </div>
+            </template>
+          </section>
+
+          <!-- ===== FILTER BAR ===== -->
+          <section class="card p-3.5 mt-4">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="lbl mr-1">Category</span>
+                <template x-for="c in ['All','Growth','Maintenance','Compliance']" :key="c">
+                  <button class="chipbtn" :class="{'on': category===c}" @click="category=c">
+                    <span x-show="c!=='All'" class="dot" :style="'background:'+catColor(c)"></span>
+                    <span x-text="c"></span>
+                  </button>
+                </template>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="lbl">Rank by</span>
+                <div class="seg">
+                  <template x-for="s in ['NPV','IRR','Payback']" :key="s">
+                    <button :class="{'on': sortBy===s}" @click="setSort(s)" x-text="s"></button>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ===== RANKING + ALLOCATION ===== -->
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+
+            <!-- ranking table (signature) -->
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="flex items-center justify-between gap-3 p-4 pb-3 flex-wrap border-b" style="border-color:var(--line)">
+                <div>
+                  <h2 class="display text-[16px]">Project Ranking</h2>
+                  <div class="lbl mt-0.5">Set a decision — the row recolors · <span x-text="filtered.length+' bets'"></span></div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="chip chip-fav"><i data-lucide="circle-check" class="w-3 h-3"></i> <span x-text="counts.Fund+' fund'"></span></span>
+                  <span class="chip chip-hold"><i data-lucide="circle-pause" class="w-3 h-3"></i> <span x-text="counts.Hold+' hold'"></span></span>
+                  <span class="chip chip-unfav"><i data-lucide="circle-x" class="w-3 h-3"></i> <span x-text="counts.Reject+' reject'"></span></span>
+                </div>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="tbl" style="min-width:660px">
+                  <thead>
+                    <tr>
+                      <th style="width:34px">#</th>
+                      <th style="width:28%">Project</th>
+                      <th class="sortable" @click="setSort('NPV')">NPV <span x-show="sortBy==='NPV'">▾</span></th>
+                      <th class="sortable" @click="setSort('IRR')">IRR <span x-show="sortBy==='IRR'">▾</span></th>
+                      <th class="sortable" @click="setSort('Payback')">Payback <span x-show="sortBy==='Payback'">▴</span></th>
+                      <th>Spend</th>
+                      <th style="text-align:right">Decision</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="(p,idx) in filtered" :key="p.id">
+                      <tr class="clickable" :class="{'sel': selected===p.id}" @click="select(p.id)">
+                        <td>
+                          <div class="rowmark pl-2" :style="'border-color:'+decColor(p.decision)">
+                            <span class="rank" x-text="idx+1"></span>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="font-semibold text-[13px]" x-text="p.name"></div>
+                          <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="dot" :style="'background:'+catColor(p.cat)"></span>
+                            <span class="lbl" style="letter-spacing:.06em" x-text="p.cat"></span>
+                          </div>
+                        </td>
+                        <td class="num font-bold" :style="p.npv>=0?'color:var(--ink)':'color:var(--unfav-ink)'" x-text="fmtM(p.npv)"></td>
+                        <td class="num">
+                          <span :class="p.irr>=hurdle?'fav':'unfav'" x-text="p.irr.toFixed(1)+'%'"></span>
+                        </td>
+                        <td class="num" style="color:var(--ink-2)" x-text="p.payback.toFixed(1)+'y'"></td>
+                        <td class="num" style="color:var(--ink-2)" x-text="fmtM(p.spend)"></td>
+                        <td style="text-align:right" @click.stop>
+                          <select class="dsel ml-auto" x-model="p.decision" @change="onDecision(p)"
+                                  :style="'color:'+decColor(p.decision)+';border-color:'+decColor(p.decision)+';background:'+decSoft(p.decision)"
+                                  :aria-label="'Decision for '+p.name">
+                            <option>Fund</option><option>Hold</option><option>Reject</option>
+                          </select>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+              <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-t flex-wrap" style="border-color:var(--line);background:var(--surface-2)">
+                <span class="lbl">Funded totals</span>
+                <div class="flex items-center gap-4 mono text-[11.5px]" style="color:var(--ink-2)">
+                  <span>Spend <b style="color:var(--ink)" x-text="fmtM(deployed)"></b></span>
+                  <span>NPV <b class="fav" x-text="fmtM(fundedNpv)"></b></span>
+                  <span>IRR <b style="color:var(--ink)" x-text="portfolioIrr.toFixed(1)+'%'"></b></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- allocation doughnut -->
+            <div class="card p-4 flex flex-col">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Capital by Category</h2><span class="lbl">Funded · $M</span></div>
+              <div class="relative mt-3 mx-auto" style="height:186px;max-width:186px"><canvas id="ovAlloc"></canvas></div>
+              <div class="mt-4 space-y-1.5">
+                <template x-for="a in allocation" :key="a.l">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="'background:'+a.c"></span>
+                    <span class="text-[12px] flex-1" style="color:var(--ink-2)" x-text="a.l"></span>
+                    <span class="num text-[12px] font-bold" x-text="fmtM(a.v)"></span>
+                  </div>
+                </template>
+              </div>
+              <div class="rounded-md p-3 mt-4" style="background:var(--surface-2)">
+                <div class="flex items-center justify-between">
+                  <span class="lbl">Committed</span>
+                  <span class="num text-[13px] font-bold" x-text="fmtM(deployed)+' / $'+budget+'M'"></span>
+                </div>
+                <div class="track mt-2"><span :style="'width:'+Math.min(100,deployed/budget*100)+'%'"></span></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ===== NPV BARS + DEPLOYMENT TREND ===== -->
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card p-4 xl:col-span-2">
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <div><h2 class="display text-[15px]">NPV by Project</h2><div class="lbl mt-0.5">Bars colored by decision</div></div>
+                <div class="flex items-center gap-3 mono text-[11px]" style="color:var(--ink-2)">
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-2.5 rounded-sm" style="background:var(--fav)"></span>Fund</span>
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-2.5 rounded-sm" style="background:var(--accent)"></span>Hold</span>
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-2.5 rounded-sm" style="background:var(--unfav)"></span>Reject</span>
+                </div>
+              </div>
+              <div class="relative mt-3" style="height:270px"><canvas id="ovNpv"></canvas></div>
+            </div>
+
+            <div class="card p-4 flex flex-col">
+              <div class="flex items-center justify-between gap-2">
+                <div><h2 class="display text-[15px]">Deployment Trend</h2><div class="lbl mt-0.5">Committed capital · $M</div></div>
+                <span class="chip chip-gold"><i data-lucide="trending-up" class="w-3 h-3"></i> compounding</span>
+              </div>
+              <div class="relative mt-3 flex-1" style="min-height:210px"><canvas id="ovTrend"></canvas></div>
+              <div class="grid grid-cols-2 gap-2 mt-3">
+                <div class="rounded-md p-2.5" style="background:var(--surface-2)"><div class="lbl">Deployed</div><div class="num text-[15px] font-bold mt-0.5" x-text="fmtM(deployed)"></div></div>
+                <div class="rounded-md p-2.5" style="background:var(--surface-2)"><div class="lbl">Portfolio NPV</div><div class="num text-[15px] font-bold mt-0.5 fav" x-text="fmtM(fundedNpv)"></div></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= PROJECTS ================= -->
+        <section x-show="page==='projects'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Projects</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">The full ranking book · click a row to open the edit drawer · <span class="mono">illustrative</span></p></div>
+            <button class="btn btn-primary btn-sm" @click="openModal()"><i data-lucide="plus" class="w-4 h-4"></i> New proposal</button>
+          </div>
+
+          <section class="card p-3.5 mt-4">
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="lbl mr-1">Category</span>
+                <template x-for="c in ['All','Growth','Maintenance','Compliance']" :key="'pc'+c">
+                  <button class="chipbtn" :class="{'on': category===c}" @click="category=c">
+                    <span x-show="c!=='All'" class="dot" :style="'background:'+catColor(c)"></span>
+                    <span x-text="c"></span>
+                  </button>
+                </template>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="seg">
+                  <template x-for="s in ['NPV','IRR','Payback']" :key="'ps'+s">
+                    <button :class="{'on': sortBy===s}" @click="setSort(s)" x-text="s"></button>
+                  </template>
+                </div>
+                <div class="relative">
+                  <i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+                  <input type="text" class="field !h-8 !w-40 sm:!w-56 !pl-8 text-[12px]" placeholder="Search projects" x-model="search" />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card overflow-hidden mt-4">
+            <div class="flex items-center justify-between gap-3 p-4 pb-3 flex-wrap border-b" style="border-color:var(--line)">
+              <div class="flex items-center gap-2"><h2 class="display text-[16px]">Ranking Book</h2><span class="chip chip-hold" x-text="projRows.length+' of '+projects.length"></span></div>
+              <div class="flex items-center gap-2">
+                <span class="chip chip-fav"><span x-text="counts.Fund+' fund'"></span></span>
+                <span class="chip chip-hold"><span x-text="counts.Hold+' hold'"></span></span>
+                <span class="chip chip-unfav"><span x-text="counts.Reject+' reject'"></span></span>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:860px">
+                <thead>
+                  <tr>
+                    <th style="width:34px">#</th>
+                    <th style="width:24%">Project</th>
+                    <th>Category</th>
+                    <th class="sortable" @click="setSort('NPV')">NPV <span x-show="sortBy==='NPV'">▾</span></th>
+                    <th class="sortable" @click="setSort('IRR')">IRR <span x-show="sortBy==='IRR'">▾</span></th>
+                    <th class="sortable" @click="setSort('Payback')">Payback <span x-show="sortBy==='Payback'">▴</span></th>
+                    <th>Capex</th>
+                    <th style="text-align:center">Risk</th>
+                    <th style="text-align:right">Decision</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(p,idx) in projRows" :key="'pr'+p.id">
+                    <tr class="clickable" @click="openProject(p)">
+                      <td><div class="rowmark pl-2" :style="'border-color:'+decColor(p.decision)"><span class="rank" x-text="idx+1"></span></div></td>
+                      <td><div class="font-semibold text-[13px]" x-text="p.name"></div><div class="lbl mt-0.5" style="letter-spacing:.06em" x-text="'#'+String(p.id).padStart(3,'0')"></div></td>
+                      <td style="text-align:right"><span class="chip" :style="'color:'+catColor(p.cat)+';background:var(--surface-2)'"><span class="dot" :style="'background:'+catColor(p.cat)"></span><span x-text="p.cat"></span></span></td>
+                      <td class="num font-bold" :style="p.npv>=0?'color:var(--ink)':'color:var(--unfav-ink)'" x-text="fmtM(p.npv)"></td>
+                      <td class="num"><span :class="p.irr>=hurdle?'fav':'unfav'" x-text="p.irr.toFixed(1)+'%'"></span></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="p.payback.toFixed(1)+'y'"></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="fmtM(p.spend)"></td>
+                      <td style="text-align:center"><span class="chip" :class="p.risk?'chip-unfav':'chip-fav'" x-text="p.risk?'High':'Std'"></span></td>
+                      <td style="text-align:right" @click.stop>
+                        <select class="dsel ml-auto" x-model="p.decision" @change="onDecision(p)"
+                                :style="'color:'+decColor(p.decision)+';border-color:'+decColor(p.decision)+';background:'+decSoft(p.decision)"
+                                :aria-label="'Decision for '+p.name">
+                          <option>Fund</option><option>Hold</option><option>Reject</option>
+                        </select>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div x-show="projRows.length===0" class="p-10 text-center">
+              <i data-lucide="search-x" class="w-8 h-8 mx-auto" style="color:var(--ink-3)"></i>
+              <div class="mt-2 font-semibold">No projects match</div>
+              <div class="text-[12px] mt-0.5" style="color:var(--ink-3)">Clear the search or pick another category.</div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= PIPELINE ================= -->
+        <section x-show="page==='pipeline'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Pipeline</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Proposal funnel · intake → committee → approved · <span class="mono">illustrative</span></p></div>
+            <button class="btn btn-primary btn-sm" @click="openModal()"><i data-lucide="plus" class="w-4 h-4"></i> New proposal</button>
+          </div>
+
+          <section class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4">
+            <template x-for="s in pipeline" :key="s.k">
+              <div class="card p-3.5">
+                <div class="flex items-center justify-between"><span class="lbl" x-text="s.k"></span><i :data-lucide="s.i" class="w-4 h-4" style="color:var(--ink-3)"></i></div>
+                <div class="num display text-[22px] mt-1.5" x-text="s.n"></div>
+                <div class="text-[11px] mt-0.5 mono" style="color:var(--ink-3)" x-text="'$'+s.v+'M in scope'"></div>
+              </div>
+            </template>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card p-4 xl:col-span-2">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Funnel by Stage</h2><span class="lbl">Count</span></div>
+              <div class="relative mt-3" style="height:260px"><canvas id="pipeFunnel"></canvas></div>
+            </div>
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Intake Trend</h2><span class="lbl">Proposals / mo</span></div>
+              <div class="relative mt-3" style="height:260px"><canvas id="pipeTrend"></canvas></div>
+            </div>
+          </section>
+
+          <section class="card overflow-hidden mt-4">
+            <div class="p-4 pb-3 border-b" style="border-color:var(--line)"><h2 class="display text-[16px]">Active Proposals</h2><div class="lbl mt-0.5">Move a proposal along the funnel with the stage select</div></div>
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:640px">
+                <thead><tr><th style="width:38%">Proposal</th><th>Category</th><th>Capex</th><th>Sponsor</th><th style="text-align:right">Stage</th></tr></thead>
+                <tbody>
+                  <template x-for="p in proposals" :key="'pp'+p.id">
+                    <tr>
+                      <td><span class="font-semibold" x-text="p.name"></span></td>
+                      <td style="text-align:right"><span class="chip" :style="'color:'+catColor(p.cat)+';background:var(--surface-2)'"><span class="dot" :style="'background:'+catColor(p.cat)"></span><span x-text="p.cat"></span></span></td>
+                      <td class="num" x-text="'$'+p.capex+'M'"></td>
+                      <td style="color:var(--ink-2)" x-text="p.sponsor"></td>
+                      <td style="text-align:right" @click.stop>
+                        <select class="isel !h-7 !w-[128px] ml-auto !text-[11px] !px-2 mono" x-model="p.stage" @change="notify(p.name+' → '+p.stage)" :style="'font-weight:700;color:'+stageColor(p.stage)">
+                          <option>Intake</option><option>Screening</option><option>Review</option><option>Committee</option><option>Approved</option>
+                        </select>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= CAPITAL ================= -->
+        <section x-show="page==='capital'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Capital</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Allocation by category vs. approved budget · USD millions</p></div>
+            <button class="btn btn-outline btn-sm" @click="notify('Allocation exported — mockup')"><i data-lucide="download" class="w-4 h-4"></i> Export</button>
+          </div>
+
+          <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            <div class="card p-3.5"><div class="lbl">Total Budget</div><div class="num display text-[20px] mt-1.5" x-text="'$'+budget+'M'"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">FY2026 authorization</div></div>
+            <div class="card p-3.5"><div class="lbl">Committed</div><div class="num display text-[20px] mt-1.5" x-text="fmtM(deployed)"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)" x-text="(deployed/budget*100).toFixed(0)+'% of budget'"></div></div>
+            <div class="card p-3.5"><div class="lbl">Available</div><div class="num display text-[20px] mt-1.5" style="color:var(--accent-ink)" x-text="'$'+available.toFixed(0)+'M'"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">Uncommitted headroom</div></div>
+            <div class="card p-3.5"><div class="lbl">Funded NPV</div><div class="num display text-[20px] mt-1.5 fav" x-text="fmtM(fundedNpv)"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">Value created</div></div>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Committed Mix</h2><span class="lbl">$M</span></div>
+              <div class="relative mt-3 mx-auto" style="height:190px;max-width:190px"><canvas id="capDough"></canvas></div>
+              <div class="mt-4 space-y-1.5">
+                <template x-for="a in allocation" :key="'ca'+a.l">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="'background:'+a.c"></span>
+                    <span class="text-[12px] flex-1" style="color:var(--ink-2)" x-text="a.l"></span>
+                    <span class="num text-[12px] font-bold" x-text="fmtM(a.v)"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <div class="card p-4 xl:col-span-2">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Committed vs. Budget</h2><span class="lbl">By category · $M</span></div>
+              <div class="relative mt-3" style="height:260px"><canvas id="capBars"></canvas></div>
+            </div>
+          </section>
+
+          <section class="card overflow-hidden mt-4">
+            <div class="p-4 pb-3 border-b" style="border-color:var(--line)"><h2 class="display text-[16px]">Category Budgets</h2><div class="lbl mt-0.5">Headroom = budget − committed</div></div>
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:600px">
+                <thead><tr><th style="width:34%">Category</th><th>Budget</th><th>Committed</th><th>Headroom</th><th style="text-align:right">Utilisation</th></tr></thead>
+                <tbody>
+                  <template x-for="c in capitalRows" :key="'cr'+c.cat">
+                    <tr>
+                      <td><span class="chip" :style="'color:'+catColor(c.cat)+';background:var(--surface-2)'"><span class="dot" :style="'background:'+catColor(c.cat)"></span><span x-text="c.cat"></span></span></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="'$'+c.budget+'M'"></td>
+                      <td class="num font-bold" x-text="fmtM(c.committed)"></td>
+                      <td class="num" :class="c.budget-c.committed>=0?'fav':'unfav'" x-text="fmtM(c.budget-c.committed)"></td>
+                      <td style="text-align:right">
+                        <div class="flex items-center gap-2 justify-end">
+                          <div class="track" style="width:120px"><span :style="'width:'+Math.min(100,c.committed/c.budget*100)+'%;background:'+catColor(c.cat)"></span></div>
+                          <span class="num text-[11.5px] font-bold" style="width:42px;display:inline-block" x-text="(c.committed/c.budget*100).toFixed(0)+'%'"></span>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= ANALYSIS ================= -->
+        <section x-show="page==='analysis'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Analysis</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">NPV / IRR / payback detail · discounted at the <span class="font-semibold" style="color:var(--accent-ink)" x-text="hurdle.toFixed(1)+'% hurdle'"></span></p></div>
+            <div class="flex items-center gap-2">
+              <select class="isel !w-56" x-model.number="selected" @change="refresh()" aria-label="Select project to analyse">
+                <template x-for="p in projects" :key="'as'+p.id"><option :value="p.id" x-text="p.name"></option></template>
+              </select>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            <div class="card p-3.5"><div class="lbl">NPV @ hurdle</div><div class="num display text-[20px] mt-1.5" :style="selectedProject.npv>=0?'':'color:var(--unfav-ink)'" x-text="fmtM(selectedProject.npv)"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">Net present value</div></div>
+            <div class="card p-3.5"><div class="lbl">IRR</div><div class="num display text-[20px] mt-1.5" :class="selectedProject.irr>=hurdle?'fav':'unfav'" x-text="selectedProject.irr.toFixed(1)+'%'"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)" x-text="(selectedProject.irr>=hurdle?'+':'−')+Math.abs(selectedProject.irr-hurdle).toFixed(1)+' pt vs hurdle'"></div></div>
+            <div class="card p-3.5"><div class="lbl">Payback</div><div class="num display text-[20px] mt-1.5" x-text="selectedProject.payback.toFixed(1)+' y'"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">Undiscounted</div></div>
+            <div class="card p-3.5"><div class="lbl">Capex</div><div class="num display text-[20px] mt-1.5" x-text="fmtM(selectedProject.spend)"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">Upfront outlay</div></div>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card p-4 xl:col-span-2">
+              <div class="flex items-center justify-between gap-2">
+                <div><h2 class="display text-[15px]">Cumulative Cash Flow</h2><div class="lbl mt-0.5" x-text="selectedProject.name"></div></div>
+                <span class="chip" :class="chipClass(selectedProject.decision)" x-text="selectedProject.decision"></span>
+              </div>
+              <div class="relative mt-3" style="height:250px"><canvas id="anCash"></canvas></div>
+              <div class="text-[11px] mt-2 mono" style="color:var(--ink-3)">Crosses zero at payback · straight-line proxy of project cash flows</div>
+            </div>
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Assumptions</h2>
+              <div class="mt-2">
+                <div class="kv"><span class="text-[12.5px]" style="color:var(--ink-2)">Category</span><span class="font-semibold" x-text="selectedProject.cat"></span></div>
+                <div class="kv"><span class="text-[12.5px]" style="color:var(--ink-2)">Capex outlay</span><span class="num font-bold" x-text="fmtM(selectedProject.spend)"></span></div>
+                <div class="kv"><span class="text-[12.5px]" style="color:var(--ink-2)">Annual cash flow</span><span class="num font-bold" x-text="fmtM(selectedProject.spend/selectedProject.payback)"></span></div>
+                <div class="kv"><span class="text-[12.5px]" style="color:var(--ink-2)">Discount rate</span><span class="num font-bold" x-text="hurdle.toFixed(1)+'%'"></span></div>
+                <div class="kv"><span class="text-[12.5px]" style="color:var(--ink-2)">Risk flag</span><span class="chip" :class="selectedProject.risk?'chip-unfav':'chip-fav'" x-text="selectedProject.risk?'High':'Standard'"></span></div>
+                <div class="kv"><span class="text-[12.5px]" style="color:var(--ink-2)">Recommendation</span><span class="chip" :class="chipClass(selectedProject.decision)" x-text="selectedProject.decision"></span></div>
+              </div>
+              <button class="btn btn-outline btn-block mt-3" @click="openProject(selectedProject)"><i data-lucide="pencil" class="w-4 h-4"></i> Edit assumptions</button>
+            </div>
+          </section>
+
+          <section class="card p-4 mt-4">
+            <div class="flex items-center justify-between"><h2 class="display text-[15px]">NPV Sensitivity to IRR</h2><span class="lbl">Δ IRR assumption · $M</span></div>
+            <div class="relative mt-3" style="height:220px"><canvas id="anSens"></canvas></div>
+          </section>
+        </section>
+
+        <!-- ================= REPORTS ================= -->
+        <section x-show="page==='reports'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Reports</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Committee packs &amp; ad-hoc generation</p></div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="xl:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <template x-for="r in reports" :key="r.n">
+                <div class="card p-4 flex items-start gap-3">
+                  <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background:var(--accent-soft);color:var(--accent-ink)"><i :data-lucide="r.i" class="w-5 h-5"></i></div>
+                  <div class="min-w-0 flex-1">
+                    <div class="font-semibold text-[14px]" x-text="r.n"></div>
+                    <div class="text-[11.5px] mt-0.5" style="color:var(--ink-3)" x-text="r.d"></div>
+                    <div class="flex items-center gap-2 mt-2.5">
+                      <button class="btn btn-ghost btn-sm" @click="notify('Generating '+r.n+' — mockup')"><i data-lucide="play" class="w-3.5 h-3.5"></i> Generate</button>
+                      <button class="iconbtn !w-8 !h-8" @click="notify('Opened '+r.n)" aria-label="Open"><i data-lucide="external-link" class="w-4 h-4"></i></button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- custom generation form -->
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Generate Custom</h2>
+              <div class="mt-3 space-y-3">
+                <div><label class="flbl">Report type</label>
+                  <select class="isel"><option>Committee pack</option><option>Ranking book</option><option>Capital allocation</option><option>Pipeline funnel</option><option>Project analysis</option></select></div>
+                <div><label class="flbl">Horizon</label>
+                  <div class="seg w-full"><template x-for="p in ['Cycle','Quarter','Year']" :key="'rp'+p"><button class="flex-1" :class="{'on': repPeriod===p}" @click="repPeriod=p" x-text="p"></button></template></div></div>
+                <div><label class="flbl">Format</label>
+                  <select class="isel"><option>PDF</option><option>Excel (XLSX)</option><option>Google Slides</option></select></div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Include commentary</div><div class="text-[11px]" style="color:var(--ink-3)">IC narrative &amp; risk notes</div></div>
+                  <button class="switch" :class="{'on': repCommentary}" @click="repCommentary=!repCommentary" role="switch" :aria-checked="repCommentary"></button>
+                </div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Email to committee</div><div class="text-[11px]" style="color:var(--ink-3)">On generation</div></div>
+                  <button class="switch" :class="{'on': repEmail}" @click="repEmail=!repEmail" role="switch" :aria-checked="repEmail"></button>
+                </div>
+                <div x-show="repEmail"><label class="flbl">Recipients</label><input class="field" type="text" placeholder="committee@company.com" /></div>
+                <div><label class="flbl">Notes</label><textarea class="field" placeholder="Optional context for this report…"></textarea></div>
+                <button class="btn btn-primary btn-block" @click="notify('Report queued — mockup')"><i data-lucide="file-output" class="w-4 h-4"></i> Generate report</button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= SETTINGS ================= -->
+        <section x-show="page==='settings'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Settings</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Portfolio preferences &amp; the hurdle rate</p></div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Portfolio</h2>
+              <div class="mt-3 space-y-3">
+                <div>
+                  <label class="flbl">Portfolio name</label>
+                  <template x-if="!editName">
+                    <div class="flex items-center gap-2">
+                      <span class="font-semibold text-[15px]" x-text="portfolioName"></span>
+                      <button class="iconbtn !w-8 !h-8" @click="startName()" aria-label="Edit portfolio name"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                    </div>
+                  </template>
+                  <template x-if="editName">
+                    <div class="flex items-center gap-2">
+                      <input class="field !w-56" x-model="nameDraft" @keydown.enter="saveName()" @keydown.escape="editName=false" x-init="$nextTick(()=>$el.focus())" />
+                      <button class="iconbtn !w-8 !h-8" @click="saveName()" aria-label="Save"><i data-lucide="check" class="w-4 h-4" style="color:var(--fav)"></i></button>
+                      <button class="iconbtn !w-8 !h-8" @click="editName=false" aria-label="Cancel"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                  </template>
+                </div>
+                <div><label class="flbl">Base currency</label>
+                  <select class="isel" @change="notify('Currency → '+$event.target.value)"><option>USD · US Dollar</option><option>EUR · Euro</option><option>GBP · Pound Sterling</option><option>INR · Indian Rupee</option></select></div>
+                <div><label class="flbl">Total budget authorization</label>
+                  <div class="stepper">
+                    <button @click="budget=Math.max(100,budget-25); refresh()" aria-label="Decrease budget">−</button>
+                    <input class="mono" type="text" :value="'$'+budget+'M'" readonly />
+                    <button @click="budget+=25; refresh()" aria-label="Increase budget">+</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Hurdle Rate</h2>
+              <p class="text-[12px] mt-1" style="color:var(--ink-2)">The minimum IRR a project must clear to be worth funding. Everything is ranked and colored against it.</p>
+              <div class="mt-3 flex items-center justify-between">
+                <div><div class="num display text-[28px]" x-text="hurdle.toFixed(1)+'%'"></div><div class="lbl mt-0.5" x-text="funded.length+' bets clear it'"></div></div>
+                <div class="stepper">
+                  <button @click="setHurdle(-0.5)" aria-label="Lower hurdle">−</button>
+                  <input class="mono" type="text" :value="hurdle.toFixed(1)+'%'" readonly />
+                  <button @click="setHurdle(0.5)" aria-label="Raise hurdle">+</button>
+                </div>
+              </div>
+              <div class="track mt-4"><span :style="'width:'+(hurdle/25*100)+'%'"></span></div>
+              <div class="mt-4 space-y-1">
+                <div class="flex items-center justify-between py-1.5">
+                  <div><div class="text-[13px] font-semibold">Auto-fund above hurdle</div><div class="text-[11px]" style="color:var(--ink-3)">Fund every bet clearing the rate</div></div>
+                  <button class="switch" :class="{'on': autoFund}" @click="autoFund=!autoFund; if(autoFund) fundAllAboveHurdle()" role="switch" :aria-checked="autoFund"></button>
+                </div>
+                <div class="flex items-center justify-between py-1.5" style="border-top:1px solid var(--line)">
+                  <div><div class="text-[13px] font-semibold">Committee digest</div><div class="text-[11px]" style="color:var(--ink-3)">Weekly email of decisions</div></div>
+                  <button class="switch" :class="{'on': digest}" @click="digest=!digest" role="switch" :aria-checked="digest"></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-4 xl:col-span-2">
+              <h2 class="display text-[15px]">Edition</h2>
+              <p class="text-[12px] mt-1" style="color:var(--ink-2)">Deployed is the bright office ledger; Reserve is the after-hours copy. One class swap, tokens do the rest.</p>
+              <div class="mt-3 seg">
+                <button :class="{'on': edition==='light'}" @click="edition='light'">Deployed</button>
+                <button :class="{'on': edition==='dark'}" @click="edition='dark'">Reserve</button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <footer class="flex items-center justify-between flex-wrap gap-2 pt-1 pb-3">
+          <span class="lbl" style="color:var(--ink-3)">Compound · Capital Allocation · v1.0</span>
+          <span class="mono text-[11px]" style="color:var(--ink-3)">Figures illustrative · not investment advice</span>
+        </footer>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ===== MOBILE NAV DRAWER ===== -->
+<div x-show="mobileNav" x-transition.opacity class="fixed inset-0 z-40 lg:hidden scrim" @click="mobileNav=false"></div>
+<aside x-show="mobileNav" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
+       class="fixed inset-y-0 left-0 z-50 w-72 chrome flex flex-col lg:hidden">
+  <div class="flex items-center justify-between px-4 border-b chrome-seam" style="height:60px;border-bottom-width:1px">
+    <div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-md flex items-center justify-center" style="background:var(--accent);color:var(--on-accent)"><i data-lucide="bar-chart-big" class="w-4 h-4"></i></div>
+      <span class="display text-[16px]" style="color:var(--chrome-ink)" x-text="portfolioName"></span></div>
+    <button class="iconbtn chrome-icon" @click="mobileNav=false" aria-label="Close navigation"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <nav class="p-3 space-y-0.5 flex-1 overflow-y-auto">
+    <template x-for="n in nav" :key="'m'+n.k">
+      <a class="nav-item" :class="{'on': page===n.k}" href="#" @click.prevent="go(n.k); mobileNav=false"><i :data-lucide="n.i" class="w-[18px] h-[18px]"></i><span x-text="n.t"></span></a>
+    </template>
+  </nav>
+  <div class="p-3 border-t chrome-seam" style="border-top-width:1px">
+    <button class="btn btn-primary btn-block" @click="openModal(); mobileNav=false"><i data-lucide="plus" class="w-4 h-4"></i> New proposal</button>
+  </div>
+</aside>
+
+<!-- ===== EDIT DRAWER (project) ===== -->
+<div x-show="drawerOpen" x-transition.opacity class="fixed inset-0 z-[55] scrim" @click="drawerOpen=false"></div>
+<aside x-show="drawerOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+       class="fixed inset-y-0 right-0 z-[60] w-full sm:w-[440px] flex flex-col" style="background:var(--surface);border-left:1px solid var(--line-2);box-shadow:var(--shadow-lg)">
+  <div class="flex items-center justify-between px-4 border-b" style="height:60px;border-color:var(--line)">
+    <div><div class="lbl">Edit project</div><div class="display text-[16px]" x-text="editForm.name"></div></div>
+    <button class="iconbtn" @click="drawerOpen=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <div class="flex-1 overflow-y-auto p-4 space-y-3.5">
+    <div><label class="flbl">Project name</label><input class="field" type="text" x-model="editForm.name" /></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="flbl">Category</label><select class="isel" x-model="editForm.cat"><option>Growth</option><option>Maintenance</option><option>Compliance</option></select></div>
+      <div><label class="flbl">Decision</label><select class="isel" x-model="editForm.decision"><option>Fund</option><option>Hold</option><option>Reject</option></select></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="flbl">Capex ($M)</label><input class="field mono" type="number" step="1" x-model.number="editForm.spend" /></div>
+      <div><label class="flbl">NPV ($M)</label><input class="field mono" type="number" step="0.1" x-model.number="editForm.npv" /></div>
+      <div><label class="flbl">IRR (%)</label><input class="field mono" type="number" step="0.1" x-model.number="editForm.irr" /></div>
+      <div><label class="flbl">Payback (yrs)</label><input class="field mono" type="number" step="0.1" x-model.number="editForm.payback" /></div>
+    </div>
+    <div class="rounded-md p-3 flex items-center justify-between" style="background:var(--surface-2)">
+      <span class="lbl">IRR vs hurdle</span>
+      <span class="num display text-[16px]" :class="(+editForm.irr||0)>=hurdle?'fav':'unfav'"
+            x-text="((+editForm.irr||0)>=hurdle?'+':'−')+Math.abs((+editForm.irr||0)-hurdle).toFixed(1)+' pt'"></span>
+    </div>
+    <div><label class="flbl">Committee note</label><textarea class="field" x-model="editForm.note" placeholder="Add a note for the committee…"></textarea></div>
+    <div class="flex items-center justify-between py-1">
+      <div><div class="text-[13px] font-semibold">High execution risk</div><div class="text-[11px]" style="color:var(--ink-3)">Flag for extra diligence</div></div>
+      <button class="switch" :class="{'on': editForm.risk}" @click="editForm.risk=!editForm.risk" role="switch" :aria-checked="editForm.risk"></button>
+    </div>
+  </div>
+  <div class="p-4 border-t flex items-center gap-2" style="border-color:var(--line)">
+    <button class="btn btn-outline flex-1" @click="drawerOpen=false">Cancel</button>
+    <button class="btn btn-primary flex-1" @click="saveProject()"><i data-lucide="check" class="w-4 h-4"></i> Save changes</button>
+  </div>
+</aside>
+
+<!-- ===== MODAL (New project proposal) ===== -->
+<div x-show="modalOpen" x-transition.opacity class="fixed inset-0 z-[70] scrim flex items-start sm:items-center justify-center p-4 overflow-y-auto" @click="modalOpen=false">
+  <div @click.stop x-show="modalOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       class="card w-full max-w-lg my-8" style="box-shadow:var(--shadow-lg)">
+    <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color:var(--line)">
+      <div><div class="lbl">Capital request</div><div class="display text-[17px]">New Project Proposal</div></div>
+      <button class="iconbtn" @click="modalOpen=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="p-5 space-y-3.5 max-h-[70vh] overflow-y-auto">
+      <div><label class="flbl">Project name</label><input class="field" type="text" x-model="mForm.name" placeholder="e.g. Riverside Cogeneration" /></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="flbl">Category</label><select class="isel" x-model="mForm.cat"><option>Growth</option><option>Maintenance</option><option>Compliance</option></select></div>
+        <div><label class="flbl">Payback (yrs)</label><input class="field mono" type="number" step="0.1" x-model.number="mForm.payback" /></div>
+      </div>
+      <div><label class="flbl">Capex ($M)</label>
+        <div class="stepper"><button @click="mForm.capex=Math.max(1,mForm.capex-5)" aria-label="Decrease capex">−</button>
+          <input class="mono" type="number" x-model.number="mForm.capex" /><button @click="mForm.capex+=5" aria-label="Increase capex">+</button></div>
+      </div>
+      <div><label class="flbl">Expected IRR (%)</label><input class="field mono" type="number" step="0.1" x-model.number="mForm.irr" /></div>
+      <div><label class="flbl">Description</label><textarea class="field" x-model="mForm.desc" placeholder="What is this capital buying, and why now…"></textarea></div>
+      <div><label class="flbl">Tags</label>
+        <div class="flex flex-wrap gap-2">
+          <template x-for="tg in ['Strategic','Cost-out','ESG','Capacity','Digital']" :key="tg">
+            <button class="chipbtn" :class="{'on': mForm.tags.includes(tg)}" @click="toggleTag(tg)" x-text="tg"></button>
+          </template>
+        </div>
+      </div>
+      <div class="flex items-center justify-between py-1">
+        <div><div class="text-[13px] font-semibold">Fast-track to committee</div><div class="text-[11px]" style="color:var(--ink-3)">Recommend funding on intake</div></div>
+        <button class="switch" :class="{'on': mForm.fast}" @click="mForm.fast=!mForm.fast" role="switch" :aria-checked="mForm.fast"></button>
+      </div>
+    </div>
+    <div class="px-5 py-4 border-t flex items-center gap-2" style="border-color:var(--line)">
+      <button class="btn btn-outline flex-1" @click="modalOpen=false">Cancel</button>
+      <button class="btn btn-primary flex-1" @click="createProject()"><i data-lucide="check" class="w-4 h-4"></i> Add proposal</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="fixed bottom-4 right-4 z-[80] space-y-2 w-[calc(100%-2rem)] sm:w-auto sm:max-w-sm">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="toast px-3.5 py-3 flex items-start gap-3" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+      <i :data-lucide="t.icon" class="w-4 h-4 mt-0.5 shrink-0" :style="'color:'+t.color"></i>
+      <span class="text-[13px]" style="color:var(--ink)" x-text="t.msg"></span>
+    </div>
+  </template>
+</div>
+
+<script>
+function compound() {
+  return {
+    edition: 'light',
+    page: 'overview',
+    mobileNav: false,
+    modalOpen: false,
+    drawerOpen: false,
+    category: 'All',
+    sortBy: 'NPV',
+    search: '',
+    selected: 7,
+    hurdle: 12.0,
+    budget: 300,
+    repPeriod: 'Cycle', repCommentary: true, repEmail: false,
+    autoFund: false, digest: true,
+    portfolioName: 'Compound', editName: false, nameDraft: '',
+    editForm: {}, drawerRef: null,
+    mForm: { name:'', cat:'Growth', capex:40, irr:15.0, payback:5.0, desc:'', tags:[], fast:false },
+    toasts: [], _tid: 0, charts: {},
+
+    nav: [
+      { k:'overview', t:'Overview',  i:'layout-dashboard' },
+      { k:'projects', t:'Projects',  i:'list-ordered', badge:'10' },
+      { k:'pipeline', t:'Pipeline',  i:'git-branch',   badge:'8' },
+      { k:'capital',  t:'Capital',   i:'landmark' },
+      { k:'analysis', t:'Analysis',  i:'line-chart' },
+      { k:'reports',  t:'Reports',   i:'folder-open' },
+      { k:'settings', t:'Settings',  i:'settings' },
+    ],
+
+    projects: [
+      { id:1, name:'Northgate Acquisition',   cat:'Growth',      npv:55.3, irr:21.6, payback:3.9, spend:88, decision:'Fund',   risk:true,  note:'Strategic bolt-on; synergy case reviewed.' },
+      { id:2, name:'Westfield Solar Farm',    cat:'Growth',      npv:42.5, irr:18.4, payback:4.2, spend:68, decision:'Fund',   risk:false, note:'' },
+      { id:3, name:'Harbor DC Expansion',     cat:'Growth',      npv:28.1, irr:16.2, payback:5.1, spend:51, decision:'Hold',   risk:false, note:'Awaiting demand signal.' },
+      { id:4, name:'Grid Battery Storage',    cat:'Growth',      npv:19.6, irr:15.8, payback:4.8, spend:33, decision:'Fund',   risk:false, note:'' },
+      { id:5, name:'Coastal Wind Pilot',      cat:'Growth',      npv:14.2, irr:12.9, payback:6.2, spend:40, decision:'Hold',   risk:true,  note:'Pilot; permitting risk.' },
+      { id:6, name:'Line 4 Retooling',        cat:'Maintenance', npv:12.8, irr:14.1, payback:3.6, spend:24, decision:'Fund',   risk:false, note:'' },
+      { id:7, name:'Automation Cell',         cat:'Maintenance', npv:9.9,  irr:13.5, payback:4.4, spend:17, decision:'Fund',   risk:false, note:'' },
+      { id:8, name:'Legacy ERP Migration',    cat:'Maintenance', npv:6.4,  irr:11.2, payback:5.5, spend:14, decision:'Hold',   risk:true,  note:'Cross-cutting; sequencing risk.' },
+      { id:9, name:'Emissions Scrubber',      cat:'Compliance',  npv:2.1,  irr:9.2,  payback:7.1, spend:19, decision:'Fund',   risk:false, note:'Regulatory obligation.' },
+      { id:10,name:'Safety Systems Upgrade',  cat:'Compliance',  npv:-1.8, irr:5.4,  payback:9.2, spend:11, decision:'Reject', risk:false, note:'Below hurdle; mandatory minimum only.' },
+    ],
+
+    proposals: [
+      { id:101, name:'Riverside Cogeneration', cat:'Growth',      capex:56, sponsor:'Ops · M. Reyes',  stage:'Committee' },
+      { id:102, name:'Fleet Electrification',  cat:'Maintenance', capex:22, sponsor:'Fleet · D. Cole',  stage:'Review' },
+      { id:103, name:'Warehouse Robotics',     cat:'Growth',      capex:37, sponsor:'Ops · L. Grant',   stage:'Screening' },
+      { id:104, name:'Water Treatment Retrofit',cat:'Compliance', capex:14, sponsor:'EHS · P. Okoro',   stage:'Intake' },
+      { id:105, name:'Data Center Cooling',    cat:'Maintenance', capex:19, sponsor:'IT · S. Vaughn',   stage:'Review' },
+      { id:106, name:'Regional Distribution',  cat:'Growth',      capex:61, sponsor:'Comm · A. Bianchi', stage:'Screening' },
+      { id:107, name:'Grid Interconnect',      cat:'Growth',      capex:44, sponsor:'Eng · R. Malik',    stage:'Committee' },
+      { id:108, name:'Boiler Replacement',     cat:'Compliance',  capex:9,  sponsor:'EHS · T. Nash',     stage:'Approved' },
+    ],
+
+    pipeline: [
+      { k:'Intake',    i:'inbox',          n:24, v:412 },
+      { k:'Screening', i:'filter',         n:16, v:288 },
+      { k:'Review',    i:'search-check',   n:11, v:196 },
+      { k:'Committee', i:'users',          n:7,  v:131 },
+      { k:'Approved',  i:'circle-check',   n:5,  v:96  },
+    ],
+
+    reports: [
+      { n:'IC Committee Pack',      d:'Generated Jun 28', i:'presentation' },
+      { n:'Ranking Book',          d:'Generated Jun 27', i:'list-ordered' },
+      { n:'Capital Allocation',    d:'Generated Jun 26', i:'landmark' },
+      { n:'Pipeline Funnel',       d:'Generated Jun 25', i:'git-branch' },
+      { n:'Hurdle Sensitivity',    d:'Due Jul 15',       i:'ruler' },
+      { n:'Post-Investment Review', d:'Generated Jun 22', i:'clipboard-check' },
+    ],
+
+    kpiSparks: {
+      deployed:  [148,162,171,185,196,232],
+      irr:       [15.8,16.4,16.9,17.5,17.8,18.0],
+      payback:   [5.4,5.1,5.0,4.9,4.8,4.7],
+      hurdle:    [11,11,11.5,11.5,12,12],
+      available: [152,138,129,115,104,68],
+    },
+
+    // ---------- getters ----------
+    get funded() { return this.projects.filter(p => p.decision === 'Fund'); },
+    get deployed() { return this.funded.reduce((s,p)=>s+p.spend, 0); },
+    get available() { return this.budget - this.deployed; },
+    get fundedNpv() { return this.funded.reduce((s,p)=>s+p.npv, 0); },
+    get portfolioIrr() {
+      const f = this.funded; if (!f.length) return 0;
+      const sp = f.reduce((s,p)=>s+p.spend,0);
+      return f.reduce((s,p)=>s+p.irr*p.spend,0) / sp;
+    },
+    get avgPayback() {
+      const f = this.funded; if (!f.length) return 0;
+      return f.reduce((s,p)=>s+p.payback,0) / f.length;
+    },
+    get counts() {
+      const c = { Fund:0, Hold:0, Reject:0 };
+      this.projects.forEach(p => c[p.decision]++);
+      return c;
+    },
+    get filtered() {
+      let r = this.projects.filter(p => this.category === 'All' || p.cat === this.category);
+      const key = { NPV:'npv', IRR:'irr', Payback:'payback' }[this.sortBy];
+      r = [...r].sort((a,b) => this.sortBy === 'Payback' ? a[key]-b[key] : b[key]-a[key]);
+      return r;
+    },
+    get projRows() {
+      const q = this.search.trim().toLowerCase();
+      return this.filtered.filter(p => !q || p.name.toLowerCase().includes(q));
+    },
+    get selectedProject() { return this.projects.find(p => p.id === this.selected) || this.projects[0]; },
+    get allocation() {
+      const cats = ['Growth','Maintenance','Compliance'];
+      return cats.map(c => ({ l:c, c:this.catColor(c),
+        v:this.funded.filter(p=>p.cat===c).reduce((s,p)=>s+p.spend,0) })).filter(a=>a.v>0);
+    },
+    get capitalRows() {
+      const bud = { Growth:180, Maintenance:70, Compliance:50 };
+      return ['Growth','Maintenance','Compliance'].map(c => ({
+        cat:c, budget:bud[c],
+        committed:this.funded.filter(p=>p.cat===c).reduce((s,p)=>s+p.spend,0),
+      }));
+    },
+    get kpis() {
+      return [
+        { t:'Capital Deployed',    i:'landmark',            v:'$'+this.deployed.toFixed(0)+'M', d:this.funded.length+' funded', sub:'of $'+this.budget+'M', tone:'gold', icon:'wallet',          key:'deployed' },
+        { t:'Portfolio IRR',       i:'trending-up',         v:this.portfolioIrr.toFixed(1)+'%', d:(this.portfolioIrr>=this.hurdle?'+':'−')+Math.abs(this.portfolioIrr-this.hurdle).toFixed(1)+' pt', sub:'vs hurdle', tone:'fav', icon:'arrow-up-right', key:'irr' },
+        { t:'Avg Payback',         i:'timer',               v:this.avgPayback.toFixed(1)+' y',  d:'−0.7 y', sub:'YoY', tone:'fav', icon:'arrow-down-right', key:'payback' },
+        { t:'Hurdle Rate',         i:'ruler',               v:this.hurdle.toFixed(1)+'%',       d:'set by IC', sub:'minimum IRR', tone:'hold', icon:'minus', key:'hurdle' },
+        { t:'Available',           i:'circle-dollar-sign',  v:'$'+this.available.toFixed(0)+'M',d:(this.available/this.budget*100).toFixed(0)+'% free', sub:'to allocate', tone:'gold', icon:'coins', key:'available' },
+      ];
+    },
+
+    // ---------- formatting / colors ----------
+    fmtM(n) { return (n<0?'−$':'$') + Math.abs(n).toFixed(1) + 'M'; },
+    css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); },
+    catColor(c) { return { Growth:this.css('--accent'), Maintenance:this.css('--fav'), Compliance:this.css('--hold') }[c] || this.css('--ink-3'); },
+    decColor(d) { return { Fund:this.css('--fav-ink'), Hold:this.css('--accent-ink'), Reject:this.css('--unfav-ink') }[d]; },
+    decSoft(d) { return { Fund:this.css('--fav-soft'), Hold:this.css('--accent-soft'), Reject:this.css('--unfav-soft') }[d]; },
+    decBar(d) { return { Fund:this.css('--fav'), Hold:this.css('--accent'), Reject:this.css('--unfav') }[d]; },
+    chipClass(d) { return { Fund:'chip-fav', Hold:'chip-gold', Reject:'chip-unfav' }[d]; },
+    stageColor(s) { return { Intake:'var(--ink-3)', Screening:'var(--hold-ink)', Review:'var(--accent-ink)', Committee:'var(--link)', Approved:'var(--fav-ink)' }[s] || 'var(--ink)'; },
+
+    // ---------- actions ----------
+    toggleEdition() { this.edition = this.edition === 'light' ? 'dark' : 'light'; },
+    go(k) { this.page = k; },
+    closeAll() { this.modalOpen = false; this.drawerOpen = false; this.mobileNav = false; this.editName = false; },
+    setSort(s) { this.sortBy = s; this.notify('Ranked by '+s, 'gold'); },
+    select(id) { this.selected = id; },
+    setHurdle(d) { this.hurdle = Math.max(4, Math.min(24, +(this.hurdle + d).toFixed(1))); this.refresh(); },
+    onDecision(p) {
+      this.notify(p.name+' → '+p.decision, p.decision==='Fund'?'fav':p.decision==='Reject'?'unfav':'gold');
+      this.refresh();
+    },
+    fundAllAboveHurdle() {
+      let n = 0;
+      this.projects.forEach(p => { if (p.irr >= this.hurdle && p.npv > 0 && p.decision !== 'Fund') { p.decision = 'Fund'; n++; } });
+      this.notify(n ? 'Funded '+n+' project'+(n>1?'s':'')+' above hurdle' : 'All above-hurdle bets already funded', 'fav');
+      this.refresh();
+    },
+
+    openModal() { this.modalOpen = true; this.$nextTick(() => lucide.createIcons()); },
+    toggleTag(t) { this.mForm.tags = this.mForm.tags.includes(t) ? this.mForm.tags.filter(x=>x!==t) : [...this.mForm.tags, t]; },
+    createProject() {
+      const m = this.mForm;
+      if (!m.name.trim()) { this.notify('Give the proposal a name', 'unfav'); return; }
+      const id = Math.max(...this.projects.map(p=>p.id)) + 1;
+      const npv = +((m.irr - this.hurdle) / 100 * m.capex * Math.min(m.payback, 6)).toFixed(1);
+      this.projects.push({ id, name:m.name.trim(), cat:m.cat, npv, irr:+m.irr, payback:+m.payback, spend:+m.capex,
+        decision: m.fast ? 'Fund' : 'Hold', risk:false, note:m.desc });
+      this.modalOpen = false;
+      this.mForm = { name:'', cat:'Growth', capex:40, irr:15.0, payback:5.0, desc:'', tags:[], fast:false };
+      this.notify('Added '+this.projects[this.projects.length-1].name, 'fav');
+      this.refresh();
+    },
+
+    openProject(p) { this.drawerRef = p; this.editForm = Object.assign({}, p); this.drawerOpen = true; this.$nextTick(() => lucide.createIcons()); },
+    saveProject() {
+      if (this.drawerRef) {
+        ['spend','npv','irr','payback'].forEach(k => this.editForm[k] = +this.editForm[k] || 0);
+        Object.assign(this.drawerRef, this.editForm);
+      }
+      this.drawerOpen = false;
+      this.notify('Saved '+this.editForm.name+' · portfolio recomputed', 'fav');
+      this.refresh();
+    },
+    startName() { this.nameDraft = this.portfolioName; this.editName = true; },
+    saveName() { if (this.nameDraft.trim()) this.portfolioName = this.nameDraft.trim(); this.editName = false; this.notify('Portfolio renamed'); },
+
+    notify(msg, tone='gold') {
+      const map = { fav:['circle-check','--fav-ink'], unfav:['circle-x','--unfav-ink'], gold:['check-circle-2','--accent-ink'], info:['info','--ink-2'] };
+      const [icon, tok] = map[tone] || map.gold;
+      const id = ++this._tid;
+      this.toasts.push({ id, msg, icon, color:this.css(tok) });
+      this.$nextTick(() => lucide.createIcons());
+      setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 2600);
+    },
+
+    refresh() { this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); }); },
+
+    init() {
+      this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); });
+      this.$watch('edition', () => this.$nextTick(() => { lucide.createIcons(); this.recolor(); }));
+      this.$watch('page', (p) => this.$nextTick(() => { lucide.createIcons(); this.renderFor(p); }));
+      ['category','search','modalOpen','drawerOpen','repEmail','editName'].forEach(k =>
+        this.$watch(k, () => this.$nextTick(() => { lucide.createIcons(); if (k==='category') this.renderFor(this.page); })));
+    },
+
+    // ---------- charts ----------
+    renderFor(page) {
+      Chart.defaults.font.family = "'Roboto Mono', monospace";
+      Chart.defaults.font.size = 10;
+      const map = {
+        overview: () => { this.drawSparks(); this.drawAlloc('ovAlloc'); this.drawNpv('ovNpv'); this.drawTrend(); },
+        pipeline: () => { this.drawFunnel(); this.drawPipeTrend(); },
+        capital:  () => { this.drawAlloc('capDough'); this.drawCapBars(); },
+        analysis: () => { this.drawCash('anCash'); this.drawSens(); },
+      };
+      (map[page] || (()=>{}))();
+    },
+    recolor() { Object.values(this.charts).forEach(c => { try { c.destroy(); } catch(e){} }); this.charts = {}; this.renderFor(this.page); },
+
+    _mk(id, cfg) {
+      const el = document.getElementById(id); if (!el || el.offsetParent === null) return;
+      const prev = Chart.getChart(el); if (prev) prev.destroy();
+      this.charts[id] = new Chart(el.getContext('2d'), cfg);
+    },
+    _grad(ctx, area, color) { const g = ctx.createLinearGradient(0, area.top, 0, area.bottom); g.addColorStop(0, color+'44'); g.addColorStop(1, color+'00'); return g; },
+    _tt() { return { backgroundColor:this.css('--surface'), borderColor:this.css('--line-2'), borderWidth:1, titleColor:this.css('--ink'), bodyColor:this.css('--ink-2'), padding:8 }; },
+    _axis(fmt) { return { grid:{ color:this.css('--line') }, ticks:{ color:this.css('--ink-3'), callback:fmt } }; },
+
+    drawSparks() {
+      this.kpis.forEach((k,i) => {
+        const data = this.kpiSparks[k.key] || [];
+        const col = k.tone === 'fav' ? this.css('--fav') : k.tone === 'hold' ? this.css('--hold') : this.css('--accent');
+        this._mk('ksp'+i, { type:'line', data:{ labels:data.map((_,j)=>j), datasets:[{ data, borderColor:col, borderWidth:1.6, tension:0.4, pointRadius:0, fill:true,
+          backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, col) : col+'22' }]},
+          options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
+      });
+    },
+    drawNpv(id) {
+      const rows = this.filtered;
+      const colors = rows.map(p => this.decBar(p.decision));
+      this._mk(id, { type:'bar', data:{ labels:rows.map(p=>p.name), datasets:[{ data:rows.map(p=>p.npv), backgroundColor:colors, borderRadius:4, barThickness:16 }]},
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false,
+          plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' NPV '+(c.parsed.x<0?'−$':'$')+Math.abs(c.parsed.x).toFixed(1)+'M' }}},
+          scales:{ x:{ ...this._axis((v)=>(v<0?'−$':'$')+Math.abs(v)), grid:{color:this.css('--line')} },
+                   y:{ grid:{display:false}, ticks:{color:this.css('--ink-2'), font:{size:10.5}} } } } });
+    },
+    drawAlloc(id) {
+      const a = this.allocation;
+      this._mk(id, { type:'doughnut', data:{ labels:a.map(x=>x.l), datasets:[{ data:a.map(x=>x.v), backgroundColor:a.map(x=>x.c), borderColor:this.css('--surface'), borderWidth:3, hoverOffset:6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'64%', animation:false,
+          plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.label+' · $'+c.parsed.toFixed(0)+'M' }}} } });
+    },
+    drawTrend() {
+      const acc = this.css('--accent');
+      this._mk('ovTrend', { type:'line', data:{ labels:['Jan','Feb','Mar','Apr','May','Jun'], datasets:[{ data:[148,162,171,185,196,this.deployed], borderColor:acc, borderWidth:2, tension:0.35, pointRadius:0, pointHoverRadius:4, fill:true,
+        backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, acc) : acc+'22' }]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), displayColors:false, callbacks:{ title:(c)=>c[0].label, label:(c)=>'Deployed $'+c.parsed.y.toFixed(0)+'M' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} }, y:{ position:'right', ...this._axis((v)=>'$'+v+'M') } } } });
+    },
+    drawFunnel() {
+      const acc = this.css('--accent');
+      const s = this.pipeline;
+      this._mk('pipeFunnel', { type:'bar', data:{ labels:s.map(x=>x.k), datasets:[{ data:s.map(x=>x.n), backgroundColor:acc, borderRadius:4, barThickness:26 }]},
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false,
+          plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.parsed.x+' proposals' }}},
+          scales:{ x:{ ...this._axis((v)=>v), beginAtZero:true }, y:{ grid:{display:false}, ticks:{color:this.css('--ink-2'), font:{size:11}} } } } });
+    },
+    drawPipeTrend() {
+      const fav = this.css('--fav'), acc = this.css('--accent');
+      this._mk('pipeTrend', { data:{ labels:['Jan','Feb','Mar','Apr','May','Jun'], datasets:[
+        { type:'bar', label:'Intake', data:[18,21,17,24,20,24], backgroundColor:acc, borderRadius:4, barPercentage:0.6, order:2 },
+        { type:'line', label:'Approved', data:[3,4,3,5,4,5], borderColor:fav, borderWidth:2, tension:0.35, pointRadius:0, order:1 } ]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.dataset.label+': '+c.parsed.y }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} }, y:{ ...this._axis((v)=>v), beginAtZero:true } } } });
+    },
+    drawCapBars() {
+      const rows = this.capitalRows;
+      const acc = this.css('--accent'), line = this.css('--ink-2');
+      this._mk('capBars', { data:{ labels:rows.map(r=>r.cat), datasets:[
+        { type:'bar', label:'Committed', data:rows.map(r=>r.committed), backgroundColor:rows.map(r=>this.catColor(r.cat)), borderRadius:4, barPercentage:0.6, categoryPercentage:0.7, order:2 },
+        { type:'bar', label:'Budget', data:rows.map(r=>r.budget), backgroundColor:'transparent', borderColor:line, borderWidth:1.5, borderRadius:4, barPercentage:0.6, categoryPercentage:0.7, order:1 } ]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.dataset.label+': $'+c.parsed.y.toFixed(0)+'M' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-2')} }, y:{ ...this._axis((v)=>'$'+v+'M'), beginAtZero:true } } } });
+    },
+    drawCash(id) {
+      const p = this.selectedProject;
+      const years = 8;
+      const annual = p.spend / p.payback;
+      const labels = [], data = [];
+      for (let y = 0; y <= years; y++) { labels.push('Y'+y); data.push(+(-p.spend + annual*y).toFixed(1)); }
+      const acc = this.css('--accent'), pos = this.css('--fav');
+      this._mk(id, { type:'line', data:{ labels, datasets:[{ data, borderColor:acc, borderWidth:2, tension:0.15, fill:true,
+        pointRadius:(c)=> c.parsed && Math.abs(c.parsed.y) < annual/2 ? 4 : 0, pointBackgroundColor:pos, pointBorderColor:pos,
+        backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, acc) : acc+'22' }]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false,
+          plugins:{legend:{display:false}, tooltip:{...this._tt(), displayColors:false, callbacks:{ title:(c)=>c[0].label, label:(c)=>'Cumulative '+(c.parsed.y<0?'−$':'$')+Math.abs(c.parsed.y).toFixed(1)+'M' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} },
+                   y:{ ...this._axis((v)=>(v<0?'−$':'$')+Math.abs(v)), grid:{ color:(ctx)=> ctx.tick.value===0 ? this.css('--line-2') : this.css('--line') } } } } });
+    },
+    drawSens() {
+      const p = this.selectedProject;
+      const deltas = [-4,-2,0,2,4];
+      const vals = deltas.map(d => +(p.npv + d * p.spend * 0.14).toFixed(1));
+      const fav = this.css('--fav'), unfav = this.css('--unfav');
+      this._mk('anSens', { type:'bar', data:{ labels:deltas.map(d=>(d>0?'+':'')+d+'pt'), datasets:[{ data:vals, backgroundColor:vals.map(v=>v>=0?fav:unfav), borderRadius:4, barPercentage:0.6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' NPV '+(c.parsed.y<0?'−$':'$')+Math.abs(c.parsed.y).toFixed(1)+'M' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-2')} }, y:{ ...this._axis((v)=>(v<0?'−$':'$')+Math.abs(v)) } } } });
+    },
+  };
+}
+</script>
+</body>
+</html>

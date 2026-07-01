@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Confluence — Group Consolidation &amp; Close</title>
+<meta name="description" content="Confluence — a consolidation design system for the group controller. Many books, one truth: an entity registry, a Local → FX-translated → Consolidated worksheet that ties out, an intercompany elimination matrix, a close heatmap across entities and tasks, editable FX translation rates, reports and settings. A full multi-page app shell with light and dark editions." />
+<meta name="theme-color" content="#20294A" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23445A9C'/%3E%3Cpath d='M9 7c0 6 3 8.5 7 9.5 4 1 7 3.5 7 9.5' fill='none' stroke='%23FFFFFF' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='M23 7c0 6-3 8.5-7 9.5' fill='none' stroke='%23BFCBEA' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600;700;800&family=Fira+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: { fontFamily: {
+      sans: ['"Albert Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      mono: ['"Fira Mono"', 'ui-monospace', 'monospace'],
+    } } },
+  };
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<style>
+  /* ============================================================
+     CONFLUENCE — EDITION TOKENS
+     "Many books, one truth." Consolidation is institutional and
+     structured: cool blue-gray canvas, crisp white ledgers, a
+     steel-indigo brand. Rivers joining — many entities rolling
+     up into one group. Light is the hero; dark is the alt copy.
+     An edition swap is one class on <body>.
+     ============================================================ */
+
+  :root, .light {
+    color-scheme: light;
+    --canvas:#EEF2F6; --surface:#FFFFFF; --surface-2:#E7ECF2;
+    --line:#DEE5EC; --line-2:#C6D0DB;
+    --ink:#17222E; --ink-2:#4E5D6E; --ink-3:#8391A0;
+    --chrome:#20294A; --chrome-2:#2C3860; --chrome-line:#3A4770;
+    --chrome-ink:#EDF0F8; --chrome-ink-2:#9AA6C6;
+    --accent:#445A9C; --accent-2:#3A4E88; --accent-ink:#3B4E8C;
+    --accent-soft:#E7EBF6; --on-accent:#FFFFFF;
+    --link:#3D5AAE; --link-soft:#E6EAF7;
+    --pos:#1E8E5A; --pos-soft:#E1F1E9; --neg:#C34733; --neg-soft:#F8E6E1;
+    --warn:#B5871E; --warn-soft:#F6ECD5; --neutral:#5D6B7C;
+    --r:9px; --r-sm:6px;
+    --shadow:0 1px 2px rgba(23,34,46,.05), 0 2px 8px rgba(23,34,46,.06);
+    --shadow-lg:0 14px 38px rgba(23,34,46,.16), 0 3px 10px rgba(23,34,46,.10);
+    --scrim:rgba(23,34,46,.46);
+  }
+
+  .dark {
+    color-scheme: dark;
+    --canvas:#0E1420; --surface:#151D2C; --surface-2:#1D2738;
+    --line:#273347; --line-2:#3A485E;
+    --ink:#E6ECF3; --ink-2:#A0AEC0; --ink-3:#6B7A8D;
+    --chrome:#0A0F1B; --chrome-2:#151D2E; --chrome-line:#212C40;
+    --chrome-ink:#E6ECF3; --chrome-ink-2:#8A97B4;
+    --accent:#7E93D6; --accent-2:#93A5DE; --accent-ink:#93A5DE;
+    --accent-soft:rgba(126,147,214,.16); --on-accent:#0E1420;
+    --link:#8EA0DB; --link-soft:rgba(142,160,219,.18);
+    --pos:#35C08A; --pos-soft:rgba(53,192,138,.16); --neg:#E06A54; --neg-soft:rgba(224,106,84,.16);
+    --warn:#E0B24E; --warn-soft:rgba(224,178,78,.16); --neutral:#94A0AF;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 26px rgba(0,0,0,.46);
+    --shadow-lg:0 16px 46px rgba(0,0,0,.6), 0 4px 12px rgba(0,0,0,.5);
+    --scrim:rgba(3,6,11,.66);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: 'Albert Sans', ui-sans-serif, system-ui, sans-serif;
+    background: var(--canvas); color: var(--ink);
+    font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  [x-cloak] { display: none !important; }
+  .mono { font-family: 'Fira Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .num  { font-family: 'Fira Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  a, button, select, input, textarea, [tabindex] { outline: none; }
+  a:focus-visible, button:focus-visible, select:focus-visible,
+  input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--link); outline-offset: 2px; border-radius: var(--r-sm);
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+  .lbl { font-family: 'Fira Mono', monospace; font-size: 10px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+  .display { font-weight: 800; letter-spacing: -.02em; }
+  .chrome { background: var(--chrome); color: var(--chrome-ink); }
+  .chrome-seam { border-color: var(--chrome-line) !important; }
+  .pos { color: var(--pos); } .neg { color: var(--neg); } .flat { color: var(--neutral); }
+
+  .nav-item { position: relative; display: flex; align-items: center; gap: 11px; height: 40px;
+    padding: 0 13px; border-radius: var(--r-sm); color: var(--chrome-ink-2); cursor: pointer;
+    font-weight: 500; transition: background .12s, color .12s; }
+  .nav-item:hover { background: var(--chrome-2); color: var(--chrome-ink); }
+  .nav-item.on { background: var(--chrome-2); color: var(--chrome-ink); font-weight: 600; }
+  .nav-item.on::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 3px; background: var(--accent); border-radius: 0 3px 3px 0; }
+  .nav-item.on i { color: var(--accent); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px;
+    padding: 0 15px; border-radius: var(--r-sm); font-weight: 600; font-size: 13px;
+    border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+    transition: background .12s, border-color .12s, transform .06s; }
+  .btn:active { transform: scale(.985); }
+  .btn-primary { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+  .btn-primary:hover { background: var(--accent-2); }
+  .btn-outline { background: transparent; color: var(--ink); border-color: var(--line-2); }
+  .btn-outline:hover { background: var(--surface-2); }
+  .btn-ghost { background: var(--surface-2); color: var(--ink); }
+  .btn-ghost:hover { background: var(--line); }
+  .btn-sm { height: 32px; padding: 0 11px; font-size: 12px; }
+  .btn-block { width: 100%; }
+  .iconbtn { width: 38px; height: 38px; border-radius: var(--r-sm); display: flex; align-items: center;
+    justify-content: center; color: var(--ink-2); cursor: pointer; border: 1px solid transparent; background: transparent; }
+  .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
+  .chrome-icon { color: var(--chrome-ink-2); background: var(--chrome-2); }
+  .chrome-icon:hover { background: var(--chrome-line); color: var(--chrome-ink); }
+
+  .field, textarea.field { width: 100%; background: var(--surface-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 11px; height: 38px; font-size: 13px;
+    font-family: 'Albert Sans', sans-serif; }
+  textarea.field { padding: 9px 11px; min-height: 78px; height: auto; resize: vertical; line-height: 1.5; }
+  .field::placeholder, textarea.field::placeholder { color: var(--ink-3); }
+  .flbl { font-size: 11px; font-weight: 700; color: var(--ink-2); margin-bottom: 5px; display: block; letter-spacing: .01em; }
+
+  .isel { width: 100%; background: var(--surface-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 30px 0 11px; height: 38px; font-size: 13px;
+    font-family: 'Albert Sans', sans-serif; appearance: none; -webkit-appearance: none; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+    background-position: calc(100% - 15px) 16px, calc(100% - 10px) 16px; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; height: 21px; padding: 0 8px;
+    border-radius: 5px; font-family: 'Fira Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: .03em; }
+  .chip-pos { color: var(--pos); background: var(--pos-soft); }
+  .chip-neg { color: var(--neg); background: var(--neg-soft); }
+  .chip-warn { color: var(--warn); background: var(--warn-soft); }
+  .chip-link { color: var(--link); background: var(--link-soft); }
+  .chip-flat { color: var(--neutral); background: var(--surface-2); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  .chipbtn { cursor: pointer; border: 1px solid var(--line-2); background: transparent; color: var(--ink-2);
+    height: 30px; padding: 0 13px; border-radius: 999px; font-size: 12px; font-weight: 600; transition: .12s; }
+  .chipbtn:hover { background: var(--surface-2); }
+  .chipbtn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px; }
+  .seg button { height: 28px; padding: 0 12px; border: 0; background: transparent; color: var(--ink-2);
+    font-family: 'Fira Mono', monospace; font-size: 11px; font-weight: 700; border-radius: 4px; cursor: pointer; letter-spacing: .03em; }
+  .seg button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+  /* toggle switch */
+  .switch { width: 40px; height: 23px; border-radius: 999px; background: var(--line-2); position: relative;
+    cursor: pointer; transition: background .15s; flex: none; border: 0; }
+  .switch.on { background: var(--accent); }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 19px; height: 19px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+  .switch.on::after { transform: translateX(17px); }
+
+  /* stepper */
+  .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: var(--surface-2); overflow: hidden; }
+  .stepper button { width: 36px; height: 38px; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; font-size: 17px; line-height: 1; }
+  .stepper button:hover { background: var(--line); color: var(--ink); }
+  .stepper input { width: 84px; height: 38px; border: 0; background: transparent; text-align: center; color: var(--ink);
+    font-family: 'Fira Mono', monospace; font-variant-numeric: tabular-nums; }
+
+  table { border-collapse: collapse; width: 100%; }
+  .tbl th { font-family: 'Fira Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-3); text-align: right; padding: 9px 12px; white-space: nowrap;
+    border-bottom: 1px solid var(--line-2); cursor: pointer; user-select: none; }
+  .tbl th:first-child, .tbl td:first-child { text-align: left; }
+  .tbl td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  .tbl tbody tr { transition: background .1s; }
+  .tbl tbody tr:hover { background: var(--surface-2); }
+  .tbl tbody tr.clickable { cursor: pointer; }
+  .tbl .row-region td { background: var(--surface-2); border-bottom: 1px solid var(--line-2);
+    border-top: 1px solid var(--line-2); }
+  .tbl .row-sub td { font-weight: 700; border-top: 1px solid var(--line-2); background: var(--surface-2); }
+  .tbl .row-total td { font-weight: 800; border-top: 2px solid var(--ink); font-size: 14px; padding-top: 11px; padding-bottom: 11px; }
+  .indent { padding-left: 28px !important; }
+
+  .toast { background: var(--surface); border: 1px solid var(--line-2); border-left: 3px solid var(--accent);
+    box-shadow: var(--shadow-lg); border-radius: var(--r-sm); }
+  .scrim { background: var(--scrim); backdrop-filter: blur(2px); }
+  .track { height: 7px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .track > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+
+  .hmcell { width: 100%; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid transparent; cursor: pointer; transition: transform .1s, box-shadow .1s; }
+  .hmcell:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+
+  .kv { display: flex; align-items: baseline; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .kv:last-child { border-bottom: 0; }
+</style>
+</head>
+
+<body x-data="consol()" x-cloak x-init="init()" :class="edition" @keydown.escape.window="closeAll()">
+
+<div class="h-screen flex flex-col">
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="chrome border-b chrome-seam shrink-0 flex items-center gap-3 px-3 sm:px-4" style="height:60px;border-bottom-width:1px">
+    <button class="iconbtn chrome-icon lg:hidden" @click="mobileNav=true" aria-label="Open navigation">
+      <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
+
+    <div class="flex items-center gap-2.5 select-none">
+      <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background:var(--accent);color:var(--on-accent)">
+        <i data-lucide="git-merge" class="w-5 h-5"></i>
+      </div>
+      <div class="leading-none">
+        <div class="display text-[17px]" style="color:var(--chrome-ink)">Confluence</div>
+        <div class="lbl mt-1" style="font-size:8.5px;color:var(--chrome-ink-2)">Group Consolidation</div>
+      </div>
+    </div>
+
+    <div class="hidden md:flex items-center gap-2 ml-4">
+      <div class="seg" style="background:var(--chrome-2);border-color:var(--chrome-line)">
+        <template x-for="pr in ['MTD','QTD','YTD']" :key="pr">
+          <button :class="{'on': period===pr}" @click="setPeriod(pr)" x-text="pr"
+                  :style="period===pr ? 'background:var(--chrome-line);color:var(--chrome-ink)' : 'color:var(--chrome-ink-2)'"></button>
+        </template>
+      </div>
+      <div class="flex items-center gap-2 h-9 px-3 rounded-md" style="background:var(--chrome-2)">
+        <i data-lucide="calendar" class="w-4 h-4" style="color:var(--chrome-ink-2)"></i>
+        <span class="mono text-[12px] font-bold" style="color:var(--chrome-ink)">Jun · FY2026</span>
+      </div>
+    </div>
+
+    <div class="flex-1"></div>
+
+    <div class="hidden sm:flex items-center gap-2.5 px-3 h-9 rounded-md" style="background:var(--chrome-2)">
+      <span class="dot" style="background:var(--accent)"></span>
+      <span class="mono text-[11px] font-bold" style="color:var(--chrome-ink)" x-text="reportingCount+'/'+entities.length+' REPORTING'"></span>
+    </div>
+
+    <button class="btn btn-primary btn-sm hidden sm:inline-flex" @click="openModal()">
+      <i data-lucide="plus" class="w-4 h-4"></i> Add entity
+    </button>
+    <button class="iconbtn chrome-icon" @click="toggleEdition()" :aria-label="'Switch to '+(edition==='light'?'dark':'light')+' edition'">
+      <i :data-lucide="edition==='light' ? 'moon' : 'sun'" class="w-5 h-5"></i>
+    </button>
+    <button class="iconbtn chrome-icon relative" aria-label="Notifications">
+      <i data-lucide="bell" class="w-5 h-5"></i>
+      <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style="background:var(--accent)"></span>
+    </button>
+    <div class="w-9 h-9 rounded-md hidden sm:flex items-center justify-center mono text-[12px] font-bold shrink-0"
+         style="background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--line-2)">GC</div>
+  </header>
+
+  <div class="flex flex-1 min-h-0">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="chrome border-r chrome-seam w-60 shrink-0 hidden lg:flex flex-col" style="border-right-width:1px">
+      <nav class="p-3 flex-1 min-h-0 overflow-y-auto">
+        <div class="lbl px-3 pt-1 pb-2" style="color:var(--chrome-ink-2)">The Group</div>
+        <div class="space-y-0.5">
+          <template x-for="n in nav" :key="n.k">
+            <a class="nav-item" :class="{'on': page===n.k}" href="#" @click.prevent="go(n.k)">
+              <i :data-lucide="n.i" class="w-[18px] h-[18px]"></i>
+              <span x-text="n.t"></span>
+              <span x-show="n.badge" class="ml-auto mono text-[10px] px-1.5 py-0.5 rounded"
+                    style="background:var(--chrome-line);color:var(--chrome-ink-2)" x-text="n.badge"></span>
+            </a>
+          </template>
+        </div>
+      </nav>
+      <div class="p-3 border-t chrome-seam" style="border-top-width:1px">
+        <label class="lbl block mb-1.5 px-1" style="color:var(--chrome-ink-2)">Reporting Currency</label>
+        <select class="isel" style="background:var(--chrome-2);color:var(--chrome-ink);border-color:var(--chrome-line)"
+                x-model="reportCcy" @change="notify('Presentation currency → '+reportCcy)">
+          <option>USD · Group</option><option>EUR</option><option>GBP</option>
+        </select>
+        <div class="flex items-center gap-2 mt-2.5 px-1">
+          <i data-lucide="lock" class="w-3.5 h-3.5" style="color:var(--chrome-ink-2)"></i>
+          <span class="text-[11px]" style="color:var(--chrome-ink-2)">FX rates locked · Jun 30</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="flex-1 min-w-0 overflow-y-auto">
+      <div class="p-3 sm:p-4 lg:p-5 space-y-4 max-w-[1600px] mx-auto">
+
+        <!-- ================= OVERVIEW ================= -->
+        <section x-show="page==='overview'">
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Group Consolidation</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">
+                Many books, one truth · <span x-text="periodLabel"></span> · USD millions · <span class="mono">illustrative</span>
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-outline btn-sm" @click="go('reports')"><i data-lucide="download" class="w-4 h-4"></i> Export pack</button>
+              <button class="btn btn-primary btn-sm" @click="notify('Consolidation run queued — mockup')"><i data-lucide="play" class="w-4 h-4"></i> Run consolidation</button>
+            </div>
+          </div>
+
+          <!-- region filter -->
+          <div class="flex items-center gap-2 flex-wrap mt-4">
+            <span class="lbl mr-1">Region</span>
+            <template x-for="g in ['All','NA','EMEA','APAC']" :key="g">
+              <button class="chipbtn" :class="{'on': region===g}" @click="region=g" x-text="g==='All'?'All regions':g"></button>
+            </template>
+            <span class="text-[11.5px] mono ml-1" style="color:var(--ink-3)" x-text="shownEntities.length+' entities in view'"></span>
+          </div>
+
+          <!-- KPI TILES -->
+          <section class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mt-4">
+            <template x-for="(k,i) in kpis" :key="k.t">
+              <div class="card p-3.5">
+                <div class="flex items-center justify-between">
+                  <span class="lbl" x-text="k.t"></span>
+                  <i :data-lucide="k.i" class="w-4 h-4" style="color:var(--ink-3)"></i>
+                </div>
+                <div class="num display text-[20px] mt-2" x-text="k.v"></div>
+                <div class="flex items-center gap-1.5 mt-1.5">
+                  <span class="chip" :class="chipClass(k.tone)">
+                    <i :data-lucide="k.icon" class="w-3 h-3"></i><span x-text="k.d"></span>
+                  </span>
+                  <span class="text-[10.5px] mono" style="color:var(--ink-3)" x-text="k.note"></span>
+                </div>
+                <div class="mt-2.5" style="height:28px"><canvas :id="'ksp'+i"></canvas></div>
+              </div>
+            </template>
+          </section>
+
+          <!-- TREND + REGION MIX -->
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 p-4">
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <div><h2 class="display text-[16px]">Consolidated Revenue</h2><div class="lbl mt-0.5">Group · after eliminations · $M</div></div>
+                <div class="flex items-center gap-4 mono text-[11px]" style="color:var(--ink-2)">
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-2.5 rounded-sm" style="background:var(--accent)"></span>Consolidated</span>
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-0.5" style="background:var(--ink-3)"></span>Prior year</span>
+                </div>
+              </div>
+              <div class="relative mt-3" style="height:250px"><canvas id="ovTrend"></canvas></div>
+            </div>
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Revenue by Region</h2><span class="lbl">Gross · $M</span></div>
+              <div class="relative mt-3 mx-auto" style="height:172px;max-width:172px"><canvas id="ovRegion"></canvas></div>
+              <div class="mt-3.5 space-y-1.5">
+                <template x-for="r in regionMix" :key="r.l">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="'background:'+r.c"></span>
+                    <span class="text-[12px] flex-1" style="color:var(--ink-2)" x-text="r.l"></span>
+                    <span class="num text-[12px] font-bold" x-text="'$'+r.v.toLocaleString()"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </section>
+
+          <!-- SIGNATURE: ENTITY ROLLUP -->
+          <section class="card overflow-hidden mt-4">
+            <div class="flex items-center justify-between gap-3 p-4 pb-3 flex-wrap border-b" style="border-color:var(--line)">
+              <div>
+                <h2 class="display text-[16px]">Entity Rollup</h2>
+                <div class="lbl mt-0.5">Local → FX-translated → consolidated · set each entity's close status</div>
+              </div>
+              <span class="chip chip-pos"><i data-lucide="check" class="w-3 h-3"></i> Group ties to $<span x-text="consolTotal.toLocaleString()"></span>M</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="tbl num" style="min-width:860px">
+                <thead>
+                  <tr>
+                    <th style="width:26%">Entity</th>
+                    <th style="text-align:left">Ccy</th>
+                    <th>Local (M)</th>
+                    <th>FX rate</th>
+                    <th>USD (M)</th>
+                    <th>% Group</th>
+                    <th style="text-align:right">Close status</th>
+                  </tr>
+                </thead>
+                <template x-for="reg in regionsShown" :key="reg">
+                  <tbody>
+                    <tr class="row-region">
+                      <td colspan="7" style="text-align:left">
+                        <div class="flex items-center gap-2">
+                          <i data-lucide="git-merge" class="w-3.5 h-3.5" style="color:var(--accent)"></i>
+                          <span class="lbl" style="color:var(--ink-2)" x-text="regionName(reg)"></span>
+                          <span class="chip chip-flat ml-1" x-text="entitiesIn(reg).length+' entities'"></span>
+                        </div>
+                      </td>
+                    </tr>
+                    <template x-for="e in entitiesIn(reg)" :key="e.name">
+                      <tr>
+                        <td class="indent">
+                          <div class="flex items-center gap-2.5">
+                            <span class="w-7 h-7 rounded-md flex items-center justify-center mono text-[10px] font-bold shrink-0"
+                                  style="background:var(--surface-2);color:var(--ink-2)" x-text="e.code"></span>
+                            <span class="font-semibold" style="font-family:'Albert Sans'" x-text="e.name"></span>
+                          </div>
+                        </td>
+                        <td style="text-align:left"><span class="chip chip-flat" x-text="e.ccy"></span></td>
+                        <td style="color:var(--ink-2)" x-text="e.local.toLocaleString()"></td>
+                        <td style="color:var(--ink-3)" x-text="e.fx.toFixed(4)"></td>
+                        <td class="font-bold" x-text="'$'+usd(e).toLocaleString()"></td>
+                        <td style="color:var(--ink-3)" x-text="(usd(e)/groupTotal*100).toFixed(1)+'%'"></td>
+                        <td style="text-align:right" @click.stop>
+                          <select class="isel !h-7 !w-[124px] ml-auto !text-[11px] !px-2 mono" x-model="e.close"
+                                  @change="notify(e.name+' → '+e.close)" :style="'font-weight:700;color:'+closeColor(e.close)">
+                            <option>Open</option><option>In review</option><option>Closed</option>
+                          </select>
+                        </td>
+                      </tr>
+                    </template>
+                    <tr class="row-sub">
+                      <td colspan="4" x-text="regionName(reg)+' subtotal'"></td>
+                      <td x-text="'$'+regionTotal(reg).toLocaleString()"></td>
+                      <td style="color:var(--ink-3)" x-text="(regionTotal(reg)/groupTotal*100).toFixed(1)+'%'"></td>
+                      <td></td>
+                    </tr>
+                  </tbody>
+                </template>
+                <tbody x-show="region==='All'">
+                  <tr>
+                    <td class="indent" style="color:var(--neg)">Intercompany eliminations</td>
+                    <td style="text-align:left"><span class="chip chip-neg">ELIM</span></td>
+                    <td></td><td></td>
+                    <td class="font-bold neg" x-text="'−$'+eliminations.toLocaleString()"></td>
+                    <td style="color:var(--ink-3)" x-text="'−'+(eliminations/groupTotal*100).toFixed(1)+'%'"></td>
+                    <td></td>
+                  </tr>
+                  <tr class="row-total">
+                    <td colspan="4">Consolidated Group</td>
+                    <td x-text="'$'+consolTotal.toLocaleString()"></td>
+                    <td style="color:var(--ink-3)">100.0%</td>
+                    <td style="text-align:right"><span class="chip chip-pos"><i data-lucide="check" class="w-3 h-3"></i> Balanced</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- HEATMAP + ELIMINATIONS -->
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="flex items-center justify-between gap-3 p-4 pb-3 flex-wrap border-b" style="border-color:var(--line)">
+                <div><h2 class="display text-[16px]">Close Status</h2><div class="lbl mt-0.5">Entities × close tasks · click a cell to advance</div></div>
+                <div class="flex items-center gap-3 flex-wrap">
+                  <template x-for="s in legend" :key="s.k">
+                    <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)">
+                      <span class="w-3 h-3 rounded" :style="'background:'+s.bg+';border:1px solid '+s.fg"></span><span x-text="s.t"></span>
+                    </span>
+                  </template>
+                </div>
+              </div>
+              <div class="p-4 overflow-x-auto">
+                <table style="min-width:520px">
+                  <thead>
+                    <tr>
+                      <th style="width:170px"></th>
+                      <template x-for="t in tasks" :key="t.k">
+                        <th class="lbl" style="text-align:center;padding:0 4px 8px" x-text="t.s"></th>
+                      </template>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="e in shownEntities" :key="'hm'+e.name">
+                      <tr>
+                        <td style="padding:3px 8px 3px 0">
+                          <div class="flex items-center gap-2 min-w-0">
+                            <span class="w-6 h-6 rounded flex items-center justify-center mono text-[9px] font-bold shrink-0"
+                                  style="background:var(--surface-2);color:var(--ink-2)" x-text="e.code"></span>
+                            <span class="text-[12px] font-medium truncate" x-text="e.name"></span>
+                          </div>
+                        </td>
+                        <template x-for="(st,ti) in e.hm" :key="ti">
+                          <td style="padding:3px 3px">
+                            <button class="hmcell" :style="'background:'+cellBg(st)+';color:'+cellFg(st)"
+                                    @click="advanceCell(e,ti)"
+                                    :aria-label="e.name+' · '+tasks[ti].t+': '+cellLabel(st)">
+                              <i :data-lucide="cellIcon(st)" class="w-3.5 h-3.5"></i>
+                            </button>
+                          </td>
+                        </template>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+              <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-t flex-wrap" style="border-color:var(--line);background:var(--surface-2)">
+                <span class="lbl">Group close progress</span>
+                <div class="flex items-center gap-3 flex-1 max-w-[260px]">
+                  <div class="track flex-1"><span :style="'width:'+groupClosePct+'%'"></span></div>
+                  <span class="num text-[13px] font-bold" x-text="groupClosePct+'%'"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Intercompany Eliminations</h2><span class="lbl">$M</span></div>
+              <p class="text-[12px] mt-1" style="color:var(--ink-2)">Removed on consolidation · total <span class="num font-bold neg">−$<span x-text="eliminations.toLocaleString()"></span>M</span></p>
+              <div class="relative mt-3" style="height:250px"><canvas id="ovElim"></canvas></div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= ENTITIES ================= -->
+        <section x-show="page==='entities'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Entities</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Registry of legal entities · click a row to edit · <span class="mono" x-text="entities.length+' entities'"></span></p></div>
+            <button class="btn btn-primary btn-sm" @click="openModal()"><i data-lucide="plus" class="w-4 h-4"></i> Add entity</button>
+          </div>
+
+          <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            <div class="card p-3.5"><div class="lbl">Legal Entities</div><div class="num display text-[20px] mt-1.5" x-text="entities.length"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">3 regions</div></div>
+            <div class="card p-3.5"><div class="lbl">Reporting</div><div class="num display text-[20px] mt-1.5" x-text="reportingCount"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">TB submitted</div></div>
+            <div class="card p-3.5"><div class="lbl">Closed</div><div class="num display text-[20px] mt-1.5 pos" x-text="closedEntities"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">signed off</div></div>
+            <div class="card p-3.5"><div class="lbl">Wholly Owned</div><div class="num display text-[20px] mt-1.5" x-text="entities.filter(e=>e.own===100).length"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)" x-text="entities.filter(e=>e.own<100).length+' with NCI'"></div></div>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="flex items-center justify-between gap-3 p-4 pb-3 flex-wrap">
+                <div class="flex items-center gap-2"><h2 class="display text-[16px]">Registry</h2><span class="chip chip-flat" x-text="filteredEntities.length+' shown'"></span></div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <template x-for="g in ['All','NA','EMEA','APAC']" :key="'ef'+g">
+                    <button class="chipbtn" :class="{'on': entRegion===g}" @click="entRegion=g" x-text="g==='All'?'All':g"></button>
+                  </template>
+                  <div class="relative"><i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+                    <input type="search" class="field !h-8 !w-36 sm:!w-48 !pl-8 text-[12px]" placeholder="Search entity" x-model="entQ" /></div>
+                </div>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="tbl" style="min-width:820px">
+                  <thead><tr><th style="width:200px">Entity</th><th style="text-align:center">Region</th><th style="text-align:center">Ccy</th><th>Own %</th><th style="text-align:center">Method</th><th>USD (M)</th><th style="text-align:right">Close status</th></tr></thead>
+                  <tbody>
+                    <template x-for="e in filteredEntities" :key="'er'+e.name">
+                      <tr class="clickable" @click="openEntity(e)">
+                        <td>
+                          <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-md flex items-center justify-center mono text-[10px] font-bold shrink-0" style="background:var(--surface-2);color:var(--ink-2)" x-text="e.code"></span>
+                            <span class="font-semibold text-[13px]" x-text="e.name"></span>
+                          </div>
+                        </td>
+                        <td style="text-align:center"><span class="chip chip-flat" x-text="e.region"></span></td>
+                        <td style="text-align:center" class="mono" x-text="e.ccy"></td>
+                        <td class="num" :style="e.own<100?'color:var(--warn)':'color:var(--ink-2)'" x-text="e.own+'%'"></td>
+                        <td style="text-align:center" class="mono text-[11px]" x-text="e.method"></td>
+                        <td class="num font-bold" x-text="'$'+usd(e).toLocaleString()"></td>
+                        <td style="text-align:right" @click.stop>
+                          <select class="isel !h-7 !w-[124px] ml-auto !text-[11px] !px-2 mono" x-model="e.close" @change="notify(e.name+' → '+e.close)" :style="'font-weight:700;color:'+closeColor(e.close)">
+                            <option>Open</option><option>In review</option><option>Closed</option>
+                          </select>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">USD by Region</h2><span class="lbl">Gross · $M</span></div>
+              <div class="relative mt-3 mx-auto" style="height:180px;max-width:180px"><canvas id="entDonut"></canvas></div>
+              <div class="mt-4 space-y-1.5">
+                <template x-for="r in regionMix" :key="'erm'+r.l">
+                  <div class="flex items-center gap-2.5"><span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="'background:'+r.c"></span>
+                    <span class="text-[12px] flex-1" style="color:var(--ink-2)" x-text="r.l"></span><span class="num text-[12px] font-bold" x-text="'$'+r.v.toLocaleString()"></span></div>
+                </template>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= CONSOLIDATION ================= -->
+        <section x-show="page==='consolidation'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Consolidation Worksheet</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Local → FX-translated → consolidated · <span x-text="periodLabel"></span> · USD millions</p></div>
+            <div class="flex items-center gap-2">
+              <span class="chip chip-pos"><i data-lucide="check" class="w-3 h-3"></i> Ties out</span>
+              <button class="btn btn-outline btn-sm" @click="notify('Exported worksheet (XLSX) — mockup')"><i data-lucide="download" class="w-4 h-4"></i> Export</button>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="p-4 pb-3 border-b" style="border-color:var(--line)"><h2 class="display text-[16px]">Statement of Group Revenue</h2><div class="lbl mt-0.5">Translated at closing FX · eliminations removed</div></div>
+              <div class="overflow-x-auto">
+                <table class="tbl num" style="min-width:640px">
+                  <thead><tr><th style="width:34%">Line</th><th style="text-align:left">Ccy</th><th>Local (M)</th><th>FX</th><th>Translated USD (M)</th></tr></thead>
+                  <template x-for="reg in ['NA','EMEA','APAC']" :key="'cw'+reg">
+                    <tbody>
+                      <tr class="row-region"><td colspan="5" style="text-align:left"><span class="lbl" style="color:var(--ink-2)" x-text="regionName(reg)"></span></td></tr>
+                      <template x-for="e in entitiesIn(reg)" :key="'cwe'+e.name">
+                        <tr>
+                          <td class="indent" style="color:var(--ink-2)" x-text="e.name"></td>
+                          <td style="text-align:left"><span class="chip chip-flat" x-text="e.ccy"></span></td>
+                          <td style="color:var(--ink-2)" x-text="e.local.toLocaleString()"></td>
+                          <td style="color:var(--ink-3)" x-text="e.fx.toFixed(4)"></td>
+                          <td class="font-bold" x-text="'$'+usd(e).toLocaleString()"></td>
+                        </tr>
+                      </template>
+                      <tr class="row-sub"><td colspan="4" x-text="regionName(reg)+' subtotal'"></td><td x-text="'$'+regionTotal(reg).toLocaleString()"></td></tr>
+                    </tbody>
+                  </template>
+                  <tbody>
+                    <tr class="row-sub"><td colspan="4">Translated gross</td><td x-text="'$'+groupTotal.toLocaleString()"></td></tr>
+                    <tr><td class="indent" style="color:var(--neg)">Intercompany eliminations</td><td style="text-align:left"><span class="chip chip-neg">ELIM</span></td><td></td><td></td><td class="font-bold neg" x-text="'−$'+eliminations.toLocaleString()"></td></tr>
+                    <tr><td class="indent" style="color:var(--ink-2)">Non-controlling interest</td><td style="text-align:left"><span class="chip chip-warn">NCI</span></td><td></td><td></td><td class="num" style="color:var(--warn)" x-text="'−$'+nci.toLocaleString()"></td></tr>
+                    <tr class="row-total"><td colspan="4">Consolidated Group revenue</td><td x-text="'$'+(consolTotal-nci).toLocaleString()"></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <div class="card p-4">
+                <div class="flex items-center justify-between"><h2 class="display text-[15px]">Consolidation Bridge</h2><span class="lbl">$M</span></div>
+                <div class="relative mt-3" style="height:220px"><canvas id="consBridge"></canvas></div>
+              </div>
+              <div class="card p-4">
+                <div class="kv"><span class="lbl">Translated gross</span><span class="num font-bold" x-text="'$'+groupTotal.toLocaleString()+'M'"></span></div>
+                <div class="kv"><span class="lbl">Eliminations</span><span class="num font-bold neg" x-text="'−$'+eliminations.toLocaleString()+'M'"></span></div>
+                <div class="kv"><span class="lbl">NCI</span><span class="num font-bold" style="color:var(--warn)" x-text="'−$'+nci.toLocaleString()+'M'"></span></div>
+                <div class="kv"><span class="lbl" style="color:var(--ink)">Consolidated</span><span class="num display text-[16px]" x-text="'$'+(consolTotal-nci).toLocaleString()+'M'"></span></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= ELIMINATIONS ================= -->
+        <section x-show="page==='eliminations'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Intercompany Eliminations</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Matched intercompany balances removed on consolidation · total <span class="num font-bold neg">−$<span x-text="eliminations.toLocaleString()"></span>M</span></p></div>
+            <button class="btn btn-primary btn-sm" @click="openModal()"><i data-lucide="plus" class="w-4 h-4"></i> New entry</button>
+          </div>
+
+          <div class="flex items-center gap-2 flex-wrap mt-4">
+            <span class="lbl mr-1">Type</span>
+            <template x-for="t in elimFilters" :key="'ef'+t">
+              <button class="chipbtn" :class="{'on': elimFilter===t}" @click="elimFilter=t" x-text="t"></button>
+            </template>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="p-4 pb-3 border-b" style="border-color:var(--line)"><h2 class="display text-[16px]">Elimination Matrix</h2><div class="lbl mt-0.5">Seller → buyer · set matching status inline</div></div>
+              <div class="overflow-x-auto">
+                <table class="tbl" style="min-width:680px">
+                  <thead><tr><th style="width:14%">From</th><th style="text-align:center">To</th><th style="text-align:left">Type</th><th>Amount (M)</th><th style="text-align:right">Match status</th></tr></thead>
+                  <tbody>
+                    <template x-for="(r,ri) in filteredElim" :key="'elm'+ri">
+                      <tr>
+                        <td><span class="chip chip-flat" x-text="r.from"></span></td>
+                        <td style="text-align:center"><span class="chip chip-flat" x-text="r.to"></span></td>
+                        <td style="text-align:left" x-text="r.type"></td>
+                        <td class="num font-bold neg" x-text="'−$'+r.amt"></td>
+                        <td style="text-align:right">
+                          <select class="isel !h-7 !w-[124px] ml-auto !text-[11px] !px-2 mono" x-model="r.st" @change="notify(r.from+'→'+r.to+' · '+r.st)" :style="'font-weight:700;color:'+matchColor(r.st)">
+                            <option>Matched</option><option>Review</option><option>Unmatched</option>
+                          </select>
+                        </td>
+                      </tr>
+                    </template>
+                    <tr class="row-total"><td colspan="3">Total eliminated</td><td class="neg" x-text="'−$'+filteredElimTotal"></td><td></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <div class="card p-4">
+                <div class="flex items-center justify-between"><h2 class="display text-[15px]">By Type</h2><span class="lbl">$M</span></div>
+                <div class="relative mt-3" style="height:200px"><canvas id="elimBar"></canvas></div>
+              </div>
+              <div class="card p-4">
+                <div class="flex items-center justify-between"><h2 class="display text-[15px]">Mix</h2><span class="lbl">Share</span></div>
+                <div class="relative mt-3 mx-auto" style="height:150px;max-width:150px"><canvas id="elimDonut"></canvas></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= CLOSE ================= -->
+        <section x-show="page==='close'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Group Close</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">June FY2026 · Day 3 of 5 · entities × tasks · click a cell to advance</p></div>
+            <div class="flex items-center gap-2"><span class="num display text-[18px]" x-text="groupClosePct+'%'"></span></div>
+          </div>
+          <div class="track mt-3"><span :style="'width:'+groupClosePct+'%'"></span></div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="flex items-center justify-between gap-3 p-4 pb-3 flex-wrap border-b" style="border-color:var(--line)">
+                <div><h2 class="display text-[16px]">Close Heatmap</h2><div class="lbl mt-0.5">Entities × close tasks</div></div>
+                <div class="flex items-center gap-3 flex-wrap">
+                  <template x-for="s in legend" :key="'cl'+s.k">
+                    <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)">
+                      <span class="w-3 h-3 rounded" :style="'background:'+s.bg+';border:1px solid '+s.fg"></span><span x-text="s.t"></span>
+                    </span>
+                  </template>
+                </div>
+              </div>
+              <div class="p-4 overflow-x-auto">
+                <table style="min-width:520px">
+                  <thead>
+                    <tr><th style="width:180px"></th>
+                      <template x-for="t in tasks" :key="'clt'+t.k"><th class="lbl" style="text-align:center;padding:0 4px 8px" x-text="t.s"></th></template>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="e in entities" :key="'clh'+e.name">
+                      <tr>
+                        <td style="padding:3px 8px 3px 0">
+                          <div class="flex items-center gap-2 min-w-0">
+                            <span class="w-6 h-6 rounded flex items-center justify-center mono text-[9px] font-bold shrink-0" style="background:var(--surface-2);color:var(--ink-2)" x-text="e.code"></span>
+                            <span class="text-[12px] font-medium truncate" x-text="e.name"></span>
+                          </div>
+                        </td>
+                        <template x-for="(st,ti) in e.hm" :key="'clc'+ti">
+                          <td style="padding:3px 3px">
+                            <button class="hmcell" :style="'background:'+cellBg(st)+';color:'+cellFg(st)" @click="advanceCell(e,ti)" :aria-label="e.name+' · '+tasks[ti].t+': '+cellLabel(st)">
+                              <i :data-lucide="cellIcon(st)" class="w-3.5 h-3.5"></i>
+                            </button>
+                          </td>
+                        </template>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <div class="card p-4">
+                <div class="flex items-center justify-between"><h2 class="display text-[15px]">By Close Status</h2><span class="lbl">Entities</span></div>
+                <div class="relative mt-3 mx-auto" style="height:160px;max-width:160px"><canvas id="closeDonut"></canvas></div>
+                <div class="mt-3.5 space-y-1.5">
+                  <template x-for="c in closeMix" :key="'cm'+c.l">
+                    <div class="flex items-center gap-2.5"><span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="'background:'+c.c"></span>
+                      <span class="text-[12px] flex-1" style="color:var(--ink-2)" x-text="c.l"></span><span class="num text-[12px] font-bold" x-text="c.v"></span></div>
+                  </template>
+                </div>
+              </div>
+              <div class="card p-4">
+                <div class="kv"><span class="lbl">Tasks complete</span><span class="num font-bold" x-text="doneCells+' / '+totalCells"></span></div>
+                <div class="kv"><span class="lbl">Entities closed</span><span class="num font-bold pos" x-text="closedEntities+' / '+entities.length"></span></div>
+                <div class="kv"><span class="lbl">Group progress</span><span class="num display text-[16px]" x-text="groupClosePct+'%'"></span></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= FX ================= -->
+        <section x-show="page==='fx'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">FX Translation</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Closing rates to USD · click a rate to edit · flows into the rollup · <span class="mono">Jun 30, 2026</span></p></div>
+            <div class="seg">
+              <template x-for="b in ['Closing','Average','Opening']" :key="'fb'+b"><button :class="{'on': fxBasis===b}" @click="fxBasis=b; notify('FX basis → '+b)" x-text="b"></button></template>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="p-4 pb-3 border-b" style="border-color:var(--line)"><h2 class="display text-[16px]">Translation Rates</h2><div class="lbl mt-0.5">1 unit of currency in USD · editable rate</div></div>
+              <div class="overflow-x-auto">
+                <table class="tbl" style="min-width:640px">
+                  <thead><tr><th style="width:20%">Pair</th><th>Rate</th><th>Prior</th><th>Change</th><th>Exposure (M)</th><th style="text-align:right">FX impact (M)</th></tr></thead>
+                  <tbody>
+                    <template x-for="r in fxRates" :key="'fx'+r.ccy">
+                      <tr>
+                        <td><div class="flex items-center gap-2"><span class="chip chip-flat" x-text="r.ccy"></span><span class="mono text-[11px]" style="color:var(--ink-3)" x-text="r.pair"></span></div></td>
+                        <td @click="startFx(r)" style="cursor:pointer">
+                          <template x-if="fxEditKey!==r.ccy"><span class="num font-bold border-b border-dotted" style="border-color:var(--ink-3)" x-text="r.rate.toFixed(4)"></span></template>
+                          <template x-if="fxEditKey===r.ccy">
+                            <span class="inline-flex items-center gap-1" @click.stop>
+                              <input class="field mono !h-7 !w-24 !text-[12px] text-right" type="number" step="0.0001" x-model="fxDraft" @keydown.enter="saveFx(r)" @keydown.escape="fxEditKey=null" x-init="$nextTick(()=>$el.focus())" />
+                              <button class="iconbtn !w-7 !h-7" @click="saveFx(r)" aria-label="Save"><i data-lucide="check" class="w-4 h-4" style="color:var(--pos)"></i></button>
+                            </span>
+                          </template>
+                        </td>
+                        <td class="num" style="color:var(--ink-3)" x-text="r.prior.toFixed(4)"></td>
+                        <td class="num" :class="r.rate>=r.prior?'pos':'neg'" x-text="fxChange(r)"></td>
+                        <td class="num" style="color:var(--ink-2)" x-text="'$'+fxExposure(r).toLocaleString()"></td>
+                        <td class="num font-bold" :class="fxImpact(r)>=0?'pos':'neg'" style="text-align:right" x-text="(fxImpact(r)>=0?'+$':'−$')+Math.abs(fxImpact(r)).toLocaleString()"></td>
+                      </tr>
+                    </template>
+                    <tr class="row-total"><td colspan="5">Net translation impact</td><td style="text-align:right" :class="fxNet>=0?'pos':'neg'" x-text="(fxNet>=0?'+$':'−$')+Math.abs(fxNet).toLocaleString()+'M'"></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">FX Impact by Currency</h2><span class="lbl">$M</span></div>
+              <div class="relative mt-3" style="height:320px"><canvas id="fxImpactChart"></canvas></div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= REPORTS ================= -->
+        <section x-show="page==='reports'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Reports</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Consolidation packs &amp; ad-hoc generation</p></div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="xl:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <template x-for="r in reports" :key="r.n">
+                <div class="card p-4 flex items-start gap-3">
+                  <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background:var(--accent-soft);color:var(--accent-ink)"><i :data-lucide="r.i" class="w-5 h-5"></i></div>
+                  <div class="min-w-0 flex-1">
+                    <div class="font-semibold text-[14px]" x-text="r.n"></div>
+                    <div class="text-[11.5px] mt-0.5" style="color:var(--ink-3)" x-text="r.d"></div>
+                    <div class="flex items-center gap-2 mt-2.5">
+                      <button class="btn btn-ghost btn-sm" @click="notify('Generating '+r.n+' — mockup')"><i data-lucide="play" class="w-3.5 h-3.5"></i> Generate</button>
+                      <button class="iconbtn !w-8 !h-8" @click="notify('Opened '+r.n)" aria-label="Open"><i data-lucide="external-link" class="w-4 h-4"></i></button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Generate Custom</h2>
+              <div class="mt-3 space-y-3">
+                <div><label class="flbl">Report type</label>
+                  <select class="isel"><option>Consolidation pack</option><option>Entity rollup</option><option>Elimination schedule</option><option>FX translation report</option><option>Close status report</option></select></div>
+                <div><label class="flbl">Period</label>
+                  <div class="seg w-full"><template x-for="p in ['Month','Quarter','Year']" :key="'rp'+p"><button class="flex-1" :class="{'on': repPeriod===p}" @click="repPeriod=p" x-text="p"></button></template></div></div>
+                <div><label class="flbl">Format</label>
+                  <select class="isel"><option>PDF</option><option>Excel (XLSX)</option><option>Google Slides</option></select></div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Include commentary</div><div class="text-[11px]" style="color:var(--ink-3)">Controller narrative</div></div>
+                  <button class="switch" :class="{'on': repCommentary}" @click="repCommentary=!repCommentary" role="switch" :aria-checked="repCommentary"></button>
+                </div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Email to group</div><div class="text-[11px]" style="color:var(--ink-3)">On generation</div></div>
+                  <button class="switch" :class="{'on': repEmail}" @click="repEmail=!repEmail" role="switch" :aria-checked="repEmail"></button>
+                </div>
+                <div x-show="repEmail"><label class="flbl">Recipients</label><input class="field" type="text" placeholder="group-finance@company.com" /></div>
+                <div><label class="flbl">Notes</label><textarea class="field" placeholder="Optional context for this report…"></textarea></div>
+                <button class="btn btn-primary btn-block" @click="notify('Report queued — mockup')"><i data-lucide="file-output" class="w-4 h-4"></i> Generate report</button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= SETTINGS ================= -->
+        <section x-show="page==='settings'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Settings</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Group preferences · edition &amp; presentation</p></div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Group</h2>
+              <div class="mt-3 space-y-3">
+                <div>
+                  <label class="flbl">Group name</label>
+                  <template x-if="!editGroup">
+                    <div class="flex items-center gap-2">
+                      <span class="text-[15px] font-semibold" x-text="groupName"></span>
+                      <button class="iconbtn !w-7 !h-7" @click="startGroup()" aria-label="Edit group name"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                    </div>
+                  </template>
+                  <template x-if="editGroup">
+                    <div class="flex items-center gap-2">
+                      <input class="field !w-64" type="text" x-model="groupDraft" @keydown.enter="saveGroup()" @keydown.escape="editGroup=false" x-init="$nextTick(()=>$el.focus())" />
+                      <button class="iconbtn !w-8 !h-8" @click="saveGroup()" aria-label="Save"><i data-lucide="check" class="w-4 h-4" style="color:var(--pos)"></i></button>
+                      <button class="iconbtn !w-8 !h-8" @click="editGroup=false" aria-label="Cancel"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                  </template>
+                </div>
+                <div><label class="flbl">Reporting currency</label>
+                  <select class="isel" x-model="reportCcy" @change="notify('Presentation currency → '+reportCcy)"><option>USD · Group</option><option>EUR</option><option>GBP</option></select></div>
+                <div><label class="flbl">Default consolidation method</label>
+                  <select class="isel"><option>Full consolidation</option><option>Proportional</option><option>Equity method</option></select></div>
+              </div>
+            </div>
+
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Edition &amp; Behaviour</h2>
+              <div class="mt-3 space-y-1">
+                <div class="flex items-center justify-between py-2 border-b" style="border-color:var(--line)">
+                  <div><div class="text-[13px] font-semibold">Edition</div><div class="text-[11px]" style="color:var(--ink-3)">Light is the hero</div></div>
+                  <div class="seg"><template x-for="ed in ['light','dark']" :key="'sed'+ed"><button :class="{'on': edition===ed}" @click="edition=ed" x-text="ed==='light'?'Light':'Dark'"></button></template></div>
+                </div>
+                <div class="flex items-center justify-between py-2 border-b" style="border-color:var(--line)">
+                  <div><div class="text-[13px] font-semibold">Auto-run on submission</div><div class="text-[11px]" style="color:var(--ink-3)">Consolidate when all TBs land</div></div>
+                  <button class="switch" :class="{'on': setAutoRun}" @click="setAutoRun=!setAutoRun" role="switch" :aria-checked="setAutoRun"></button>
+                </div>
+                <div class="flex items-center justify-between py-2 border-b" style="border-color:var(--line)">
+                  <div><div class="text-[13px] font-semibold">Lock FX at close</div><div class="text-[11px]" style="color:var(--ink-3)">Freeze rates on sign-off</div></div>
+                  <button class="switch" :class="{'on': setLockFx}" @click="setLockFx=!setLockFx" role="switch" :aria-checked="setLockFx"></button>
+                </div>
+                <div class="flex items-center justify-between py-2">
+                  <div><div class="text-[13px] font-semibold">Close reminders</div><div class="text-[11px]" style="color:var(--ink-3)">Notify entity owners</div></div>
+                  <button class="switch" :class="{'on': setReminders}" @click="setReminders=!setReminders" role="switch" :aria-checked="setReminders"></button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <footer class="flex items-center justify-between flex-wrap gap-2 pt-1 pb-3">
+          <span class="lbl" style="color:var(--ink-3)">Confluence · Group Consolidation · v1.0</span>
+          <span class="mono text-[11px]" style="color:var(--ink-3)">Figures illustrative · not for filing</span>
+        </footer>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ===== MOBILE NAV DRAWER ===== -->
+<div x-show="mobileNav" x-transition.opacity class="fixed inset-0 z-40 lg:hidden scrim" @click="mobileNav=false"></div>
+<aside x-show="mobileNav" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
+       class="fixed inset-y-0 left-0 z-50 w-72 chrome flex flex-col lg:hidden">
+  <div class="flex items-center justify-between px-4 border-b chrome-seam" style="height:60px;border-bottom-width:1px">
+    <div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-md flex items-center justify-center" style="background:var(--accent);color:var(--on-accent)"><i data-lucide="git-merge" class="w-4 h-4"></i></div>
+      <span class="display text-[16px]" style="color:var(--chrome-ink)">Confluence</span></div>
+    <button class="iconbtn chrome-icon" @click="mobileNav=false" aria-label="Close navigation"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <nav class="p-3 space-y-0.5 flex-1 overflow-y-auto">
+    <template x-for="n in nav" :key="'m'+n.k">
+      <a class="nav-item" :class="{'on': page===n.k}" href="#" @click.prevent="go(n.k); mobileNav=false"><i :data-lucide="n.i" class="w-[18px] h-[18px]"></i><span x-text="n.t"></span></a>
+    </template>
+  </nav>
+  <div class="p-3 border-t chrome-seam" style="border-top-width:1px">
+    <button class="btn btn-primary btn-block" @click="openModal(); mobileNav=false"><i data-lucide="plus" class="w-4 h-4"></i> Add entity</button>
+  </div>
+</aside>
+
+<!-- ===== EDIT DRAWER (entity) ===== -->
+<div x-show="drawerOpen" x-transition.opacity class="fixed inset-0 z-[55] scrim" @click="drawerOpen=false"></div>
+<aside x-show="drawerOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+       class="fixed inset-y-0 right-0 z-[60] w-full sm:w-[420px] flex flex-col" style="background:var(--surface);border-left:1px solid var(--line-2);box-shadow:var(--shadow-lg)">
+  <div class="flex items-center justify-between px-4 border-b" style="height:60px;border-color:var(--line)">
+    <div><div class="lbl">Edit entity</div><div class="display text-[16px]" x-text="editForm.name"></div></div>
+    <button class="iconbtn" @click="drawerOpen=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <div class="flex-1 overflow-y-auto p-4 space-y-3.5">
+    <div><label class="flbl">Entity name</label><input class="field" type="text" x-model="editForm.name" /></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="flbl">Functional currency</label><select class="isel" x-model="editForm.ccy"><option>USD</option><option>CAD</option><option>MXN</option><option>GBP</option><option>EUR</option><option>SEK</option><option>JPY</option><option>INR</option><option>CNY</option><option>AUD</option></select></div>
+      <div><label class="flbl">Close status</label><select class="isel" x-model="editForm.close"><option>Open</option><option>In review</option><option>Closed</option></select></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="flbl">Ownership %</label><input class="field mono" type="number" min="0" max="100" x-model.number="editForm.own" /></div>
+      <div><label class="flbl">FX rate to USD</label><input class="field mono" type="number" step="0.0001" x-model.number="editForm.fx" /></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="flbl">Local revenue (M)</label><input class="field mono" type="number" x-model.number="editForm.local" /></div>
+      <div><label class="flbl">Method</label><select class="isel" x-model="editForm.method"><option>Full</option><option>Proportional</option><option>Equity</option></select></div>
+    </div>
+    <div class="rounded-md p-3 flex items-center justify-between" style="background:var(--surface-2)">
+      <span class="lbl">Translated USD</span>
+      <span class="num display text-[18px]" x-text="'$'+Math.round((+editForm.local||0)*(+editForm.fx||0)).toLocaleString()+'M'"></span>
+    </div>
+    <div><label class="flbl">Controller note</label><textarea class="field" x-model="editForm.note" placeholder="Add a note for the group controller…"></textarea></div>
+    <div class="flex items-center justify-between py-1">
+      <div><div class="text-[13px] font-semibold">Sub-consolidated</div><div class="text-[11px]" style="color:var(--ink-3)">Rolls up its own subgroup</div></div>
+      <button class="switch" :class="{'on': editForm.sub}" @click="editForm.sub=!editForm.sub" role="switch" :aria-checked="editForm.sub"></button>
+    </div>
+  </div>
+  <div class="p-4 border-t flex items-center gap-2" style="border-color:var(--line)">
+    <button class="btn btn-outline flex-1" @click="drawerOpen=false">Cancel</button>
+    <button class="btn btn-primary flex-1" @click="saveEntity()"><i data-lucide="check" class="w-4 h-4"></i> Save changes</button>
+  </div>
+</aside>
+
+<!-- ===== MODAL (Add entity) ===== -->
+<div x-show="modalOpen" x-transition.opacity class="fixed inset-0 z-[70] scrim flex items-start sm:items-center justify-center p-4 overflow-y-auto" @click="modalOpen=false">
+  <div @click.stop x-show="modalOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       class="card w-full max-w-lg my-8" style="box-shadow:var(--shadow-lg)">
+    <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color:var(--line)">
+      <div><div class="lbl">The Group</div><div class="display text-[17px]">Add Entity</div></div>
+      <button class="iconbtn" @click="modalOpen=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="p-5 space-y-3.5 max-h-[70vh] overflow-y-auto">
+      <div><label class="flbl">Entity name</label><input class="field" type="text" x-model="meName" placeholder="e.g. Confluence Brazil Ltda" /></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="flbl">Parent</label><select class="isel" x-model="meParent"><option>Confluence Group Holdings</option><option>Confluence USA Inc</option><option>Confluence UK Ltd</option><option>Confluence Japan KK</option></select></div>
+        <div><label class="flbl">Region</label><select class="isel" x-model="meRegion"><option>NA</option><option>EMEA</option><option>APAC</option></select></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="flbl">Functional currency</label><select class="isel" x-model="meCcy"><option>USD</option><option>CAD</option><option>MXN</option><option>GBP</option><option>EUR</option><option>SEK</option><option>JPY</option><option>INR</option><option>CNY</option><option>AUD</option></select></div>
+        <div><label class="flbl">Consolidation method</label><select class="isel" x-model="meMethod"><option>Full</option><option>Proportional</option><option>Equity</option></select></div>
+      </div>
+      <div><label class="flbl">Ownership %</label>
+        <div class="stepper"><button @click="meOwn=Math.max(0,meOwn-5)" aria-label="Decrease">−</button>
+          <input class="mono" type="number" min="0" max="100" x-model.number="meOwn" /><button @click="meOwn=Math.min(100,meOwn+5)" aria-label="Increase">+</button></div>
+      </div>
+      <div><label class="flbl">Opening note</label><textarea class="field" x-model="meNote" placeholder="Description of the entity…"></textarea></div>
+      <div class="flex items-center justify-between py-1">
+        <div><div class="text-[13px] font-semibold">Eliminate intercompany</div><div class="text-[11px]" style="color:var(--ink-3)">Auto-match IC balances on consolidation</div></div>
+        <button class="switch" :class="{'on': meElim}" @click="meElim=!meElim" role="switch" :aria-checked="meElim"></button>
+      </div>
+    </div>
+    <div class="px-5 py-4 border-t flex items-center gap-2" style="border-color:var(--line)">
+      <button class="btn btn-outline flex-1" @click="modalOpen=false">Cancel</button>
+      <button class="btn btn-primary flex-1" @click="addEntity()"><i data-lucide="check" class="w-4 h-4"></i> Add entity</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="fixed bottom-4 right-4 z-[80] space-y-2 w-[calc(100%-2rem)] sm:w-auto sm:max-w-sm">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="toast px-3.5 py-3 flex items-start gap-3" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+      <i data-lucide="check-circle-2" class="w-4 h-4 mt-0.5 shrink-0" style="color:var(--accent-ink)"></i>
+      <span class="text-[13px]" style="color:var(--ink)" x-text="t.msg"></span>
+    </div>
+  </template>
+</div>
+
+<script>
+function consol() {
+  return {
+    edition: 'light',
+    page: 'overview',
+    mobileNav: false,
+    modalOpen: false,
+    drawerOpen: false,
+    period: 'MTD',
+    region: 'All',
+    reportCcy: 'USD · Group',
+    entRegion: 'All', entQ: '',
+    elimFilter: 'All',
+    fxBasis: 'Closing', fxEditKey: null, fxDraft: 0,
+    editGroup: false, groupName: 'Confluence Group Holdings', groupDraft: '',
+    setAutoRun: true, setLockFx: true, setReminders: false,
+    repPeriod: 'Month', repCommentary: true, repEmail: false,
+    meName: '', meParent: 'Confluence Group Holdings', meRegion: 'NA', meCcy: 'USD', meMethod: 'Full', meOwn: 100, meNote: '', meElim: true,
+    editForm: {}, drawerRef: null,
+    toasts: [], _tid: 0, charts: {},
+
+    nav: [
+      { k:'overview',      t:'Overview',       i:'layout-dashboard' },
+      { k:'entities',      t:'Entities',       i:'building-2', badge:'14' },
+      { k:'consolidation', t:'Consolidation',  i:'git-merge' },
+      { k:'eliminations',  t:'Eliminations',   i:'scissors' },
+      { k:'close',         t:'Close',          i:'calendar-check', badge:'5' },
+      { k:'fx',            t:'FX Translation', i:'globe' },
+      { k:'reports',       t:'Reports',        i:'folder-open' },
+      { k:'settings',      t:'Settings',       i:'settings' },
+    ],
+
+    tasks: [
+      { k:'tb',   s:'TB',   t:'Trial balance' },
+      { k:'ic',   s:'IC',   t:'Intercompany' },
+      { k:'fx',   s:'FX',   t:'FX translation' },
+      { k:'elim', s:'Elim', t:'Eliminations' },
+      { k:'rev',  s:'Rev',  t:'Review & sign-off' },
+    ],
+
+    entities: [
+      { name:'Confluence USA Inc',    code:'US', region:'NA',   ccy:'USD', local:1240,  fx:1.0000, close:'Closed',    own:100, method:'Full', sub:false, note:'', hm:['done','done','done','done','review'] },
+      { name:'Meridian Canada Ltd',   code:'CA', region:'NA',   ccy:'CAD', local:512,   fx:0.7400, close:'In review', own:100, method:'Full', sub:false, note:'', hm:['done','done','done','review','open'] },
+      { name:'Aurora Mexico SA',      code:'MX', region:'NA',   ccy:'MXN', local:3180,  fx:0.0580, close:'Open',      own:80,  method:'Full', sub:false, note:'', hm:['done','done','review','open','open'] },
+      { name:'Confluence UK Ltd',     code:'UK', region:'EMEA', ccy:'GBP', local:486,   fx:1.2700, close:'Closed',    own:100, method:'Full', sub:true,  note:'', hm:['done','done','done','done','done'] },
+      { name:'Rhône France SAS',      code:'FR', region:'EMEA', ccy:'EUR', local:402,   fx:1.0900, close:'In review', own:100, method:'Full', sub:false, note:'', hm:['done','done','done','review','open'] },
+      { name:'Delta Germany GmbH',    code:'DE', region:'EMEA', ccy:'EUR', local:356,   fx:1.0900, close:'Open',      own:100, method:'Full', sub:false, note:'', hm:['done','done','review','open','open'] },
+      { name:'Nordic Sweden AB',      code:'SE', region:'EMEA', ccy:'SEK', local:1420,  fx:0.0960, close:'Open',      own:75,  method:'Full', sub:false, note:'', hm:['done','review','progress','open','open'] },
+      { name:'Confluence Japan KK',   code:'JP', region:'APAC', ccy:'JPY', local:34600, fx:0.0067, close:'In review', own:100, method:'Full', sub:true,  note:'', hm:['done','done','done','review','open'] },
+      { name:'Ganges India Pvt',      code:'IN', region:'APAC', ccy:'INR', local:9850,  fx:0.0120, close:'Open',      own:60,  method:'Full', sub:false, note:'', hm:['done','progress','open','open','open'] },
+      { name:'Yangtze China Co',      code:'CN', region:'APAC', ccy:'CNY', local:640,   fx:0.1380, close:'Open',      own:51,  method:'Full', sub:false, note:'', hm:['done','done','review','open','open'] },
+      { name:'Pacifica Australia Pty',code:'AU', region:'APAC', ccy:'AUD', local:214,   fx:0.6600, close:'In review', own:100, method:'Full', sub:false, note:'', hm:['done','done','done','done','review'] },
+    ],
+    eliminations: 342,
+    nci: 96,
+
+    elimEntries: [
+      { from:'US', to:'UK', type:'IC product sales',  amt:148, st:'Matched' },
+      { from:'UK', to:'DE', type:'IC service fees',   amt:74,  st:'Matched' },
+      { from:'US', to:'JP', type:'Mgmt & royalty',    amt:52,  st:'Review' },
+      { from:'DE', to:'FR', type:'IC interest',       amt:38,  st:'Matched' },
+      { from:'JP', to:'CN', type:'Unrealized profit', amt:30,  st:'Unmatched' },
+    ],
+    elimFilters: ['All','IC product sales','IC service fees','Mgmt & royalty','IC interest','Unrealized profit'],
+
+    fxRates: [
+      { ccy:'CAD', pair:'CAD/USD', rate:0.7400, prior:0.7325 },
+      { ccy:'MXN', pair:'MXN/USD', rate:0.0580, prior:0.0592 },
+      { ccy:'GBP', pair:'GBP/USD', rate:1.2700, prior:1.2610 },
+      { ccy:'EUR', pair:'EUR/USD', rate:1.0900, prior:1.0965 },
+      { ccy:'SEK', pair:'SEK/USD', rate:0.0960, prior:0.0948 },
+      { ccy:'JPY', pair:'JPY/USD', rate:0.0067, prior:0.0069 },
+      { ccy:'INR', pair:'INR/USD', rate:0.0120, prior:0.0121 },
+      { ccy:'CNY', pair:'CNY/USD', rate:0.1380, prior:0.1395 },
+      { ccy:'AUD', pair:'AUD/USD', rate:0.6600, prior:0.6540 },
+    ],
+
+    reports: [
+      { n:'Group Consolidation Pack', d:'Generated Jun 28', i:'layers' },
+      { n:'Entity Rollup Schedule',   d:'Generated Jun 27', i:'building-2' },
+      { n:'Elimination Schedule',     d:'Generated Jun 27', i:'scissors' },
+      { n:'FX Translation Report',    d:'Generated Jun 26', i:'globe' },
+      { n:'Close Status Report',      d:'Due Jul 2',        i:'calendar-check' },
+      { n:'NCI & Minority Interest',  d:'Generated Jun 24', i:'users' },
+    ],
+
+    legend: [
+      { k:'done',     t:'Closed',      bg:'var(--pos-soft)',  fg:'var(--pos)' },
+      { k:'review',   t:'In review',   bg:'var(--link-soft)', fg:'var(--link)' },
+      { k:'progress', t:'In progress', bg:'var(--warn-soft)', fg:'var(--warn)' },
+      { k:'open',     t:'Open',        bg:'var(--surface-2)', fg:'var(--ink-3)' },
+    ],
+
+    // ---------- computed ----------
+    get shownEntities() { return this.entities.filter(e => this.region === 'All' || e.region === this.region); },
+    get regionsShown() { const all = ['NA','EMEA','APAC']; return this.region === 'All' ? all : [this.region]; },
+    get groupTotal() { return this.entities.reduce((s,e) => s + this.usd(e), 0); },
+    get consolTotal() { return this.groupTotal - this.eliminations; },
+    get reportingCount() { return this.entities.length; },
+    get filteredEntities() {
+      const q = this.entQ.trim().toLowerCase();
+      return this.entities.filter(e => (this.entRegion === 'All' || e.region === this.entRegion) && (!q || e.name.toLowerCase().includes(q)));
+    },
+    get filteredElim() { return this.elimEntries.filter(r => this.elimFilter === 'All' || r.type === this.elimFilter); },
+    get filteredElimTotal() { return this.filteredElim.reduce((s,r)=>s+r.amt,0); },
+    get regionMix() {
+      const c = { NA:'var(--accent)', EMEA:'#3F7DBD', APAC:'#59A88C' };
+      return ['NA','EMEA','APAC'].map(r => ({ l:this.regionName(r), v:this.regionTotal(r), c:c[r] }));
+    },
+    get closeMix() {
+      const c = { 'Closed':'var(--pos)', 'In review':'var(--link)', 'Open':'var(--neutral)' };
+      return ['Closed','In review','Open'].map(s => ({ l:s, v:this.entities.filter(e=>e.close===s).length, c:c[s] }));
+    },
+    get totalCells() { return this.entities.flatMap(e => e.hm).length; },
+    get doneCells() { return this.entities.flatMap(e => e.hm).filter(s => s === 'done').length; },
+    get groupClosePct() { return Math.round(this.doneCells / this.totalCells * 100); },
+    get closedEntities() { return this.entities.filter(e => e.close === 'Closed').length; },
+    get fxNet() { return this.fxRates.reduce((s,r) => s + this.fxImpact(r), 0); },
+    get periodLabel() { return { MTD:'June 2026 (month to date)', QTD:'Q2 FY2026 (quarter to date)', YTD:'FY2026 (year to date)' }[this.period]; },
+    get kpis() {
+      return [
+        { t:'Consolidated Rev.',  i:'circle-dollar-sign', v:'$'+this.consolTotal.toLocaleString()+'M', d:'+4.2%',   tone:'pos',  icon:'arrow-up-right',   note:'vs prior yr', sp:[3410,3480,3520,3555,3590,this.consolTotal] },
+        { t:'Entities Reporting', i:'building-2',         v:this.reportingCount+'/'+this.entities.length, d:'+2', tone:'pos', icon:'arrow-up-right', note:'submitted vs May', sp:[8,9,9,10,10,this.reportingCount] },
+        { t:'Eliminations',       i:'scissors',           v:'$'+this.eliminations+'M',   d:'+6.1%', tone:'warn', icon:'arrow-up-right',   note:'of gross rev', sp:[298,310,318,325,331,342] },
+        { t:'FX Impact',          i:'globe',              v:(this.fxNet>=0?'+$':'−$')+Math.abs(this.fxNet)+'M', d:'−1.3%', tone:'neg', icon:'arrow-down-right', note:'translation', sp:[-12,-20,-28,-33,-41,this.fxNet] },
+        { t:'Group Close',        i:'calendar-check',     v:this.groupClosePct+'%',      d:'Day 3/5', tone:'link', icon:'clock', note:this.totalCells+' tasks', sp:[10,22,35,44,50,this.groupClosePct] },
+      ];
+    },
+
+    // ---------- helpers ----------
+    usd(e) { return Math.round(e.local * e.fx); },
+    entitiesIn(reg) { return this.entities.filter(e => e.region === reg); },
+    regionTotal(reg) { return this.entitiesIn(reg).reduce((s,e) => s + this.usd(e), 0); },
+    regionName(r) { return { NA:'North America', EMEA:'EMEA', APAC:'Asia Pacific' }[r]; },
+    closeColor(s) { return { 'Open':'var(--warn)', 'In review':'var(--link)', 'Closed':'var(--pos)' }[s] || 'var(--ink)'; },
+    matchColor(s) { return { 'Matched':'var(--pos)', 'Review':'var(--link)', 'Unmatched':'var(--neg)' }[s] || 'var(--ink)'; },
+    chipClass(t) { return { pos:'chip-pos', neg:'chip-neg', warn:'chip-warn', link:'chip-link' }[t] || 'chip-flat'; },
+    cellBg(s) { return { done:'var(--pos-soft)', review:'var(--link-soft)', progress:'var(--warn-soft)', open:'var(--surface-2)' }[s]; },
+    cellFg(s) { return { done:'var(--pos)', review:'var(--link)', progress:'var(--warn)', open:'var(--ink-3)' }[s]; },
+    cellIcon(s) { return { done:'check', review:'eye', progress:'loader', open:'minus' }[s]; },
+    cellLabel(s) { return { done:'Closed', review:'In review', progress:'In progress', open:'Open' }[s]; },
+    fxChange(r) { const p = (r.rate - r.prior) / r.prior * 100; return (p>=0?'+':'−') + Math.abs(p).toFixed(1) + '%'; },
+    fxExposure(r) { return this.entities.filter(e => e.ccy === r.ccy).reduce((s,e) => s + this.usd(e), 0); },
+    fxImpact(r) { return Math.round(this.entities.filter(e => e.ccy === r.ccy).reduce((s,e) => s + e.local * (r.rate - r.prior), 0)); },
+
+    // ---------- actions ----------
+    setPeriod(p) { this.period = p; this.notify('Period → ' + p); },
+    toggleEdition() { this.edition = this.edition === 'light' ? 'dark' : 'light'; },
+    go(k) { this.page = k; },
+    closeAll() { this.modalOpen = false; this.drawerOpen = false; this.mobileNav = false; this.editGroup = false; this.fxEditKey = null; },
+    openModal() { this.modalOpen = true; this.$nextTick(() => lucide.createIcons()); },
+    advanceCell(e, ti) {
+      const order = ['open','progress','review','done'];
+      e.hm[ti] = order[(order.indexOf(e.hm[ti]) + 1) % order.length];
+      this.notify(e.name + ' · ' + this.tasks[ti].t + ' → ' + this.cellLabel(e.hm[ti]));
+      this.$nextTick(() => { lucide.createIcons(); if (this.page === 'close') this.renderFor('close'); });
+    },
+    openEntity(e) { this.drawerRef = e; this.editForm = Object.assign({}, e); this.drawerOpen = true; this.$nextTick(() => lucide.createIcons()); },
+    saveEntity() { if (this.drawerRef) Object.assign(this.drawerRef, this.editForm); this.drawerOpen = false; this.notify('Saved ' + this.editForm.name); this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); }); },
+    addEntity() {
+      if (!this.meName.trim()) { this.notify('Entity name is required'); return; }
+      const code = this.meName.trim().replace(/[^A-Za-z]/g,'').slice(0,2).toUpperCase() || 'XX';
+      const rate = (this.fxRates.find(r => r.ccy === this.meCcy) || {}).rate || 1.0;
+      this.entities.push({ name:this.meName.trim(), code, region:this.meRegion, ccy:this.meCcy, local:200, fx:rate,
+        close:'Open', own:this.meOwn, method:this.meMethod, sub:false, note:this.meNote, hm:['open','open','open','open','open'] });
+      this.notify('Added ' + this.meName.trim() + ' · ' + this.meRegion);
+      this.meName = ''; this.meNote = ''; this.meOwn = 100; this.modalOpen = false;
+      this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); });
+    },
+    startFx(r) { this.fxDraft = r.rate; this.fxEditKey = r.ccy; },
+    saveFx(r) {
+      const v = parseFloat(this.fxDraft);
+      if (!isNaN(v) && v > 0) { r.rate = v; this.entities.forEach(e => { if (e.ccy === r.ccy) e.fx = v; }); this.notify(r.pair + ' → ' + v.toFixed(4)); }
+      this.fxEditKey = null;
+      this.$nextTick(() => { lucide.createIcons(); if (this.page === 'fx') this.renderFor('fx'); });
+    },
+    startGroup() { this.groupDraft = this.groupName; this.editGroup = true; },
+    saveGroup() { if (this.groupDraft.trim()) this.groupName = this.groupDraft.trim(); this.editGroup = false; this.notify('Group name updated'); },
+
+    notify(msg) {
+      const id = ++this._tid;
+      this.toasts.push({ id, msg });
+      this.$nextTick(() => lucide.createIcons());
+      setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 2600);
+    },
+
+    init() {
+      this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); });
+      this.$watch('edition', () => this.$nextTick(() => { lucide.createIcons(); this.recolor(); }));
+      this.$watch('page', (p) => this.$nextTick(() => { lucide.createIcons(); this.renderFor(p); }));
+      ['region','entRegion','entQ','elimFilter','modalOpen','drawerOpen','repEmail','editGroup','fxEditKey'].forEach(k =>
+        this.$watch(k, () => this.$nextTick(() => { lucide.createIcons(); if (['region','elimFilter'].includes(k)) this.renderFor(this.page); })));
+    },
+
+    css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); },
+
+    // ---------- charts ----------
+    renderFor(page) {
+      Chart.defaults.font.family = "'Fira Mono', monospace";
+      Chart.defaults.font.size = 10;
+      const map = {
+        overview:      () => { this.drawKpiSparks(); this.drawTrend(); this.drawRegion(); this.drawElimOv(); },
+        entities:      () => { this.drawEntDonut(); },
+        consolidation: () => { this.drawConsBridge(); },
+        eliminations:  () => { this.drawElimBar(); this.drawElimDonut(); },
+        close:         () => { this.drawCloseDonut(); },
+        fx:            () => { this.drawFxImpact(); },
+      };
+      (map[page] || (()=>{}))();
+    },
+    recolor() { Object.values(this.charts).forEach(c => { try { c.destroy(); } catch(e){} }); this.charts = {}; this.renderFor(this.page); },
+
+    _mk(id, cfg) {
+      const el = document.getElementById(id); if (!el || el.offsetParent === null) return;
+      const prev = Chart.getChart(el); if (prev) prev.destroy();
+      this.charts[id] = new Chart(el.getContext('2d'), cfg);
+    },
+    _grad(ctx, area, color) { const g = ctx.createLinearGradient(0, area.top, 0, area.bottom); g.addColorStop(0, color+'44'); g.addColorStop(1, color+'00'); return g; },
+    _tt() { return { backgroundColor:this.css('--surface'), borderColor:this.css('--line-2'), borderWidth:1, titleColor:this.css('--ink'), bodyColor:this.css('--ink-2'), padding:8 }; },
+    _axis(fmt) { return { grid:{ color:this.css('--line') }, ticks:{ color:this.css('--ink-3'), callback:fmt } }; },
+    _resolve(c) { return c.startsWith('var(') ? this.css(c.slice(4,-1)) : c; },
+
+    drawKpiSparks() {
+      this.kpis.forEach((k,i) => {
+        const col = { pos:this.css('--pos'), neg:this.css('--neg'), warn:this.css('--warn'), link:this.css('--link') }[k.tone] || this.css('--accent');
+        this._mk('ksp'+i, { type:'line', data:{ labels:k.sp.map((_,j)=>j), datasets:[{ data:k.sp, borderColor:col, borderWidth:1.6, tension:0.4, pointRadius:0, fill:true,
+          backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, col) : col+'22' }]},
+          options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
+      });
+    },
+    drawTrend() {
+      const acc = this.css('--accent'), ink = this.css('--ink-3');
+      this._mk('ovTrend', { data:{ labels:['Jan','Feb','Mar','Apr','May','Jun'], datasets:[
+        { type:'line', label:'Consolidated', data:[3410,3480,3520,3555,3590,this.consolTotal], borderColor:acc, borderWidth:2.4, tension:0.35, pointRadius:0, pointHoverRadius:4, fill:true,
+          backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, acc) : acc+'22', order:2 },
+        { type:'line', label:'Prior year', data:[3280,3300,3350,3390,3420,3470], borderColor:ink, borderWidth:1.6, borderDash:[5,4], pointRadius:0, tension:0.35, order:1 } ]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.dataset.label+': $'+c.parsed.y.toLocaleString()+'M' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} }, y:{ ...this._axis((v)=>'$'+(v/1000).toFixed(1)+'B'), min:3000 } } } });
+    },
+    drawRegion() {
+      const colors = this.regionMix.map(r => this._resolve(r.c));
+      this._mk('ovRegion', { type:'doughnut', data:{ labels:this.regionMix.map(r=>r.l), datasets:[{ data:this.regionMix.map(r=>r.v), backgroundColor:colors, borderColor:this.css('--surface'), borderWidth:3, hoverOffset:6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'64%', animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.label+' · $'+c.parsed.toLocaleString()+'M' }}} } });
+    },
+    _elimByType() { const m = {}; this.elimEntries.forEach(e => { m[e.type] = (m[e.type]||0) + e.amt; }); return Object.entries(m).map(([l,v]) => ({ l, v })); },
+    drawElimOv() {
+      const neg = this.css('--neg'), t = this._elimByType();
+      this._mk('ovElim', { type:'bar', data:{ labels:t.map(e=>e.l), datasets:[{ data:t.map(e=>e.v), backgroundColor:neg, borderRadius:4, barThickness:16 }]},
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>'Eliminated −$'+c.parsed.x.toLocaleString()+'M' }}},
+          scales:{ x:{ ...this._axis((v)=>'$'+v) }, y:{ grid:{display:false}, ticks:{color:this.css('--ink-2'), font:{size:10}} } } } });
+    },
+    drawEntDonut() {
+      const colors = this.regionMix.map(r => this._resolve(r.c));
+      this._mk('entDonut', { type:'doughnut', data:{ labels:this.regionMix.map(r=>r.l), datasets:[{ data:this.regionMix.map(r=>r.v), backgroundColor:colors, borderColor:this.css('--surface'), borderWidth:3, hoverOffset:6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'62%', animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.label+' · $'+c.parsed.toLocaleString()+'M' }}} } });
+    },
+    drawConsBridge() {
+      const acc = this.css('--accent'), neg = this.css('--neg'), warn = this.css('--warn'), pos = this.css('--pos');
+      const g = this.groupTotal, el = this.eliminations, n = this.nci, cons = g - el - n;
+      this._mk('consBridge', { type:'bar', data:{ labels:['Gross','Elim.','NCI','Consol.'], datasets:[{
+        data:[g, -el, -n, cons], backgroundColor:[acc, neg, warn, pos], borderRadius:4, barPercentage:0.7 }]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>(c.parsed.y>=0?'$':'−$')+Math.abs(c.parsed.y).toLocaleString()+'M' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} }, y:{ ...this._axis((v)=>'$'+v) } } } });
+    },
+    drawElimBar() {
+      const neg = this.css('--neg'), t = this._elimByType();
+      this._mk('elimBar', { type:'bar', data:{ labels:t.map(e=>e.l), datasets:[{ data:t.map(e=>e.v), backgroundColor:neg, borderRadius:4, barThickness:15 }]},
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>'−$'+c.parsed.x.toLocaleString()+'M' }}},
+          scales:{ x:{ ...this._axis((v)=>'$'+v) }, y:{ grid:{display:false}, ticks:{color:this.css('--ink-2'), font:{size:9}} } } } });
+    },
+    drawElimDonut() {
+      const t = this._elimByType();
+      const palette = [this.css('--accent'),'#3F7DBD','#59A88C',this.css('--warn'),this.css('--neg')];
+      this._mk('elimDonut', { type:'doughnut', data:{ labels:t.map(e=>e.l), datasets:[{ data:t.map(e=>e.v), backgroundColor:palette, borderColor:this.css('--surface'), borderWidth:3, hoverOffset:6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'62%', animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.label+' · $'+c.parsed.toLocaleString()+'M' }}} } });
+    },
+    drawCloseDonut() {
+      const colors = this.closeMix.map(c => this._resolve(c.c));
+      this._mk('closeDonut', { type:'doughnut', data:{ labels:this.closeMix.map(c=>c.l), datasets:[{ data:this.closeMix.map(c=>c.v), backgroundColor:colors, borderColor:this.css('--surface'), borderWidth:3, hoverOffset:6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'62%', animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.label+' · '+c.parsed+' entities' }}} } });
+    },
+    drawFxImpact() {
+      const pos = this.css('--pos'), neg = this.css('--neg');
+      const rows = this.fxRates.map(r => ({ l:r.ccy, v:this.fxImpact(r) }));
+      this._mk('fxImpactChart', { type:'bar', data:{ labels:rows.map(r=>r.l), datasets:[{ data:rows.map(r=>r.v), backgroundColor:rows.map(r=>r.v>=0?pos:neg), borderRadius:4, barThickness:15 }]},
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>(c.parsed.x>=0?'+$':'−$')+Math.abs(c.parsed.x).toLocaleString()+'M' }}},
+          scales:{ x:{ ...this._axis((v)=>(v>=0?'+':'−')+Math.abs(v)) }, y:{ grid:{display:false}, ticks:{color:this.css('--ink-2'), font:{size:10}} } } } });
+    },
+  };
+}
+</script>
+</body>
+</html>

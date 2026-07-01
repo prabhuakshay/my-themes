@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Bedrock — The Metrics Semantic Layer (Finance Data Governance)</title>
+<meta name="description" content="Bedrock — a certified metrics catalog, lineage & governance design system for the financial metrics semantic layer. Metric definitions, ownership, freshness, source→transform→metric lineage, certification status, governance issues and data sources. The definitions underneath the numbers. Reference (light) + Vault (dark) editions." />
+<meta name="theme-color" content="#14201F" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2314201F'/%3E%3Cpath d='M6 11h20M6 16h20M6 21h20' stroke='%230E9488' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='22' cy='11' r='3' fill='%2316A34A'/%3E%3C/svg%3E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: { fontFamily: {
+      sans: ['"Lexend"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      mono: ['"Roboto Mono"', 'ui-monospace', 'monospace'],
+    } } },
+  };
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<style>
+  /* ============================================================
+     BEDROCK — EDITION TOKENS
+     "The definitions underneath the numbers." A certified metrics
+     catalog, lineage & governance layer for the financial semantic
+     layer. "Reference" (light) is the hero — a catalog reads like a
+     spec sheet. "Vault" (dark) is the after-hours copy. The chrome
+     is a deep graphite-teal bedrock stratum in both modes. Certified
+     teal is the brand; certification green / review amber / stale red
+     is the semantic core. Edition swaps one class on <body>.
+     ============================================================ */
+
+  :root, .light {
+    color-scheme: light;
+    --canvas:#F5F6F7; --surface:#FFFFFF; --surface-2:#EDF1F1;
+    --line:#E2E6E8; --line-2:#CBD3D6;
+    --ink:#1C2126; --ink-2:#566069; --ink-3:#89939B;
+    --chrome:#14201F; --chrome-2:#1F2F2D; --chrome-line:#2C3E3B;
+    --chrome-ink:#EAF2F0; --chrome-ink-2:#8FA6A2;
+    --accent:#0E9488; --accent-2:#0B7A70; --accent-ink:#0B6E64;
+    --accent-soft:#DBF0EE; --on-accent:#FFFFFF;
+    --link:#1E77C4;
+    --cert:#16A34A; --cert-soft:#E3F4E9;
+    --review:#B5871E; --review-soft:#F6EBD3;
+    --stale:#C34733; --stale-soft:#F8E6E1;
+    --flat:#6B757F; --flat-soft:#EDF1F1;
+    --r:9px; --r-sm:6px;
+    --shadow:0 1px 2px rgba(20,32,31,.05), 0 2px 8px rgba(20,32,31,.06);
+    --shadow-lg:0 12px 34px rgba(20,32,31,.15), 0 3px 10px rgba(20,32,31,.10);
+    --scrim:rgba(20,32,31,.46);
+    --link-line:#B8C4C2;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --canvas:#0D1315; --surface:#141C1E; --surface-2:#1C2629;
+    --line:#253032; --line-2:#374547;
+    --ink:#E7EDEC; --ink-2:#9AA7A6; --ink-3:#66716F;
+    --chrome:#0A1211; --chrome-2:#152321; --chrome-line:#213230;
+    --chrome-ink:#E7EDEC; --chrome-ink-2:#879A96;
+    --accent:#22B3A6; --accent-2:#3ECBBD; --accent-ink:#22B3A6;
+    --accent-soft:rgba(34,179,166,.15); --on-accent:#06201D;
+    --link:#5AA6E0;
+    --cert:#35C06A; --cert-soft:rgba(53,192,106,.16);
+    --review:#E0B24E; --review-soft:rgba(224,178,78,.15);
+    --stale:#E06A54; --stale-soft:rgba(224,106,84,.15);
+    --flat:#8A9794; --flat-soft:#1C2629;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 26px rgba(0,0,0,.46);
+    --shadow-lg:0 14px 44px rgba(0,0,0,.6), 0 4px 12px rgba(0,0,0,.5);
+    --scrim:rgba(3,7,7,.66);
+    --link-line:#31413F;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: 'Lexend', ui-sans-serif, system-ui, sans-serif;
+    background: var(--canvas); color: var(--ink);
+    font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  [x-cloak] { display: none !important; }
+  .mono { font-family: 'Roboto Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .num  { font-family: 'Roboto Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  a, button, select, input, textarea, [tabindex] { outline: none; }
+  a:focus-visible, button:focus-visible, select:focus-visible,
+  input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--link); outline-offset: 2px; border-radius: var(--r-sm);
+  }
+
+  .lbl { font-family: 'Roboto Mono', monospace; font-size: 10px; font-weight: 700;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+  .display { font-weight: 700; letter-spacing: -.02em; }
+  .chrome { background: var(--chrome); color: var(--chrome-ink); }
+  .chrome-seam { border-color: var(--chrome-line) !important; }
+
+  .nav-item { position: relative; display: flex; align-items: center; gap: 11px; height: 40px;
+    padding: 0 13px; border-radius: var(--r-sm); color: var(--chrome-ink-2); cursor: pointer;
+    font-weight: 500; transition: background .12s, color .12s; }
+  .nav-item:hover { background: var(--chrome-2); color: var(--chrome-ink); }
+  .nav-item.on { background: var(--chrome-2); color: var(--chrome-ink); font-weight: 600; }
+  .nav-item.on::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 3px; background: var(--accent); border-radius: 0 3px 3px 0; }
+  .nav-item.on i { color: var(--accent); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px;
+    padding: 0 15px; border-radius: var(--r-sm); font-weight: 600; font-size: 13px;
+    border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+    transition: background .12s, border-color .12s, transform .06s; }
+  .btn:active { transform: scale(.985); }
+  .btn-primary { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+  .btn-primary:hover { background: var(--accent-2); }
+  .btn-outline { background: transparent; color: var(--ink); border-color: var(--line-2); }
+  .btn-outline:hover { background: var(--surface-2); }
+  .btn-ghost { background: var(--surface-2); color: var(--ink); }
+  .btn-ghost:hover { background: var(--line); }
+  .btn-sm { height: 32px; padding: 0 11px; font-size: 12px; }
+  .btn-block { width: 100%; }
+  .iconbtn { width: 38px; height: 38px; border-radius: var(--r-sm); display: flex; align-items: center;
+    justify-content: center; color: var(--ink-2); cursor: pointer; border: 1px solid transparent; background: transparent; }
+  .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
+  .chrome-icon { color: var(--chrome-ink-2); background: var(--chrome-2); }
+  .chrome-icon:hover { background: var(--chrome-line); color: var(--chrome-ink); }
+
+  .field, .isel, textarea.field { width: 100%; background: var(--surface-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 11px; font-size: 13px;
+    font-family: 'Lexend', sans-serif; }
+  .field, .isel { height: 38px; }
+  textarea.field { padding: 9px 11px; min-height: 78px; resize: vertical; line-height: 1.5; }
+  .field::placeholder, textarea.field::placeholder { color: var(--ink-3); }
+  .isel { appearance: none; -webkit-appearance: none; padding-right: 30px; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+    background-position: calc(100% - 15px) 16px, calc(100% - 10px) 16px; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  .flbl { font-size: 11px; font-weight: 700; color: var(--ink-2); margin-bottom: 5px; display: block; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; height: 21px; padding: 0 8px;
+    border-radius: 5px; font-family: 'Roboto Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; }
+  .chip-cert   { color: var(--cert);   background: var(--cert-soft); }
+  .chip-review { color: var(--review); background: var(--review-soft); }
+  .chip-dep    { color: var(--stale);  background: var(--stale-soft); }
+  .chip-unc    { color: var(--flat);   background: var(--flat-soft); border: 1px solid var(--line); }
+  .chip-flat   { color: var(--flat);   background: var(--surface-2); }
+  .chip-link   { color: var(--link);   background: rgba(30,119,196,.12); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+
+  .chipbtn { cursor: pointer; border: 1px solid var(--line-2); background: transparent; color: var(--ink-2);
+    height: 30px; padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 600; transition: .12s; }
+  .chipbtn:hover { background: var(--surface-2); }
+  .chipbtn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+
+  .switch { width: 40px; height: 23px; border-radius: 999px; background: var(--line-2); position: relative;
+    cursor: pointer; transition: background .15s; flex: none; border: 0; }
+  .switch.on { background: var(--accent); }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 19px; height: 19px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+  .switch.on::after { transform: translateX(17px); }
+
+  .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: var(--surface-2); overflow: hidden; }
+  .stepper button { width: 36px; height: 38px; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; font-size: 17px; line-height: 1; }
+  .stepper button:hover { background: var(--line); color: var(--ink); }
+  .stepper input { width: 92px; height: 38px; border: 0; background: transparent; text-align: center; color: var(--ink);
+    font-family: 'Roboto Mono', monospace; font-variant-numeric: tabular-nums; }
+
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px; }
+  .seg button { height: 28px; padding: 0 12px; border: 0; background: transparent; color: var(--ink-2);
+    font-family: 'Roboto Mono', monospace; font-size: 11px; font-weight: 700; border-radius: 4px; cursor: pointer; letter-spacing: .02em; }
+  .seg button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+  table { border-collapse: collapse; width: 100%; }
+  .tbl th { font-family: 'Roboto Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-3); text-align: left; padding: 9px 12px; white-space: nowrap;
+    border-bottom: 1px solid var(--line); user-select: none; }
+  .tbl th.sortable { cursor: pointer; }
+  .tbl th.sortable:hover { color: var(--ink-2); }
+  .tbl td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+  .tbl tbody tr { transition: background .1s; }
+  .tbl tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+  .tbl tbody tr:hover { background: var(--surface-2); }
+  .tbl tbody tr:last-child td { border-bottom: 0; }
+  .tbl tbody tr.clickable { cursor: pointer; }
+
+  .toast { background: var(--surface); border: 1px solid var(--line-2); border-left: 3px solid var(--accent);
+    box-shadow: var(--shadow-lg); border-radius: var(--r-sm); }
+  .scrim { background: var(--scrim); backdrop-filter: blur(2px); }
+  .spark { display: block; }
+  .track { height: 7px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .track > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+
+  /* lineage nodes */
+  .lg-node { position: absolute; border: 1px solid var(--line-2); background: var(--surface);
+    border-radius: var(--r-sm); box-shadow: var(--shadow); padding: 8px 10px; transition: box-shadow .12s; }
+  .lg-node.metric { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); background: var(--accent-soft); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+
+<body x-data="bedrock()" x-cloak x-init="init()" :class="edition" @keydown.escape.window="closeAll()">
+
+<div class="h-screen flex flex-col">
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="chrome border-b chrome-seam shrink-0 flex items-center gap-3 px-3 sm:px-4" style="height:60px;border-bottom-width:1px">
+    <button class="iconbtn chrome-icon lg:hidden" @click="mobileNav=true" aria-label="Open navigation">
+      <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
+
+    <div class="flex items-center gap-2.5 select-none">
+      <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background:var(--accent);color:var(--on-accent)">
+        <i data-lucide="layers" class="w-5 h-5"></i>
+      </div>
+      <div class="leading-none">
+        <div class="display text-[17px]" style="color:var(--chrome-ink)">Bedrock</div>
+        <div class="lbl mt-1" style="font-size:8.5px;color:var(--chrome-ink-2)">Metrics Semantic Layer</div>
+      </div>
+    </div>
+
+    <div class="hidden md:flex items-center gap-2 ml-4 h-9 px-3 rounded-md" style="background:var(--chrome-2)">
+      <i data-lucide="git-branch" class="w-4 h-4" style="color:var(--chrome-ink-2)"></i>
+      <span class="mono text-[12px] font-bold" style="color:var(--chrome-ink)" x-text="branch"></span>
+      <span class="mono text-[11px]" style="color:var(--chrome-ink-2)">· semantic v4.2</span>
+    </div>
+
+    <!-- global search -->
+    <div class="hidden sm:flex flex-1 max-w-md ml-2 relative">
+      <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style="color:var(--chrome-ink-2)"></i>
+      <input type="search" x-model="q" @focus="page='catalog'" placeholder="Search metrics, owners, definitions…" aria-label="Search catalog"
+             class="w-full h-9 pl-9 pr-3 rounded-md mono text-[12px]"
+             style="background:var(--chrome-2);color:var(--chrome-ink);border:1px solid var(--chrome-line)" />
+    </div>
+
+    <div class="flex-1 sm:hidden"></div>
+
+    <button class="btn btn-primary btn-sm hidden sm:inline-flex" @click="openModal()">
+      <i data-lucide="plus" class="w-4 h-4"></i> Propose metric
+    </button>
+    <button class="iconbtn chrome-icon" @click="toggleEdition()" :aria-label="'Switch to '+(edition==='light'?'Vault':'Reference')+' edition'">
+      <i :data-lucide="edition==='light' ? 'moon' : 'sun'" class="w-5 h-5"></i>
+    </button>
+    <button class="iconbtn chrome-icon relative" @click="page='issues'" aria-label="Open issues">
+      <i data-lucide="bell" class="w-5 h-5"></i>
+      <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style="background:var(--review)"></span>
+    </button>
+    <div class="w-9 h-9 rounded-md hidden sm:flex items-center justify-center mono text-[12px] font-bold shrink-0"
+         style="background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--line-2)">AP</div>
+  </header>
+
+  <div class="flex flex-1 min-h-0">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="chrome border-r chrome-seam w-60 shrink-0 hidden lg:flex flex-col" style="border-right-width:1px">
+      <nav class="p-3 flex-1 min-h-0 overflow-y-auto">
+        <div class="lbl px-3 pt-1 pb-2" style="color:var(--chrome-ink-2)">Governance</div>
+        <div class="space-y-0.5">
+          <template x-for="n in nav" :key="n.k">
+            <a class="nav-item" :class="{'on': page===n.k}" href="#" @click.prevent="go(n.k)">
+              <i :data-lucide="n.i" class="w-[18px] h-[18px]"></i>
+              <span x-text="n.t"></span>
+              <span x-show="n.badge" class="ml-auto mono text-[10px] px-1.5 py-0.5 rounded"
+                    style="background:var(--chrome-line);color:var(--chrome-ink-2)" x-text="n.badge"></span>
+            </a>
+          </template>
+        </div>
+      </nav>
+      <div class="p-3 border-t chrome-seam" style="border-top-width:1px">
+        <label class="lbl block mb-1.5 px-1" style="color:var(--chrome-ink-2)">Workspace</label>
+        <div class="text-[13px] font-semibold px-1 truncate" style="color:var(--chrome-ink)" x-text="workspace"></div>
+        <div class="flex items-center gap-2 mt-2.5 px-1">
+          <span class="dot" style="background:var(--cert)"></span>
+          <span class="text-[11px]" style="color:var(--chrome-ink-2)">Sync healthy · 2m ago</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="flex-1 min-w-0 overflow-y-auto">
+      <div class="p-3 sm:p-4 lg:p-5 space-y-4 max-w-[1600px] mx-auto">
+
+        <!-- ================= OVERVIEW ================= -->
+        <section x-show="page==='overview'">
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Governance Overview</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">
+                The definitions underneath the numbers · <span class="mono">240 metrics</span> · Finance semantic layer · <span class="mono">illustrative</span>
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-outline btn-sm" @click="notify('Exported governance report (CSV) — mockup')"><i data-lucide="download" class="w-4 h-4"></i> Export</button>
+              <button class="btn btn-primary btn-sm" @click="notify('Recertification run queued — mockup')"><i data-lucide="shield-check" class="w-4 h-4"></i> Recertify</button>
+            </div>
+          </div>
+
+          <!-- KPI tiles -->
+          <section class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mt-4">
+            <template x-for="(k,i) in kpis" :key="k.t">
+              <div class="card p-3.5">
+                <div class="flex items-center justify-between">
+                  <span class="lbl" x-text="k.t"></span>
+                  <i :data-lucide="k.i" class="w-4 h-4" style="color:var(--ink-3)"></i>
+                </div>
+                <div class="num display text-[20px] mt-2" x-text="k.v"></div>
+                <div class="flex items-center gap-1.5 mt-1.5">
+                  <span class="chip" :class="k.good?'chip-cert':'chip-dep'">
+                    <i :data-lucide="k.good?'arrow-up-right':'arrow-down-right'" class="w-3 h-3"></i><span x-text="k.d"></span>
+                  </span>
+                  <span class="text-[10.5px] mono" style="color:var(--ink-3)" x-text="k.s"></span>
+                </div>
+                <div class="mt-2.5" style="height:28px"><canvas :id="'ksp'+i" class="spark"></canvas></div>
+              </div>
+            </template>
+          </section>
+
+          <!-- charts row -->
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card p-4 flex flex-col">
+              <div class="flex items-center justify-between">
+                <div><h2 class="display text-[15px]">Certification Status</h2><div class="lbl mt-0.5">Whole catalog</div></div>
+                <span class="chip chip-cert" x-text="Math.round(certCounts.Certified/certTotal*100)+'%'"></span>
+              </div>
+              <div class="relative mt-3 mx-auto" style="height:168px;max-width:168px"><canvas id="ovCert"></canvas></div>
+              <div class="mt-4 space-y-1.5">
+                <template x-for="c in certLegend" :key="c.l">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="'background:'+c.c"></span>
+                    <span class="text-[12px] flex-1" style="color:var(--ink-2)" x-text="c.l"></span>
+                    <span class="num text-[12px] font-bold" x-text="c.v"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Metrics by Domain</h2><span class="lbl">Count</span></div>
+              <div class="relative mt-3" style="height:236px"><canvas id="ovDomain"></canvas></div>
+            </div>
+
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Certified Coverage</h2><span class="lbl">% · 6 mo</span></div>
+              <div class="relative mt-3" style="height:236px"><canvas id="ovCoverage"></canvas></div>
+            </div>
+          </section>
+
+          <!-- attention table (inline-editable certification) -->
+          <section class="card overflow-hidden mt-4">
+            <div class="p-4 pb-3 border-b flex items-center justify-between gap-3 flex-wrap" style="border-color:var(--line)">
+              <div class="flex items-center gap-2">
+                <h2 class="display text-[16px]">Needs Attention</h2>
+                <span class="chip chip-review" x-text="attention.length+' metrics'"></span>
+              </div>
+              <button class="btn btn-ghost btn-sm" @click="go('catalog')">Open catalog <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:720px">
+                <thead><tr><th style="width:30%">Metric</th><th>Definition</th><th>Owner</th><th style="text-align:right">Freshness</th><th style="width:150px">Certification</th></tr></thead>
+                <tbody>
+                  <template x-for="m in attention" :key="'att'+m.id">
+                    <tr class="clickable" @click="openMetric(m)">
+                      <td>
+                        <div class="font-semibold text-[13px]" x-text="m.m"></div>
+                        <div class="mono text-[10px]" style="color:var(--ink-3)" x-text="m.id"></div>
+                      </td>
+                      <td><span class="text-[12px]" style="color:var(--ink-2)" x-text="m.def"></span></td>
+                      <td><span class="chip chip-flat" x-text="m.owner"></span></td>
+                      <td style="text-align:right">
+                        <span class="inline-flex items-center gap-1.5 justify-end">
+                          <span class="dot" :style="'background:'+freshColor(m.fresh)"></span>
+                          <span class="num text-[12px]" :style="'color:'+freshColor(m.fresh)" x-text="fmtFresh(m.fresh)"></span>
+                        </span>
+                      </td>
+                      <td @click.stop>
+                        <select class="isel !h-8 !text-[11px] !px-2 mono w-full" x-model="m.cert"
+                                @change="onCertChange(m)" :aria-label="'Certification for '+m.m"
+                                :style="'font-weight:700;color:'+certColor(m.cert)">
+                          <option>Certified</option><option>Review</option><option>Deprecated</option>
+                        </select>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= CATALOG ================= -->
+        <section x-show="page==='catalog'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Metric Catalog</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Certified definitions · <span class="mono">240 metrics</span> · click a row to edit · <span class="mono">illustrative</span></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-outline btn-sm" @click="notify('Exported catalog (CSV) — mockup')"><i data-lucide="download" class="w-4 h-4"></i> Export</button>
+              <button class="btn btn-primary btn-sm" @click="openModal()"><i data-lucide="plus" class="w-4 h-4"></i> Propose metric</button>
+            </div>
+          </div>
+
+          <div class="card overflow-hidden flex flex-col mt-4">
+            <div class="p-4 pb-3 border-b" style="border-color:var(--line)">
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <h2 class="display text-[16px]">Certified Definitions</h2>
+                  <span class="chip chip-flat" x-text="filtered.length+' of '+metrics.length"></span>
+                </div>
+                <div class="relative">
+                  <i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+                  <input type="search" class="field !h-8 !w-40 sm:!w-56 !pl-8 text-[12px]" placeholder="Search metrics" x-model="q" aria-label="Search metrics" />
+                </div>
+              </div>
+              <div class="flex items-center gap-2 mt-3 flex-wrap">
+                <span class="lbl mr-0.5">Domain</span>
+                <template x-for="d in ['All','Revenue','Cost','Cash','Growth','Ops']" :key="d">
+                  <button class="chipbtn" :class="{'on': domain===d}" @click="domain=d" x-text="d"></button>
+                </template>
+                <div class="seg ml-auto">
+                  <template x-for="s in ['All','Certified','Review']" :key="s">
+                    <button :class="{'on': certFilter===s}" @click="certFilter=s" x-text="s"></button>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto flex-1">
+              <table class="tbl" style="min-width:820px">
+                <thead>
+                  <tr>
+                    <th class="sortable" style="width:28%" @click="sortBy('m')">Metric <span x-show="sortKey==='m'" x-text="sortDir>0?'▲':'▼'"></span></th>
+                    <th style="width:28%">Definition</th>
+                    <th class="sortable" @click="sortBy('owner')">Owner <span x-show="sortKey==='owner'" x-text="sortDir>0?'▲':'▼'"></span></th>
+                    <th class="sortable" @click="sortBy('dom')">Domain <span x-show="sortKey==='dom'" x-text="sortDir>0?'▲':'▼'"></span></th>
+                    <th class="sortable" style="text-align:right" @click="sortBy('fresh')">Freshness <span x-show="sortKey==='fresh'" x-text="sortDir>0?'▲':'▼'"></span></th>
+                    <th style="width:150px">Certification</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="m in filtered" :key="m.id">
+                    <tr class="clickable" @click="openMetric(m)">
+                      <td>
+                        <div class="flex items-center gap-2.5">
+                          <div class="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style="background:var(--surface-2);color:var(--accent-ink)">
+                            <i data-lucide="hash" class="w-3.5 h-3.5"></i>
+                          </div>
+                          <div class="min-w-0">
+                            <div class="font-semibold text-[13px] truncate" x-text="m.m"></div>
+                            <div class="mono text-[10px]" style="color:var(--ink-3)" x-text="m.id"></div>
+                          </div>
+                        </div>
+                      </td>
+                      <td><span class="text-[12px]" style="color:var(--ink-2)" x-text="m.def"></span></td>
+                      <td><span class="chip chip-flat" x-text="m.owner"></span></td>
+                      <td><span class="mono text-[12px]" style="color:var(--ink-2)" x-text="m.dom"></span></td>
+                      <td style="text-align:right">
+                        <span class="inline-flex items-center gap-1.5 justify-end">
+                          <span class="dot" :style="'background:'+freshColor(m.fresh)"></span>
+                          <span class="num text-[12px]" :style="'color:'+freshColor(m.fresh)" x-text="fmtFresh(m.fresh)"></span>
+                        </span>
+                      </td>
+                      <td @click.stop>
+                        <select class="isel !h-8 !text-[11px] !px-2 mono w-full" x-model="m.cert"
+                                @change="onCertChange(m)" :aria-label="'Certification for '+m.m"
+                                :style="'font-weight:700;color:'+certColor(m.cert)">
+                          <option>Certified</option><option>Review</option><option>Deprecated</option>
+                        </select>
+                      </td>
+                    </tr>
+                  </template>
+                  <tr x-show="filtered.length===0">
+                    <td colspan="6">
+                      <div class="flex flex-col items-center justify-center py-10 text-center">
+                        <i data-lucide="search-x" class="w-7 h-7" style="color:var(--ink-3)"></i>
+                        <div class="font-semibold mt-2">No metrics match</div>
+                        <div class="text-[12px] mt-0.5" style="color:var(--ink-3)">Clear the search or pick a different domain.</div>
+                        <button class="btn btn-ghost btn-sm mt-3" @click="q='';domain='All';certFilter='All'">Reset filters</button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-t flex-wrap" style="border-color:var(--line);background:var(--surface-2)">
+              <span class="lbl">Legend</span>
+              <div class="flex items-center gap-3.5 mono text-[11px]" style="color:var(--ink-2)">
+                <span class="flex items-center gap-1.5"><span class="dot" style="background:var(--cert)"></span>Fresh ≤8h</span>
+                <span class="flex items-center gap-1.5"><span class="dot" style="background:var(--review)"></span>Aging ≤24h</span>
+                <span class="flex items-center gap-1.5"><span class="dot" style="background:var(--stale)"></span>Stale &gt;24h</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= LINEAGE ================= -->
+        <section x-show="page==='lineage'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Lineage Explorer</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Source → transform → certified metric · pick a metric to trace its definition</p>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-4 gap-4 mt-4">
+            <!-- metric picker -->
+            <div class="card p-3 xl:col-span-1">
+              <div class="lbl px-1 pb-2">Trace metric</div>
+              <div class="space-y-0.5 max-h-[420px] overflow-y-auto">
+                <template x-for="name in lineageNames" :key="name">
+                  <button class="w-full flex items-center gap-2.5 px-2.5 h-10 rounded-md text-left transition"
+                          :style="focus===name ? 'background:var(--accent-soft);color:var(--accent-ink)' : 'color:var(--ink-2)'"
+                          @click="focus=name">
+                    <i data-lucide="badge-check" class="w-4 h-4" :style="focus===name?'color:var(--accent-ink)':'color:var(--ink-3)'"></i>
+                    <span class="text-[13px] font-semibold truncate" x-text="name"></span>
+                  </button>
+                </template>
+              </div>
+            </div>
+
+            <!-- graph -->
+            <div class="card xl:col-span-3 overflow-hidden">
+              <div class="p-4 pb-3 border-b flex items-center justify-between gap-3 flex-wrap" style="border-color:var(--line)">
+                <div>
+                  <h2 class="display text-[16px]">Metric Lineage — <span x-text="focus"></span></h2>
+                  <div class="mono text-[11px] mt-0.5" style="color:var(--ink-3)" x-text="lg.id"></div>
+                </div>
+                <div class="flex items-center gap-3.5 mono text-[11px]" style="color:var(--ink-2)">
+                  <span class="flex items-center gap-1.5"><i data-lucide="database" class="w-3.5 h-3.5" style="color:var(--ink-3)"></i>Source</span>
+                  <span class="flex items-center gap-1.5"><i data-lucide="function-square" class="w-3.5 h-3.5" style="color:var(--ink-3)"></i>Transform</span>
+                  <span class="flex items-center gap-1.5"><i data-lucide="badge-check" class="w-3.5 h-3.5" style="color:var(--accent-ink)"></i>Metric</span>
+                </div>
+              </div>
+              <div class="overflow-x-auto p-4">
+                <div class="relative mx-auto" :style="'width:624px;height:'+(lg.H+24)+'px'">
+                  <div class="lbl absolute" style="left:8px;top:0">Sources</div>
+                  <div class="lbl absolute" style="left:236px;top:0">Transforms</div>
+                  <div class="lbl absolute" style="left:474px;top:0">Metric</div>
+
+                  <svg :width="624" :height="lg.H+24" class="absolute" style="left:0;top:24px;pointer-events:none" aria-hidden="true">
+                    <path fill="none" :stroke="css('--link-line')" stroke-width="1.6" :d="lg.e1d"></path>
+                    <path fill="none" :stroke="css('--accent')" stroke-width="1.8" :d="lg.e2d"></path>
+                  </svg>
+
+                  <div style="position:absolute;left:0;top:24px;width:624px;height:100%">
+                    <template x-for="s in lg.src" :key="'s'+s.n">
+                      <div class="lg-node" :style="'left:'+s.x+'px;top:'+(s.cy-27)+'px;width:'+s.w+'px'">
+                        <div class="flex items-center gap-1.5">
+                          <i data-lucide="database" class="w-3.5 h-3.5" style="color:var(--ink-3)"></i>
+                          <span class="font-semibold text-[12px]" x-text="s.n"></span>
+                          <span class="dot ml-auto" :style="'background:'+freshColor(s.fresh)"></span>
+                        </div>
+                        <div class="mono text-[10px] mt-1" style="color:var(--ink-3)" x-text="s.t+' · '+fmtFresh(s.fresh)"></div>
+                      </div>
+                    </template>
+                    <template x-for="t in lg.tr" :key="'t'+t.n">
+                      <div class="lg-node" :style="'left:'+t.x+'px;top:'+(t.cy-27)+'px;width:'+t.w+'px'">
+                        <div class="flex items-center gap-1.5">
+                          <i data-lucide="function-square" class="w-3.5 h-3.5" style="color:var(--ink-3)"></i>
+                          <span class="font-semibold text-[12px]" x-text="t.n"></span>
+                        </div>
+                        <div class="mono text-[10px] mt-1" style="color:var(--ink-3)" x-text="'dbt · '+t.d"></div>
+                      </div>
+                    </template>
+                    <div class="lg-node metric" :style="'left:'+lg.met.x+'px;top:'+(lg.met.cy-32)+'px;width:'+lg.met.w+'px'">
+                      <div class="flex items-center gap-1.5">
+                        <i data-lucide="badge-check" class="w-4 h-4" style="color:var(--accent-ink)"></i>
+                        <span class="font-semibold text-[13px]" style="color:var(--accent-ink)" x-text="focus"></span>
+                      </div>
+                      <div class="mono text-[10px] mt-1" style="color:var(--accent-ink)" x-text="lg.id"></div>
+                      <div class="mt-1.5"><span class="chip" :class="certChip(lg.cert)"><i data-lucide="check" class="w-3 h-3"></i><span x-text="lg.cert"></span></span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= DOMAINS ================= -->
+        <section x-show="page==='domains'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Domains</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Metric ownership &amp; certified coverage by business domain</p>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-4">
+            <template x-for="d in domainStats" :key="d.d">
+              <div class="card p-4">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-md flex items-center justify-center" style="background:var(--accent-soft);color:var(--accent-ink)"><i :data-lucide="d.i" class="w-4 h-4"></i></div>
+                    <div><div class="font-semibold text-[14px]" x-text="d.d"></div><div class="lbl" style="font-size:9px" x-text="d.owner"></div></div>
+                  </div>
+                  <span class="chip" :class="d.pct>=90?'chip-cert':d.pct>=75?'chip-review':'chip-dep'" x-text="d.pct+'%'"></span>
+                </div>
+                <div class="flex items-baseline gap-2 mt-3">
+                  <span class="num display text-[22px]" x-text="d.total"></span>
+                  <span class="text-[11px] mono" style="color:var(--ink-3)" x-text="d.cert+' certified'"></span>
+                </div>
+                <div class="track mt-2"><span :style="'width:'+d.pct+'%;background:'+(d.pct>=90?'var(--cert)':d.pct>=75?'var(--review)':'var(--stale)')"></span></div>
+              </div>
+            </template>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card p-4 xl:col-span-2">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Metrics by Domain</h2><span class="lbl">Count</span></div>
+              <div class="relative mt-3" style="height:240px"><canvas id="dmDomain"></canvas></div>
+            </div>
+            <div class="card p-4 flex flex-col">
+              <div class="flex items-center justify-between">
+                <div><h2 class="display text-[15px]">Certification Mix</h2><div class="lbl mt-0.5">Whole catalog</div></div>
+                <span class="chip chip-cert" x-text="Math.round(certCounts.Certified/certTotal*100)+'%'"></span>
+              </div>
+              <div class="relative mt-3 mx-auto" style="height:168px;max-width:168px"><canvas id="dmCert"></canvas></div>
+              <div class="mt-4 space-y-1.5">
+                <template x-for="c in certLegend" :key="'dm'+c.l">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="'background:'+c.c"></span>
+                    <span class="text-[12px] flex-1" style="color:var(--ink-2)" x-text="c.l"></span>
+                    <span class="num text-[12px] font-bold" x-text="c.v"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= ISSUES ================= -->
+        <section x-show="page==='issues'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Governance Issues</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Open definition &amp; data-quality issues · set priority and status inline</p>
+            </div>
+            <button class="btn btn-primary btn-sm" @click="notify('New issue form — mockup')"><i data-lucide="plus" class="w-4 h-4"></i> Raise issue</button>
+          </div>
+
+          <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            <div class="card p-3.5"><div class="lbl">Open</div><div class="num display text-[20px] mt-1.5" x-text="issues.filter(i=>i.status!=='Resolved').length"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">unresolved</div></div>
+            <div class="card p-3.5"><div class="lbl">High priority</div><div class="num display text-[20px] mt-1.5" :style="'color:var(--stale)'" x-text="issues.filter(i=>i.prio==='High').length"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">need triage</div></div>
+            <div class="card p-3.5"><div class="lbl">In review</div><div class="num display text-[20px] mt-1.5" :style="'color:var(--link)'" x-text="issues.filter(i=>i.status==='In review').length"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">with governance</div></div>
+            <div class="card p-3.5"><div class="lbl">Resolved 30d</div><div class="num display text-[20px] mt-1.5" :style="'color:var(--cert)'">18</div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">closed out</div></div>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-4 gap-4 mt-4">
+            <div class="card overflow-hidden xl:col-span-3">
+              <div class="p-4 pb-3 border-b flex items-center justify-between gap-3 flex-wrap" style="border-color:var(--line)">
+                <div class="flex items-center gap-2"><h2 class="display text-[16px]">Issue Queue</h2><span class="chip chip-flat" x-text="filteredIssues.length+' issues'"></span></div>
+                <div class="seg"><template x-for="f in ['All','Open','In review','Resolved']" :key="f"><button :class="{'on': issueFilter===f}" @click="issueFilter=f" x-text="f"></button></template></div>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="tbl" style="min-width:820px">
+                  <thead><tr><th style="width:40%">Issue</th><th>Metric</th><th>Owner</th><th style="width:120px">Priority</th><th style="width:130px">Status</th><th style="text-align:right">Age</th></tr></thead>
+                  <tbody>
+                    <template x-for="it in filteredIssues" :key="it.t">
+                      <tr>
+                        <td><span class="font-semibold text-[13px]" x-text="it.t"></span></td>
+                        <td><span class="mono text-[11px]" style="color:var(--ink-2)" x-text="it.metric"></span></td>
+                        <td><span class="chip chip-flat" x-text="it.owner"></span></td>
+                        <td>
+                          <select class="isel !h-8 !text-[11px] !px-2 mono w-full" x-model="it.prio" @change="notify(it.metric+' priority → '+it.prio, it.prio==='High'?'warn':'info')" :style="'font-weight:700;color:'+prioColor(it.prio)" aria-label="Priority">
+                            <option>Low</option><option>Medium</option><option>High</option>
+                          </select>
+                        </td>
+                        <td>
+                          <select class="isel !h-8 !text-[11px] !px-2 mono w-full" x-model="it.status" @change="notify(it.metric+' → '+it.status, it.status==='Resolved'?'ok':'info')" :style="'font-weight:700;color:'+issueStatusColor(it.status)" aria-label="Status">
+                            <option>Triage</option><option>Open</option><option>In review</option><option>Resolved</option>
+                          </select>
+                        </td>
+                        <td style="text-align:right"><span class="num text-[12px]" style="color:var(--ink-3)" x-text="it.age"></span></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">By Priority</h2><span class="lbl">Open</span></div>
+              <div class="relative mt-3 mx-auto" style="height:168px;max-width:168px"><canvas id="isPrio"></canvas></div>
+              <div class="mt-4 space-y-1.5">
+                <template x-for="p in prioLegend" :key="p.l">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="'background:'+p.c"></span>
+                    <span class="text-[12px] flex-1" style="color:var(--ink-2)" x-text="p.l"></span>
+                    <span class="num text-[12px] font-bold" x-text="p.v"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= SOURCES ================= -->
+        <section x-show="page==='sources'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Data Sources</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Upstream systems feeding the semantic layer · freshness &amp; connection status</p>
+            </div>
+            <button class="btn btn-primary btn-sm" @click="notify('Connect source — mockup')"><i data-lucide="plug" class="w-4 h-4"></i> Connect source</button>
+          </div>
+
+          <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            <div class="card p-3.5"><div class="lbl">Connected</div><div class="num display text-[20px] mt-1.5" x-text="sources.length"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">active feeds</div></div>
+            <div class="card p-3.5"><div class="lbl">Healthy</div><div class="num display text-[20px] mt-1.5" :style="'color:var(--cert)'" x-text="sources.filter(s=>s.status==='Healthy').length"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">within SLA</div></div>
+            <div class="card p-3.5"><div class="lbl">Degraded</div><div class="num display text-[20px] mt-1.5" :style="'color:var(--review)'" x-text="sources.filter(s=>s.status==='Degraded').length"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">watch</div></div>
+            <div class="card p-3.5"><div class="lbl">Down</div><div class="num display text-[20px] mt-1.5" :style="'color:var(--stale)'" x-text="sources.filter(s=>s.status==='Down').length"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">breached</div></div>
+          </section>
+
+          <section class="card overflow-hidden mt-4">
+            <div class="p-4 pb-3 border-b flex items-center justify-between gap-3 flex-wrap" style="border-color:var(--line)">
+              <div class="flex items-center gap-2"><h2 class="display text-[16px]">Source Registry</h2><span class="chip chip-flat" x-text="sources.length+' sources'"></span></div>
+              <div class="relative">
+                <i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+                <input type="search" class="field !h-8 !w-40 sm:!w-52 !pl-8 text-[12px]" placeholder="Search sources" x-model="sourceQ" aria-label="Search sources" />
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:820px">
+                <thead><tr><th style="width:22%">Source</th><th>Table</th><th style="text-align:right">Rows</th><th style="text-align:right">Freshness</th><th>Owner</th><th style="width:150px">Status</th></tr></thead>
+                <tbody>
+                  <template x-for="s in filteredSources" :key="s.s">
+                    <tr>
+                      <td>
+                        <div class="flex items-center gap-2.5">
+                          <div class="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style="background:var(--surface-2);color:var(--ink-2)"><i data-lucide="database" class="w-3.5 h-3.5"></i></div>
+                          <span class="font-semibold text-[13px]" x-text="s.s"></span>
+                        </div>
+                      </td>
+                      <td><span class="mono text-[11px]" style="color:var(--ink-2)" x-text="s.tbl"></span></td>
+                      <td style="text-align:right"><span class="num text-[12px]" style="color:var(--ink-2)" x-text="s.rows"></span></td>
+                      <td style="text-align:right">
+                        <span class="inline-flex items-center gap-1.5 justify-end">
+                          <span class="dot" :style="'background:'+freshColor(s.fresh)"></span>
+                          <span class="num text-[12px]" :style="'color:'+freshColor(s.fresh)" x-text="fmtFresh(s.fresh)"></span>
+                        </span>
+                      </td>
+                      <td><span class="chip chip-flat" x-text="s.owner"></span></td>
+                      <td>
+                        <select class="isel !h-8 !text-[11px] !px-2 mono w-full" x-model="s.status" @change="onSourceStatus(s)" :style="'font-weight:700;color:'+sourceStatusColor(s.status)" :aria-label="'Status for '+s.s">
+                          <option>Healthy</option><option>Degraded</option><option>Down</option><option>Paused</option>
+                        </select>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= SETTINGS ================= -->
+        <section x-show="page==='settings'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Settings</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Workspace, edition &amp; governance defaults</p>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Workspace</h2>
+              <div class="mt-3 space-y-3.5">
+                <div>
+                  <label class="flbl">Workspace name</label>
+                  <template x-if="!editWs">
+                    <div class="flex items-center gap-2">
+                      <span class="text-[14px] font-semibold" x-text="workspace"></span>
+                      <button class="iconbtn !w-7 !h-7" @click="startWs()" aria-label="Edit workspace name"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+                    </div>
+                  </template>
+                  <template x-if="editWs">
+                    <div class="flex items-center gap-1.5">
+                      <input class="field !h-9 max-w-xs" x-model="wsDraft" @keydown.enter="saveWs()" @keydown.escape="editWs=false" x-init="$nextTick(()=>$el.focus())" />
+                      <button class="iconbtn !w-8 !h-8" @click="saveWs()" aria-label="Save"><i data-lucide="check" class="w-4 h-4" style="color:var(--cert)"></i></button>
+                      <button class="iconbtn !w-8 !h-8" @click="editWs=false" aria-label="Cancel"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                  </template>
+                </div>
+                <div>
+                  <label class="flbl">Default branch</label>
+                  <select class="isel max-w-xs" x-model="branch" @change="notify('Default branch → '+branch)">
+                    <option>main</option><option>staging</option><option>consolidated</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="flbl">Freshness SLA (hours)</label>
+                  <div class="stepper">
+                    <button @click="sla=Math.max(1,sla-1)" aria-label="Decrease SLA">−</button>
+                    <input class="mono" type="text" :value="sla+'h'" readonly aria-label="Freshness SLA hours" />
+                    <button @click="sla=Math.min(72,sla+1)" aria-label="Increase SLA">+</button>
+                  </div>
+                </div>
+                <div>
+                  <label class="flbl">Governance note</label>
+                  <textarea class="field" x-model="govNote" placeholder="Notes for the data governance team…"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Preferences</h2>
+              <div class="mt-3 space-y-3.5">
+                <div>
+                  <label class="flbl">Edition</label>
+                  <div class="seg w-full">
+                    <button class="flex-1" :class="{'on': edition==='light'}" @click="edition='light'">Reference</button>
+                    <button class="flex-1" :class="{'on': edition==='dark'}" @click="edition='dark'">Vault</button>
+                  </div>
+                </div>
+                <div>
+                  <label class="flbl">Certify from domains</label>
+                  <div class="flex flex-wrap gap-2">
+                    <template x-for="d in ['Revenue','Cost','Cash','Growth','Ops']" :key="'pref'+d">
+                      <button class="chipbtn" :class="{'on': autoDomains.includes(d)}" @click="toggleAutoDomain(d)" x-text="d"></button>
+                    </template>
+                  </div>
+                </div>
+                <div class="flex items-center justify-between py-1 border-t" style="border-color:var(--line)">
+                  <div><div class="text-[13px] font-semibold">Auto-recertify on source refresh</div><div class="text-[11px]" style="color:var(--ink-3)">Re-run checks nightly</div></div>
+                  <button class="switch" :class="{'on': prefRecert}" @click="prefRecert=!prefRecert" role="switch" :aria-checked="prefRecert" aria-label="Auto-recertify"></button>
+                </div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Notify on freshness breach</div><div class="text-[11px]" style="color:var(--ink-3)">Alert metric owner</div></div>
+                  <button class="switch" :class="{'on': prefNotify}" @click="prefNotify=!prefNotify" role="switch" :aria-checked="prefNotify" aria-label="Notify on breach"></button>
+                </div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Expose certified metrics to BI</div><div class="text-[11px]" style="color:var(--ink-3)">Publish to dashboards</div></div>
+                  <button class="switch" :class="{'on': prefExpose}" @click="prefExpose=!prefExpose" role="switch" :aria-checked="prefExpose" aria-label="Expose to BI"></button>
+                </div>
+                <button class="btn btn-primary btn-block" @click="notify('Settings saved — mockup')"><i data-lucide="check" class="w-4 h-4"></i> Save settings</button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <footer class="flex items-center justify-between flex-wrap gap-2 pt-1 pb-3">
+          <span class="lbl" style="color:var(--ink-3)">Bedrock · Metrics Semantic Layer · v1.0</span>
+          <span class="mono text-[11px]" style="color:var(--ink-3)">Definitions illustrative · not authoritative</span>
+        </footer>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ===== MOBILE NAV DRAWER ===== -->
+<div x-show="mobileNav" x-transition.opacity class="fixed inset-0 z-40 lg:hidden scrim" @click="mobileNav=false"></div>
+<aside x-show="mobileNav" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
+       class="fixed inset-y-0 left-0 z-50 w-72 chrome flex flex-col lg:hidden">
+  <div class="flex items-center justify-between px-4 border-b chrome-seam" style="height:60px;border-bottom-width:1px">
+    <div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-md flex items-center justify-center" style="background:var(--accent);color:var(--on-accent)"><i data-lucide="layers" class="w-4 h-4"></i></div>
+      <span class="display text-[16px]" style="color:var(--chrome-ink)">Bedrock</span></div>
+    <button class="iconbtn chrome-icon" @click="mobileNav=false" aria-label="Close navigation"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <nav class="p-3 space-y-0.5 flex-1 overflow-y-auto">
+    <template x-for="n in nav" :key="'m'+n.k">
+      <a class="nav-item" :class="{'on': page===n.k}" href="#" @click.prevent="go(n.k); mobileNav=false"><i :data-lucide="n.i" class="w-[18px] h-[18px]"></i><span x-text="n.t"></span>
+        <span x-show="n.badge" class="ml-auto mono text-[10px] px-1.5 py-0.5 rounded" style="background:var(--chrome-line);color:var(--chrome-ink-2)" x-text="n.badge"></span></a>
+    </template>
+  </nav>
+  <div class="p-3 border-t chrome-seam" style="border-top-width:1px">
+    <button class="btn btn-primary btn-block" @click="openModal(); mobileNav=false"><i data-lucide="plus" class="w-4 h-4"></i> Propose metric</button>
+  </div>
+</aside>
+
+<!-- ===== EDIT DRAWER (metric) ===== -->
+<div x-show="drawerOpen" x-transition.opacity class="fixed inset-0 z-[55] scrim" @click="drawerOpen=false"></div>
+<aside x-show="drawerOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+       class="fixed inset-y-0 right-0 z-[60] w-full sm:w-[440px] flex flex-col" style="background:var(--surface);border-left:1px solid var(--line-2);box-shadow:var(--shadow-lg)">
+  <div class="flex items-center justify-between px-4 border-b" style="height:60px;border-color:var(--line)">
+    <div><div class="lbl">Edit metric</div><div class="display text-[16px]" x-text="editForm.m"></div></div>
+    <button class="iconbtn" @click="drawerOpen=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <div class="flex-1 overflow-y-auto p-4 space-y-3.5">
+    <div><label class="flbl">Metric name</label><input class="field" type="text" x-model="editForm.m" /></div>
+    <div><label class="flbl">Identifier</label><input class="field mono" type="text" x-model="editForm.id" /></div>
+    <div><label class="flbl">Definition</label><textarea class="field" x-model="editForm.def" placeholder="One-line, unambiguous definition…"></textarea></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="flbl">Owner</label><input class="field mono" type="text" x-model="editForm.owner" /></div>
+      <div><label class="flbl">Domain</label><select class="isel" x-model="editForm.dom"><option>Revenue</option><option>Cost</option><option>Cash</option><option>Growth</option><option>Ops</option></select></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="flbl">Certification</label>
+        <select class="isel" x-model="editForm.cert" :style="'font-weight:700;color:'+certColor(editForm.cert)"><option>Certified</option><option>Review</option><option>Deprecated</option></select></div>
+      <div><label class="flbl">Freshness (hours)</label><input class="field mono" type="number" x-model.number="editForm.fresh" min="0" /></div>
+    </div>
+    <div class="rounded-md p-3 flex items-center justify-between" style="background:var(--surface-2)">
+      <span class="lbl">Current freshness</span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="dot" :style="'background:'+freshColor(editForm.fresh)"></span>
+        <span class="num text-[14px] font-bold" :style="'color:'+freshColor(editForm.fresh)" x-text="fmtFresh(editForm.fresh||0)"></span>
+      </span>
+    </div>
+    <div class="flex items-center justify-between py-1">
+      <div><div class="text-[13px] font-semibold">Expose in BI</div><div class="text-[11px]" style="color:var(--ink-3)">Publish to dashboards</div></div>
+      <button class="switch" :class="{'on': editForm.exposeBI}" @click="editForm.exposeBI=!editForm.exposeBI" role="switch" :aria-checked="editForm.exposeBI" aria-label="Expose in BI"></button>
+    </div>
+    <div><label class="flbl">Steward note</label><textarea class="field" x-model="editForm.note" placeholder="Add a note for the metric steward…"></textarea></div>
+  </div>
+  <div class="p-4 border-t flex items-center gap-2" style="border-color:var(--line)">
+    <button class="btn btn-outline flex-1" @click="drawerOpen=false">Cancel</button>
+    <button class="btn btn-primary flex-1" @click="saveMetric()"><i data-lucide="check" class="w-4 h-4"></i> Save changes</button>
+  </div>
+</aside>
+
+<!-- ===== MODAL (Propose metric) ===== -->
+<div x-show="modalOpen" x-transition.opacity class="fixed inset-0 z-[70] scrim flex items-start sm:items-center justify-center p-4 overflow-y-auto" @click="modalOpen=false">
+  <div @click.stop x-show="modalOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       class="card w-full max-w-lg my-8" style="box-shadow:var(--shadow-lg)">
+    <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color:var(--line)">
+      <div><div class="lbl">Semantic layer</div><div class="display text-[17px]">Propose a Metric</div></div>
+      <button class="iconbtn" @click="modalOpen=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="p-5 space-y-3.5 max-h-[70vh] overflow-y-auto">
+      <div><label class="flbl">Metric name</label><input class="field" type="text" x-model="form.m" placeholder="e.g. Deferred Revenue" /></div>
+      <div><label class="flbl">Identifier</label><input class="field mono" type="text" x-model="form.id" placeholder="metric.deferred_rev" /></div>
+      <div><label class="flbl">Definition</label><textarea class="field" x-model="form.def" placeholder="One-line, unambiguous definition…"></textarea></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="flbl">Domain</label><select class="isel" x-model="form.dom"><option>Revenue</option><option>Cost</option><option>Cash</option><option>Growth</option><option>Ops</option></select></div>
+        <div><label class="flbl">Owner</label><select class="isel" x-model="form.owner"><option>FIN</option><option>REV</option><option>MKT</option><option>SAL</option><option>OPS</option></select></div>
+      </div>
+      <div><label class="flbl">Source lineage</label>
+        <div class="flex flex-wrap gap-2">
+          <template x-for="s in ['Stripe','NetSuite','Salesforce','Snowflake','Workday','Zendesk']" :key="s">
+            <button class="chipbtn" :class="{'on': form.sources.includes(s)}" @click="toggleSource(s)" x-text="s"></button>
+          </template>
+        </div>
+      </div>
+      <div class="flex items-center justify-between py-1">
+        <div><div class="text-[13px] font-semibold">Request certification review</div><div class="text-[11px]" style="color:var(--ink-3)">Route to data governance</div></div>
+        <button class="switch" :class="{'on': form.review}" @click="form.review=!form.review" role="switch" :aria-checked="form.review" aria-label="Request certification review"></button>
+      </div>
+    </div>
+    <div class="px-5 py-4 border-t flex items-center gap-2" style="border-color:var(--line)">
+      <button class="btn btn-outline flex-1" @click="modalOpen=false">Cancel</button>
+      <button class="btn btn-primary flex-1" @click="submitProposal()"><i data-lucide="check" class="w-4 h-4"></i> Submit proposal</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="fixed bottom-4 right-4 z-[80] space-y-2 w-[calc(100%-2rem)] sm:w-auto sm:max-w-sm" aria-live="polite">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="toast px-3.5 py-3 flex items-start gap-3" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+      <i :data-lucide="t.icon" class="w-4 h-4 mt-0.5 shrink-0" :style="'color:'+t.color"></i>
+      <span class="text-[13px]" style="color:var(--ink)" x-text="t.msg"></span>
+    </div>
+  </template>
+</div>
+
+<script>
+function bedrock() {
+  return {
+    edition: 'light',
+    page: 'overview',
+    mobileNav: false,
+    modalOpen: false,
+    drawerOpen: false,
+    q: '', domain: 'All', certFilter: 'All',
+    sortKey: 'm', sortDir: 1,
+    focus: 'Net Revenue',
+    issueFilter: 'All', sourceQ: '',
+    branch: 'main', workspace: 'Finance · Production', editWs: false, wsDraft: '',
+    sla: 8, govNote: '', autoDomains: ['Revenue','Cash'],
+    prefRecert: true, prefNotify: true, prefExpose: true,
+    form: { m:'', id:'', def:'', dom:'Revenue', owner:'FIN', sources:['Stripe'], review:true },
+    editForm: {}, drawerRef: null,
+    toasts: [], _tid: 0, charts: {},
+
+    nav: [
+      { k:'overview', t:'Overview',   i:'layout-dashboard' },
+      { k:'catalog',  t:'Catalog',    i:'book-marked' },
+      { k:'lineage',  t:'Lineage',    i:'git-fork' },
+      { k:'domains',  t:'Domains',    i:'layout-grid' },
+      { k:'issues',   t:'Issues',     i:'triangle-alert', badge:'7' },
+      { k:'sources',  t:'Sources',    i:'database' },
+      { k:'settings', t:'Settings',   i:'settings' },
+    ],
+
+    kpis: [
+      { t:'Certified Metrics', i:'shield-check',   v:'184',  s:'of 240',     good:true,  d:'+6',    sp:[168,171,173,176,180,184] },
+      { t:'Coverage',          i:'pie-chart',      v:'92%',  s:'certified',  good:true,  d:'+2 pt', sp:[85,86,88,89,90,92] },
+      { t:'Avg Freshness',     i:'gauge',          v:'4.2h', s:'trailing',   good:true,  d:'−0.6h', sp:[6.1,5.8,5.2,4.9,4.6,4.2] },
+      { t:'Open Issues',       i:'triangle-alert', v:'7',    s:'unresolved', good:false, d:'+3',    sp:[2,3,3,5,6,7] },
+      { t:'Sources',           i:'database',       v:'28',   s:'connected',  good:true,  d:'+1',    sp:[24,25,25,26,27,28] },
+    ],
+
+    metrics: [
+      { m:'Net Revenue',           id:'metric.net_rev',    def:'Recognized revenue net of refunds and credits',  owner:'FIN', dom:'Revenue', fresh:2,  cert:'Certified',  exposeBI:true,  note:'' },
+      { m:'Gross Margin %',        id:'metric.gm_pct',     def:'Gross profit divided by net revenue',            owner:'FIN', dom:'Revenue', fresh:2,  cert:'Certified',  exposeBI:true,  note:'' },
+      { m:'ARR',                   id:'metric.arr',        def:'Annualized recurring revenue from active subs',  owner:'REV', dom:'Growth',  fresh:5,  cert:'Certified',  exposeBI:true,  note:'' },
+      { m:'CAC',                   id:'metric.cac',        def:'Blended cost to acquire one new customer',       owner:'MKT', dom:'Cost',    fresh:18, cert:'Review',     exposeBI:false, note:'Awaiting paid-social source' },
+      { m:'Burn Rate',             id:'metric.burn',       def:'Net monthly cash consumed by operations',        owner:'FIN', dom:'Cash',    fresh:8,  cert:'Certified',  exposeBI:true,  note:'' },
+      { m:'Free Cash Flow',        id:'metric.fcf',        def:'Operating cash flow less capital expenditure',   owner:'FIN', dom:'Cash',    fresh:26, cert:'Review',     exposeBI:false, note:'Freshness SLA breached' },
+      { m:'Net Revenue Retention', id:'metric.nrr',        def:'Net revenue retention across the active cohort', owner:'REV', dom:'Growth',  fresh:5,  cert:'Certified',  exposeBI:true,  note:'' },
+      { m:'Opex Ratio',            id:'metric.opex_ratio', def:'Operating expense as a share of revenue',        owner:'FIN', dom:'Cost',    fresh:49, cert:'Deprecated', exposeBI:false, note:'Superseded by Cost Ratio' },
+      { m:'Runway (months)',       id:'metric.runway',     def:'Cash balance divided by trailing burn',          owner:'FIN', dom:'Cash',    fresh:8,  cert:'Certified',  exposeBI:true,  note:'' },
+      { m:'Pipeline Coverage',     id:'metric.pipe_cov',   def:'Open pipeline over quarterly quota',             owner:'SAL', dom:'Growth',  fresh:34, cert:'Review',     exposeBI:false, note:'Owner unassigned' },
+      { m:'LTV : CAC',             id:'metric.ltv_cac',    def:'Lifetime value over blended acquisition cost',   owner:'MKT', dom:'Cost',    fresh:20, cert:'Review',     exposeBI:false, note:'Definition disputed by GTM' },
+      { m:'DSO',                   id:'metric.dso',        def:'Days sales outstanding on receivables',          owner:'FIN', dom:'Cash',    fresh:6,  cert:'Certified',  exposeBI:true,  note:'' },
+      { m:'Ticket Backlog',        id:'metric.tickets',    def:'Open support tickets at period end',             owner:'OPS', dom:'Ops',     fresh:3,  cert:'Certified',  exposeBI:true,  note:'' },
+      { m:'Uptime %',              id:'metric.uptime',     def:'Weighted service availability over the period',  owner:'OPS', dom:'Ops',     fresh:1,  cert:'Certified',  exposeBI:true,  note:'' },
+    ],
+
+    uncertified: 42,
+
+    lineages: {
+      'Net Revenue': { id:'metric.net_rev', cert:'Certified',
+        sources:[ {n:'Stripe',t:'raw.charges',fresh:2}, {n:'NetSuite',t:'raw.gl_lines',fresh:14} ],
+        transforms:[ {n:'stg_revenue',d:'dedupe + fx'}, {n:'fct_bookings',d:'net of refunds'} ],
+        links:[[0,0],[1,0],[1,1]] },
+      'Gross Margin %': { id:'metric.gm_pct', cert:'Certified',
+        sources:[ {n:'Stripe',t:'raw.charges',fresh:2}, {n:'NetSuite',t:'raw.gl_lines',fresh:14}, {n:'Snowflake',t:'cost.cogs',fresh:1} ],
+        transforms:[ {n:'stg_revenue',d:'dedupe + fx'}, {n:'stg_cogs',d:'allocate cost'} ],
+        links:[[0,0],[1,0],[2,1]] },
+      'ARR': { id:'metric.arr', cert:'Certified',
+        sources:[ {n:'Stripe',t:'raw.subscriptions',fresh:2}, {n:'Salesforce',t:'raw.opportunities',fresh:3} ],
+        transforms:[ {n:'stg_subs',d:'active filter'}, {n:'fct_arr',d:'annualize mrr'} ],
+        links:[[0,0],[1,0],[0,1]] },
+      'CAC': { id:'metric.cac', cert:'Review',
+        sources:[ {n:'Salesforce',t:'raw.opportunities',fresh:3}, {n:'NetSuite',t:'raw.gl_lines',fresh:14} ],
+        transforms:[ {n:'stg_spend',d:'S&M expense'}, {n:'fct_new_logos',d:'won deals'} ],
+        links:[[1,0],[0,1]] },
+      'Burn Rate': { id:'metric.burn', cert:'Certified',
+        sources:[ {n:'NetSuite',t:'raw.gl_lines',fresh:14}, {n:'Workday',t:'raw.headcount',fresh:26} ],
+        transforms:[ {n:'stg_opex',d:'operating cost'}, {n:'fct_cashflow',d:'net of inflow'} ],
+        links:[[0,0],[1,0],[0,1]] },
+      'Free Cash Flow': { id:'metric.fcf', cert:'Review',
+        sources:[ {n:'NetSuite',t:'raw.gl_lines',fresh:14}, {n:'Snowflake',t:'finance.capex',fresh:1} ],
+        transforms:[ {n:'stg_ocf',d:'operating cash'}, {n:'stg_capex',d:'capital spend'} ],
+        links:[[0,0],[1,1]] },
+      'Net Revenue Retention': { id:'metric.nrr', cert:'Certified',
+        sources:[ {n:'Stripe',t:'raw.subscriptions',fresh:2}, {n:'Salesforce',t:'raw.accounts',fresh:3} ],
+        transforms:[ {n:'stg_cohorts',d:'cohort build'}, {n:'fct_retention',d:'expansion − churn'} ],
+        links:[[0,0],[1,0],[0,1]] },
+    },
+
+    issues: [
+      { t:'Net Revenue diverges from GL by 1.2%', metric:'metric.net_rev',    owner:'FIN', prio:'High',   status:'Open',      age:'2d' },
+      { t:'CAC missing paid-social spend source', metric:'metric.cac',        owner:'MKT', prio:'High',   status:'In review', age:'4d' },
+      { t:'Opex Ratio deprecated, still on 3 dashboards', metric:'metric.opex_ratio', owner:'FIN', prio:'Medium', status:'Open', age:'6d' },
+      { t:'Free Cash Flow freshness breached SLA', metric:'metric.fcf',       owner:'FIN', prio:'High',   status:'Open',      age:'1d' },
+      { t:'Pipeline Coverage owner unassigned',   metric:'metric.pipe_cov',   owner:'SAL', prio:'Low',    status:'Triage',    age:'8d' },
+      { t:'LTV:CAC definition disputed by GTM',   metric:'metric.ltv_cac',    owner:'MKT', prio:'Medium', status:'In review', age:'3d' },
+      { t:'Runway uses stale cash balance snapshot', metric:'metric.runway',  owner:'FIN', prio:'Medium', status:'Open',      age:'5d' },
+    ],
+
+    sources: [
+      { s:'Stripe',     tbl:'raw.charges',        rows:'4.2M', fresh:2,  owner:'DATA', status:'Healthy' },
+      { s:'NetSuite',   tbl:'raw.gl_lines',       rows:'1.1M', fresh:14, owner:'FIN',  status:'Degraded' },
+      { s:'Salesforce', tbl:'raw.opportunities',  rows:'820K', fresh:3,  owner:'REV',  status:'Healthy' },
+      { s:'Snowflake',  tbl:'analytics.fct_*',    rows:'12M',  fresh:1,  owner:'DATA', status:'Healthy' },
+      { s:'Workday',    tbl:'raw.headcount',      rows:'6.4K', fresh:26, owner:'HR',   status:'Paused' },
+      { s:'Zendesk',    tbl:'raw.tickets',        rows:'340K', fresh:4,  owner:'OPS',  status:'Healthy' },
+      { s:'Amplitude',  tbl:'raw.events',         rows:'88M',  fresh:50, owner:'DATA', status:'Down' },
+    ],
+
+    // ---------- getters ----------
+    get filtered() {
+      const q = this.q.trim().toLowerCase();
+      let arr = this.metrics.filter(m =>
+        (this.domain === 'All' || m.dom === this.domain) &&
+        (this.certFilter === 'All' || m.cert === this.certFilter) &&
+        (!q || m.m.toLowerCase().includes(q) || m.def.toLowerCase().includes(q) || m.owner.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
+      );
+      const k = this.sortKey, dir = this.sortDir;
+      arr = arr.slice().sort((a,b) => {
+        let x = a[k], y = b[k];
+        if (typeof x === 'number') return (x - y) * dir;
+        return String(x).localeCompare(String(y)) * dir;
+      });
+      return arr;
+    },
+    get attention() { return this.metrics.filter(m => m.cert !== 'Certified'); },
+    get filteredIssues() { return this.issues.filter(i => this.issueFilter === 'All' || i.status === this.issueFilter); },
+    get filteredSources() { const q = this.sourceQ.trim().toLowerCase(); return this.sources.filter(s => !q || s.s.toLowerCase().includes(q) || s.tbl.toLowerCase().includes(q)); },
+    get lineageNames() { return Object.keys(this.lineages); },
+    get certCounts() {
+      const base = { Certified: 178, Review: 14, Deprecated: 6 };
+      const c = { Certified: base.Certified, Review: base.Review, Deprecated: base.Deprecated };
+      const seeded = { Certified:9, Review:4, Deprecated:1 };
+      const live = { Certified:0, Review:0, Deprecated:0 };
+      this.metrics.forEach(m => { if (live[m.cert] !== undefined) live[m.cert]++; });
+      ['Certified','Review','Deprecated'].forEach(k => { c[k] += (live[k] - seeded[k]); });
+      return c;
+    },
+    get certTotal() { const c = this.certCounts; return c.Certified + c.Review + c.Deprecated + this.uncertified; },
+    get certLegend() {
+      const c = this.certCounts;
+      return [
+        { l:'Certified',   v:c.Certified,      c:this.css('--cert') },
+        { l:'Review',      v:c.Review,         c:this.css('--review') },
+        { l:'Deprecated',  v:c.Deprecated,     c:this.css('--stale') },
+        { l:'Uncertified', v:this.uncertified, c:this.css('--flat') },
+      ];
+    },
+    get domainStats() {
+      const meta = {
+        Revenue: { owner:'FIN team', i:'trending-up',   t:62, c:58 },
+        Cost:    { owner:'FIN team', i:'wallet',        t:48, c:38 },
+        Cash:    { owner:'Treasury', i:'banknote',      t:41, c:36 },
+        Growth:  { owner:'RevOps',   i:'rocket',        t:54, c:47 },
+        Ops:     { owner:'Ops team', i:'settings-2',    t:35, c:33 },
+      };
+      return Object.keys(meta).map(d => { const b = meta[d]; return { d, owner:b.owner, i:b.i, total:b.t, cert:b.c, pct:Math.round(b.c/b.t*100) }; });
+    },
+    get prioLegend() {
+      const open = this.issues.filter(i => i.status !== 'Resolved');
+      return [
+        { l:'High',   v:open.filter(i=>i.prio==='High').length,   c:this.css('--stale') },
+        { l:'Medium', v:open.filter(i=>i.prio==='Medium').length, c:this.css('--review') },
+        { l:'Low',    v:open.filter(i=>i.prio==='Low').length,    c:this.css('--flat') },
+      ];
+    },
+    get lg() {
+      const L = this.lineages[this.focus] || this.lineages['Net Revenue'];
+      const rows = Math.max(L.sources.length, L.transforms.length);
+      const H = Math.max(220, rows * 84);
+      const cy = (n, i) => (H / n) * i + (H / n) / 2;
+      const src = L.sources.map((s, i) => ({ ...s, x:8,   w:150, cy:cy(L.sources.length, i) }));
+      const tr  = L.transforms.map((t, i) => ({ ...t, x:236, w:164, cy:cy(L.transforms.length, i) }));
+      const met = { x:474, w:150, cy:H/2 };
+      const e1 = L.links.map(([a, b]) => ({ x1:src[a].x + src[a].w, y1:src[a].cy, x2:tr[b].x, y2:tr[b].cy }));
+      const e2 = tr.map(t => ({ x1:t.x + t.w, y1:t.cy, x2:met.x, y2:met.cy }));
+      const seg = e => 'M ' + e.x1 + ' ' + e.y1 + ' C ' + (e.x1+40) + ' ' + e.y1 + ', ' + (e.x2-40) + ' ' + e.y2 + ', ' + e.x2 + ' ' + e.y2 + ' ';
+      return { H, src, tr, met, id:L.id, cert:L.cert, e1d:e1.map(seg).join(''), e2d:e2.map(seg).join('') };
+    },
+
+    // ---------- helpers ----------
+    css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); },
+    fmtFresh(h) { return h < 24 ? h + 'h' : Math.round(h/24) + 'd'; },
+    freshColor(h) { return h <= 8 ? this.css('--cert') : h <= 24 ? this.css('--review') : this.css('--stale'); },
+    certColor(s) { return { 'Certified':this.css('--cert'), 'Review':this.css('--review'), 'Deprecated':this.css('--stale') }[s] || this.css('--ink'); },
+    certChip(s) { return { 'Certified':'chip-cert', 'Review':'chip-review', 'Deprecated':'chip-dep' }[s] || 'chip-flat'; },
+    prioColor(p) { return { 'High':this.css('--stale'), 'Medium':this.css('--review'), 'Low':this.css('--flat') }[p] || this.css('--ink'); },
+    issueStatusColor(s) { return { 'Triage':this.css('--flat'), 'Open':this.css('--review'), 'In review':this.css('--link'), 'Resolved':this.css('--cert') }[s] || this.css('--ink'); },
+    sourceStatusColor(s) { return { 'Healthy':this.css('--cert'), 'Degraded':this.css('--review'), 'Down':this.css('--stale'), 'Paused':this.css('--flat') }[s] || this.css('--ink'); },
+
+    // ---------- actions ----------
+    toggleEdition() { this.edition = this.edition === 'light' ? 'dark' : 'light'; },
+    go(k) { this.page = k; },
+    sortBy(k) { if (this.sortKey === k) this.sortDir *= -1; else { this.sortKey = k; this.sortDir = 1; } },
+    closeAll() { this.modalOpen = false; this.drawerOpen = false; this.mobileNav = false; this.editWs = false; },
+    openModal() { this.modalOpen = true; this.$nextTick(() => lucide.createIcons()); },
+    toggleSource(s) { this.form.sources = this.form.sources.includes(s) ? this.form.sources.filter(x=>x!==s) : [...this.form.sources, s]; },
+    toggleAutoDomain(d) { this.autoDomains = this.autoDomains.includes(d) ? this.autoDomains.filter(x=>x!==d) : [...this.autoDomains, d]; },
+    submitProposal() {
+      const name = this.form.m.trim() || 'New metric';
+      const id = this.form.id.trim() || 'metric.new_' + Date.now().toString().slice(-4);
+      this.metrics.unshift({ m:name, id, def:this.form.def.trim() || 'Pending definition', owner:this.form.owner, dom:this.form.dom, fresh:1, cert:this.form.review ? 'Review' : 'Certified', exposeBI:false, note:'Proposed via catalog' });
+      this.modalOpen = false;
+      this.notify(name + ' proposed for review', 'ok');
+      this.form = { m:'', id:'', def:'', dom:'Revenue', owner:'FIN', sources:['Stripe'], review:true };
+      this.$nextTick(() => this.refresh());
+    },
+    openMetric(m) { this.drawerRef = m; this.editForm = Object.assign({}, m); this.drawerOpen = true; this.$nextTick(() => lucide.createIcons()); },
+    saveMetric() {
+      if (this.drawerRef) Object.assign(this.drawerRef, this.editForm);
+      this.drawerOpen = false;
+      this.notify('Saved ' + this.editForm.m, 'ok');
+      this.$nextTick(() => this.refresh());
+    },
+    onCertChange(m) {
+      this.notify(m.m + ' → ' + m.cert, m.cert === 'Deprecated' ? 'warn' : m.cert === 'Review' ? 'info' : 'ok');
+      this.$nextTick(() => this.refresh());
+    },
+    onSourceStatus(s) { this.notify(s.s + ' → ' + s.status, s.status === 'Down' ? 'warn' : s.status === 'Degraded' ? 'info' : 'ok'); this.$nextTick(() => this.refresh()); },
+    startWs() { this.wsDraft = this.workspace; this.editWs = true; },
+    saveWs() { if (this.wsDraft.trim()) this.workspace = this.wsDraft.trim(); this.editWs = false; this.notify('Workspace name updated', 'ok'); },
+
+    notify(msg, kind='ok') {
+      const map = {
+        ok:   { icon:'check-circle-2', color:this.css('--cert') },
+        info: { icon:'info',           color:this.css('--accent-ink') },
+        warn: { icon:'triangle-alert', color:this.css('--stale') },
+      };
+      const m = map[kind] || map.ok;
+      const id = ++this._tid;
+      this.toasts.push({ id, msg, icon:m.icon, color:m.color });
+      this.$nextTick(() => lucide.createIcons());
+      setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 2800);
+    },
+
+    init() {
+      this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); });
+      this.$watch('edition', () => this.$nextTick(() => { lucide.createIcons(); this.recolor(); }));
+      this.$watch('page', (p) => this.$nextTick(() => { lucide.createIcons(); this.renderFor(p); }));
+      ['q','domain','certFilter','sortKey','sortDir','focus','issueFilter','sourceQ','modalOpen','drawerOpen','editWs'].forEach(k =>
+        this.$watch(k, () => this.$nextTick(() => lucide.createIcons())));
+    },
+
+    // ---------- charts ----------
+    refresh() { this.renderFor(this.page); },
+    renderFor(page) {
+      Chart.defaults.font.family = "'Roboto Mono', monospace";
+      Chart.defaults.font.size = 10;
+      const map = {
+        overview: () => { this.drawSparks(); this.drawCertDoughnut('ovCert'); this.drawDomainBar('ovDomain'); this.drawCoverage('ovCoverage'); },
+        domains:  () => { this.drawCertDoughnut('dmCert'); this.drawDomainBar('dmDomain'); },
+        issues:   () => { this.drawPrio('isPrio'); },
+      };
+      (map[page] || (()=>{}))();
+    },
+    recolor() { Object.values(this.charts).forEach(c => { try { c.destroy(); } catch(e){} }); this.charts = {}; this.renderFor(this.page); },
+
+    _mk(id, cfg) {
+      const el = document.getElementById(id); if (!el || el.offsetParent === null) return;
+      const prev = Chart.getChart(el); if (prev) prev.destroy();
+      this.charts[id] = new Chart(el.getContext('2d'), cfg);
+    },
+    _grad(ctx, area, color) { const g = ctx.createLinearGradient(0, area.top, 0, area.bottom); g.addColorStop(0, color+'44'); g.addColorStop(1, color+'00'); return g; },
+    _tt() { return { backgroundColor:this.css('--surface'), borderColor:this.css('--line-2'), borderWidth:1, titleColor:this.css('--ink'), bodyColor:this.css('--ink-2'), padding:8 }; },
+    _axis(fmt) { return { grid:{ color:this.css('--line') }, ticks:{ color:this.css('--ink-3'), callback:fmt } }; },
+
+    drawSparks() {
+      this.kpis.forEach((k,i) => {
+        const col = k.good ? this.css('--accent') : this.css('--stale');
+        this._mk('ksp'+i, { type:'line', data:{ labels:k.sp.map((_,j)=>j), datasets:[{ data:k.sp, borderColor:col, borderWidth:1.6, tension:0.4, pointRadius:0, fill:true,
+          backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, col) : col+'22' }]},
+          options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
+      });
+    },
+    drawCertDoughnut(id) {
+      const c = this.certCounts;
+      const data = [c.Certified, c.Review, c.Deprecated, this.uncertified];
+      const colors = [this.css('--cert'), this.css('--review'), this.css('--stale'), this.css('--flat')];
+      this._mk(id, { type:'doughnut', data:{ labels:['Certified','Review','Deprecated','Uncertified'], datasets:[{ data, backgroundColor:colors, borderColor:this.css('--surface'), borderWidth:3, hoverOffset:6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'64%', animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(x)=>' '+x.label+' · '+x.parsed }}} } });
+    },
+    drawDomainBar(id) {
+      const acc = this.css('--accent');
+      const rows = this.domainStats.map(d => [d.d, d.total]);
+      this._mk(id, { type:'bar', data:{ labels:rows.map(r=>r[0]), datasets:[{ data:rows.map(r=>r[1]), backgroundColor:acc, borderRadius:4, barThickness:16 }]},
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.parsed.x+' metrics' }}},
+          scales:{ x:{ ...this._axis((v)=>v), beginAtZero:true }, y:{ grid:{display:false}, ticks:{color:this.css('--ink-2'), font:{size:11}} } } } });
+    },
+    drawCoverage(id) {
+      const acc = this.css('--accent');
+      this._mk(id, { type:'line', data:{ labels:['Jan','Feb','Mar','Apr','May','Jun'], datasets:[{ data:[85,86,88,89,90,92], borderColor:acc, borderWidth:2, tension:0.35, pointRadius:0, pointHoverRadius:4, fill:true,
+        backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, acc) : acc+'22' }]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), displayColors:false, callbacks:{ title:()=>'', label:(c)=>c.parsed.y+'% certified' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} }, y:{ position:'right', ...this._axis((v)=>v+'%'), min:80, max:100 } } } });
+    },
+    drawPrio(id) {
+      const leg = this.prioLegend;
+      this._mk(id, { type:'doughnut', data:{ labels:leg.map(p=>p.l), datasets:[{ data:leg.map(p=>p.v), backgroundColor:leg.map(p=>p.c), borderColor:this.css('--surface'), borderWidth:3, hoverOffset:6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'64%', animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(x)=>' '+x.label+' · '+x.parsed }}} } });
+    },
+  };
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Zero — Zero-Based Budgeting &amp; Spend Management</title>
+<meta name="description" content="Zero — a zero-based budgeting design system where every dollar is justified from zero. A full app shell: an overview dashboard, the cost-package approval register with an inline Approve/Challenge/Cut decision, spend by category vs the zero-base baseline, a savings tracker, an approvals queue, reports, and settings — with a new-package modal and a package edit drawer. Concrete (light) and Graphite (dark) editions." />
+<meta name="theme-color" content="#141414" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23141414'/%3E%3Cpath d='M16 6a8 8 0 1 0 0 16 8 8 0 0 0 0-16z' fill='none' stroke='%23F0F0ED' stroke-width='2'/%3E%3Cpath d='M16 16l4-4' stroke='%2315803D' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='1.6' fill='%2315803D'/%3E%3C/svg%3E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Anonymous+Pro:wght@400;700&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: { fontFamily: {
+      sans: ['"Instrument Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      mono: ['"Anonymous Pro"', 'ui-monospace', 'monospace'],
+    } } },
+  };
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<style>
+  /* ============================================================
+     ZERO — EDITION TOKENS
+     Thesis: "Every dollar justified from zero." Zero-based
+     budgeting. The metaphor is the cost meter / thermostat —
+     nothing is a given, every package is defended.
+     "Concrete" (light) is the hero: austere, utilitarian,
+     high-contrast, boxy (4px radii). "Graphite" (dark) is the
+     after-hours copy. Chrome is stark near-black in both modes.
+     Brand is graphite/black; approve-green and cut-red are the
+     semantic core. An edition swap is one class on <body>.
+     ============================================================ */
+
+  :root, .light {
+    color-scheme: light;
+    --canvas:#F0F0ED; --surface:#FFFFFF; --surface-2:#F4F4F1;
+    --line:#E2E2DD; --line-2:#CFCFC8;
+    --ink:#141414; --ink-2:#565650; --ink-3:#8A8A82;
+    --chrome:#141414; --chrome-2:#1F1F1E; --chrome-line:#2E2E2C;
+    --chrome-ink:#F0F0EA; --chrome-ink-2:#9A9A90;
+    --accent:#1A1A1A; --accent-2:#000000; --accent-ink:#141414;
+    --accent-soft:#EAEAE4; --on-accent:#FFFFFF;
+    --link:#1D4ED8;
+    --fav:#15803D; --fav-soft:#E4F0E9; --unfav:#DC2626; --unfav-soft:#FBE6E6;
+    --warn:#B45309; --warn-soft:#F6EBDC; --flat:#6B7280;
+    --r:4px; --r-sm:3px;
+    --shadow:0 1px 1px rgba(20,20,20,.04), 0 1px 3px rgba(20,20,20,.05);
+    --shadow-lg:0 10px 30px rgba(20,20,20,.16), 0 2px 8px rgba(20,20,20,.10);
+    --scrim:rgba(20,20,20,.46);
+  }
+
+  .dark {
+    color-scheme: dark;
+    --canvas:#121211; --surface:#1B1B19; --surface-2:#232320;
+    --line:#2E2E2A; --line-2:#3D3D38;
+    --ink:#F0F0EA; --ink-2:#A8A89F; --ink-3:#75756C;
+    --chrome:#0C0C0B; --chrome-2:#1A1A18; --chrome-line:#2A2A27;
+    --chrome-ink:#F0F0EA; --chrome-ink-2:#93938A;
+    --accent:#EDEDE6; --accent-2:#FFFFFF; --accent-ink:#EDEDE6;
+    --accent-soft:rgba(237,237,230,.12); --on-accent:#141414;
+    --link:#6C9BEE;
+    --fav:#3FB56B; --fav-soft:rgba(63,181,107,.16); --unfav:#F06767; --unfav-soft:rgba(240,103,103,.16);
+    --warn:#D98A2B; --warn-soft:rgba(217,138,43,.16); --flat:#9A9A90;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 8px 22px rgba(0,0,0,.44);
+    --shadow-lg:0 14px 40px rgba(0,0,0,.6), 0 4px 12px rgba(0,0,0,.5);
+    --scrim:rgba(4,5,4,.66);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    background: var(--canvas); color: var(--ink);
+    font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  [x-cloak] { display: none !important; }
+  .mono { font-family: 'Anonymous Pro', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .num  { font-family: 'Anonymous Pro', ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 0; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  a, button, select, input, textarea, [tabindex] { outline: none; }
+  a:focus-visible, button:focus-visible, select:focus-visible,
+  input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--link); outline-offset: 2px; border-radius: var(--r-sm);
+  }
+
+  .lbl { font-family: 'Anonymous Pro', monospace; font-size: 10px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+  .display { font-weight: 700; letter-spacing: -.02em; }
+  .chrome { background: var(--chrome); color: var(--chrome-ink); }
+  .chrome-seam { border-color: var(--chrome-line) !important; }
+  .fav { color: var(--fav); } .unfav { color: var(--unfav); } .warn { color: var(--warn); } .flat { color: var(--flat); }
+
+  .nav-item { position: relative; display: flex; align-items: center; gap: 11px; height: 40px;
+    padding: 0 13px; border-radius: var(--r-sm); color: var(--chrome-ink-2); cursor: pointer;
+    font-weight: 500; transition: background .12s, color .12s; }
+  .nav-item:hover { background: var(--chrome-2); color: var(--chrome-ink); }
+  .nav-item.on { background: var(--chrome-2); color: var(--chrome-ink); font-weight: 600; }
+  .nav-item.on::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 3px; background: var(--fav); border-radius: 0; }
+  .nav-item.on i { color: var(--fav); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px;
+    padding: 0 15px; border-radius: var(--r-sm); font-weight: 600; font-size: 13px;
+    border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+    transition: background .12s, border-color .12s, transform .06s; }
+  .btn:active { transform: scale(.985); }
+  .btn-primary { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+  .btn-primary:hover { background: var(--accent-2); }
+  .btn-outline { background: transparent; color: var(--ink); border-color: var(--line-2); }
+  .btn-outline:hover { background: var(--surface-2); }
+  .btn-ghost { background: var(--surface-2); color: var(--ink); }
+  .btn-ghost:hover { background: var(--line); }
+  .btn-sm { height: 32px; padding: 0 11px; font-size: 12px; }
+  .btn-block { width: 100%; }
+  .iconbtn { width: 38px; height: 38px; border-radius: var(--r-sm); display: flex; align-items: center;
+    justify-content: center; color: var(--ink-2); cursor: pointer; border: 1px solid transparent; background: transparent; }
+  .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
+  .chrome-icon { color: var(--chrome-ink-2); background: var(--chrome-2); }
+  .chrome-icon:hover { background: var(--chrome-line); color: var(--chrome-ink); }
+
+  .field, textarea.field { width: 100%; background: var(--surface-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 11px; height: 38px;
+    font-size: 13px; font-family: 'Instrument Sans', sans-serif; }
+  textarea.field { padding: 9px 11px; min-height: 78px; height: auto; resize: vertical; line-height: 1.5; }
+  .field::placeholder, textarea.field::placeholder { color: var(--ink-3); }
+  .flbl { font-size: 11px; font-weight: 700; color: var(--ink-2); margin-bottom: 5px; display: block; letter-spacing: .01em; }
+
+  .isel { width: 100%; background: var(--surface-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 30px 0 11px; height: 38px;
+    font-size: 13px; font-family: 'Instrument Sans', sans-serif; appearance: none; -webkit-appearance: none; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+    background-position: calc(100% - 15px) 16px, calc(100% - 10px) 16px; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; height: 21px; padding: 0 8px;
+    border-radius: var(--r-sm); font-family: 'Anonymous Pro', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: .03em; }
+  .chip-fav { color: var(--fav); background: var(--fav-soft); }
+  .chip-unfav { color: var(--unfav); background: var(--unfav-soft); }
+  .chip-warn { color: var(--warn); background: var(--warn-soft); }
+  .chip-flat { color: var(--flat); background: var(--surface-2); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  /* filter chips (toggle) */
+  .chipbtn { cursor: pointer; border: 1px solid var(--line-2); background: transparent; color: var(--ink-2);
+    height: 30px; padding: 0 12px; border-radius: var(--r-sm); font-size: 12px; font-weight: 600; transition: .12s; }
+  .chipbtn:hover { background: var(--surface-2); }
+  .chipbtn.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+  /* toggle switch — boxy to match the concrete aesthetic */
+  .switch { width: 42px; height: 24px; border-radius: var(--r-sm); background: var(--line-2); position: relative;
+    cursor: pointer; transition: background .15s; flex: none; border: 1px solid var(--line-2); }
+  .switch.on { background: var(--fav); border-color: var(--fav); }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 2px;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.35); transition: transform .15s; }
+  .switch.on::after { transform: translateX(18px); }
+
+  /* stepper (thermostat) */
+  .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line-2); border-radius: var(--r-sm);
+    background: var(--surface-2); overflow: hidden; }
+  .stepper button { width: 36px; height: 38px; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; font-size: 18px; line-height: 1; }
+  .stepper button:hover { background: var(--line); color: var(--ink); }
+  .stepper .val { min-width: 74px; height: 38px; display: flex; align-items: center; justify-content: center;
+    font-family: 'Anonymous Pro', monospace; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; border-left: 1px solid var(--line); border-right: 1px solid var(--line); padding: 0 6px; }
+  .stepper input { width: 84px; height: 38px; border: 0; background: transparent; text-align: center; color: var(--ink);
+    font-family: 'Anonymous Pro', monospace; font-variant-numeric: tabular-nums; font-weight: 700; }
+
+  /* segmented control */
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px; }
+  .seg button { height: 28px; padding: 0 12px; border: 0; background: transparent; color: var(--ink-2);
+    font-family: 'Anonymous Pro', monospace; font-size: 11px; font-weight: 700; border-radius: 2px; cursor: pointer; letter-spacing: .03em; }
+  .seg button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+  /* data table */
+  table { border-collapse: collapse; width: 100%; }
+  .tbl th { font-family: 'Anonymous Pro', monospace; font-size: 10px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-3); text-align: right; padding: 9px 12px; white-space: nowrap;
+    border-bottom: 1px solid var(--line-2); cursor: pointer; user-select: none; }
+  .tbl th:first-child, .tbl td:first-child { text-align: left; }
+  .tbl th.sorted { color: var(--ink); }
+  .tbl td { padding: 11px 12px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; }
+  .tbl tbody tr { transition: background .1s; }
+  .tbl tbody tr:hover { background: var(--surface-2); }
+  .tbl tbody tr:last-child td { border-bottom: 0; }
+  .tbl tbody tr.clickable { cursor: pointer; }
+  .tbl tbody tr.zebra { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+
+  .toast { background: var(--surface); border: 1px solid var(--line-2); border-left: 3px solid var(--accent);
+    box-shadow: var(--shadow-lg); border-radius: var(--r-sm); }
+  .scrim { background: var(--scrim); backdrop-filter: blur(2px); }
+  .spark { display: block; }
+  .meter { height: 8px; border-radius: 0; background: var(--surface-2); overflow: hidden; border: 1px solid var(--line); }
+  .meter > span { display: block; height: 100%; background: var(--fav); transition: width .3s; }
+  .decision-cell { position: relative; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  }
+</style>
+</head>
+
+<body x-data="zero()" x-cloak x-init="init()" :class="edition" @keydown.escape.window="closeAll()">
+
+<div class="h-screen flex flex-col">
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="chrome border-b chrome-seam shrink-0 flex items-center gap-3 px-3 sm:px-4" style="height:60px;border-bottom-width:1px">
+    <button class="iconbtn chrome-icon lg:hidden" @click="mobileNav=true" aria-label="Open navigation">
+      <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
+
+    <div class="flex items-center gap-2.5 select-none">
+      <div class="w-9 h-9 flex items-center justify-center shrink-0" style="background:var(--on-accent);color:var(--chrome);border-radius:var(--r-sm)">
+        <i data-lucide="gauge" class="w-5 h-5"></i>
+      </div>
+      <div class="leading-none">
+        <div class="display text-[18px]" style="color:var(--chrome-ink)">Zero</div>
+        <div class="lbl mt-1" style="font-size:8.5px;color:var(--chrome-ink-2)">Zero-Based Budgeting</div>
+      </div>
+    </div>
+
+    <div class="hidden md:flex items-center gap-2 ml-4">
+      <div class="seg" style="background:var(--chrome-2);border-color:var(--chrome-line)">
+        <template x-for="c in cycles" :key="c">
+          <button :class="{'on': cycle===c}" @click="setCycle(c)" x-text="c"
+                  :style="cycle===c ? 'background:var(--chrome-line);color:var(--chrome-ink)' : 'color:var(--chrome-ink-2)'"></button>
+        </template>
+      </div>
+      <div class="flex items-center gap-2 h-9 px-3" style="background:var(--chrome-2);border-radius:var(--r-sm)">
+        <i data-lucide="calendar-range" class="w-4 h-4" style="color:var(--chrome-ink-2)"></i>
+        <span class="mono text-[12px] font-bold" style="color:var(--chrome-ink)" x-text="fiscalYear+' · Planning'"></span>
+      </div>
+    </div>
+
+    <div class="flex-1"></div>
+
+    <div class="hidden sm:flex items-center gap-2.5 px-3 h-9" style="background:var(--chrome-2);border-radius:var(--r-sm)">
+      <span class="dot" style="background:var(--warn)"></span>
+      <span class="mono text-[11px] font-bold" style="color:var(--chrome-ink)">PENDING</span>
+      <span class="mono text-[11px]" style="color:var(--chrome-ink-2)" x-text="countBy('Challenge')+' to defend'"></span>
+    </div>
+
+    <button class="btn btn-primary btn-sm hidden sm:inline-flex" @click="openModal()">
+      <i data-lucide="plus" class="w-4 h-4"></i> New package
+    </button>
+    <button class="iconbtn chrome-icon" @click="toggleEdition()" :aria-label="'Switch to '+(edition==='light'?'Graphite':'Concrete')+' edition'">
+      <i :data-lucide="edition==='light' ? 'moon' : 'sun'" class="w-5 h-5"></i>
+    </button>
+    <button class="iconbtn chrome-icon relative" aria-label="Notifications" @click="notify(countBy('Challenge')+' packages awaiting your decision')">
+      <i data-lucide="bell" class="w-5 h-5"></i>
+      <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style="background:var(--fav)"></span>
+    </button>
+    <div class="w-9 h-9 hidden sm:flex items-center justify-center mono text-[12px] font-bold shrink-0"
+         style="background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--line-2);border-radius:var(--r-sm)" x-text="initials(ownerName)"></div>
+  </header>
+
+  <div class="flex flex-1 min-h-0">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="chrome border-r chrome-seam w-60 shrink-0 hidden lg:flex flex-col" style="border-right-width:1px">
+      <nav class="p-3 flex-1 min-h-0 overflow-y-auto">
+        <div class="lbl px-3 pt-1 pb-2" style="color:var(--chrome-ink-2)">Budget Cycle</div>
+        <div class="space-y-0.5">
+          <template x-for="n in nav" :key="n.k">
+            <a class="nav-item" :class="{'on': n.k===page}" href="#" @click.prevent="go(n.k)">
+              <i :data-lucide="n.i" class="w-[18px] h-[18px]"></i>
+              <span x-text="n.t"></span>
+              <span x-show="navBadge(n.k)" class="ml-auto mono text-[10px] px-1.5 py-0.5"
+                    style="background:var(--chrome-line);color:var(--chrome-ink-2);border-radius:var(--r-sm)" x-text="navBadge(n.k)"></span>
+            </a>
+          </template>
+        </div>
+      </nav>
+      <div class="p-3 border-t chrome-seam" style="border-top-width:1px">
+        <label class="lbl block mb-1.5 px-1" style="color:var(--chrome-ink-2)">Cost Center</label>
+        <select class="isel" style="background:var(--chrome-2);color:var(--chrome-ink);border-color:var(--chrome-line)"
+                x-model="costCenter" @change="notify('Cost center → '+costCenter)">
+          <option>All departments</option><option>Go-to-market</option><option>Product</option><option>Operations</option><option>People</option><option>Facilities</option>
+        </select>
+        <div class="flex items-center gap-2 mt-2.5 px-1">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5" style="color:var(--chrome-ink-2)"></i>
+          <span class="text-[11px]" style="color:var(--chrome-ink-2)">Nothing is a given</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="flex-1 min-w-0 overflow-y-auto">
+      <div class="p-3 sm:p-4 lg:p-5 space-y-4 max-w-[1600px] mx-auto">
+
+        <!-- ================= OVERVIEW ================= -->
+        <section x-show="page==='dash'">
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Zero-Based Overview</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">
+                Every dollar justified from zero · <span x-text="cycleLabel"></span> · USD thousands · <span class="mono">illustrative</span>
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-outline btn-sm" @click="go('reports')"><i data-lucide="download" class="w-4 h-4"></i> Export register</button>
+              <button class="btn btn-primary btn-sm" @click="notify('Submitted '+decidedCount+' decisions to committee — mockup')"><i data-lucide="send" class="w-4 h-4"></i> Submit decisions</button>
+            </div>
+          </div>
+
+          <!-- KPI TILES -->
+          <section class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mt-4">
+            <template x-for="(k,i) in kpis" :key="k.t">
+              <div class="card p-3.5">
+                <div class="flex items-center justify-between">
+                  <span class="lbl" x-text="k.t"></span>
+                  <i :data-lucide="k.i" class="w-4 h-4" style="color:var(--ink-3)"></i>
+                </div>
+                <div class="num display text-[20px] mt-2" x-text="kpiValue(k)"></div>
+                <div class="flex items-center gap-1.5 mt-1.5">
+                  <span class="chip" :class="k.chip==='fav'?'chip-fav':k.chip==='unfav'?'chip-unfav':k.chip==='warn'?'chip-warn':'chip-flat'">
+                    <i :data-lucide="k.icon" class="w-3 h-3"></i><span x-text="kpiDelta(k)"></span>
+                  </span>
+                  <span class="text-[10.5px] mono" style="color:var(--ink-3)" x-text="k.sub"></span>
+                </div>
+                <div class="mt-2.5" style="height:28px"><canvas :id="'ksp'+i" class="spark"></canvas></div>
+              </div>
+            </template>
+          </section>
+
+          <!-- CHARTS ROW -->
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card p-4 xl:col-span-2 flex flex-col">
+              <div class="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <h2 class="display text-[15px]">Savings Tracker</h2>
+                  <div class="lbl mt-0.5">Cumulative savings vs zero-base · $K</div>
+                </div>
+                <span class="chip" :class="achieved>=targetSavings?'chip-fav':'chip-warn'">
+                  <i :data-lucide="achieved>=targetSavings?'check':'alert-triangle'" class="w-3 h-3"></i>
+                  <span x-text="achieved>=targetSavings?'On target':'$'+(targetSavings-achieved)+'K short'"></span>
+                </span>
+              </div>
+              <div class="flex items-center gap-4 mt-3 mb-1">
+                <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-2.5" style="background:var(--fav);border-radius:2px"></span>Achieved</span>
+                <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-0.5" style="background:var(--ink-2)"></span>Target trajectory</span>
+              </div>
+              <div class="relative mt-1 flex-1" style="height:236px"><canvas id="ov_savings"></canvas></div>
+            </div>
+
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Decision Mix</h2><span class="lbl">Proposed · $K</span></div>
+              <div class="relative mt-3 mx-auto" style="height:170px;max-width:170px"><canvas id="ov_mix"></canvas></div>
+              <div class="mt-4 space-y-1.5">
+                <template x-for="m in mixRows()" :key="m.l">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 shrink-0" :style="'background:'+m.c+';border-radius:2px'"></span>
+                    <span class="text-[12px] flex-1" style="color:var(--ink-2)" x-text="m.l"></span>
+                    <span class="num text-[12px] font-bold" x-text="'$'+m.v+'K'"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <!-- category bars -->
+            <div class="card p-4 xl:col-span-2">
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <div><h2 class="display text-[15px]">Spend by Category</h2><div class="lbl mt-0.5">Zero-base baseline vs current proposal · $K</div></div>
+                <div class="flex items-center gap-4">
+                  <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-2.5" style="background:var(--line-2);border-radius:2px"></span>Baseline</span>
+                  <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-2.5" style="background:var(--accent);border-radius:2px"></span>Proposed</span>
+                </div>
+              </div>
+              <div class="relative mt-3" style="height:240px"><canvas id="ov_category"></canvas></div>
+            </div>
+
+            <!-- recent decisions table -->
+            <div class="card overflow-hidden flex flex-col">
+              <div class="flex items-center justify-between gap-3 p-4 pb-3 border-b" style="border-color:var(--line)">
+                <div><h2 class="display text-[15px]">Recent Decisions</h2><div class="lbl mt-0.5">Top packages</div></div>
+                <button class="btn btn-outline btn-sm" @click="go('pkg')">All <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
+              </div>
+              <div class="overflow-x-auto flex-1">
+                <table class="tbl" style="min-width:320px">
+                  <thead><tr><th style="width:52%">Package</th><th>Proposed</th><th style="text-align:right">Decision</th></tr></thead>
+                  <tbody>
+                    <template x-for="p in packages.slice(0,6)" :key="'ov'+p.id">
+                      <tr>
+                        <td><span class="font-semibold text-[12.5px]" :style="p.decision==='Cut'?'text-decoration:line-through;color:var(--ink-2)':''" x-text="p.name"></span></td>
+                        <td class="num font-bold" x-text="'$'+p.amount"></td>
+                        <td style="text-align:right"><span class="chip" :class="decisionChip(p.decision)" x-text="p.decision"></span></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= COST PACKAGES ================= -->
+        <section x-show="page==='pkg'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Cost-Package Register</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Each package defended against its justification · <span x-text="filteredPackages.length"></span> shown · click a row to edit</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-outline btn-sm" @click="notify('Exported package register (XLSX) — mockup')"><i data-lucide="download" class="w-4 h-4"></i> Export</button>
+              <button class="btn btn-primary btn-sm" @click="openModal()"><i data-lucide="plus" class="w-4 h-4"></i> New package</button>
+            </div>
+          </div>
+
+          <section class="card overflow-hidden mt-4">
+            <div class="flex items-center justify-between gap-3 p-4 pb-3 flex-wrap border-b" style="border-color:var(--line)">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="lbl mr-1 hidden sm:inline">Category</span>
+                <template x-for="g in categories" :key="g">
+                  <button class="chipbtn" :class="{'on': catFilter===g}" @click="catFilter=g" x-text="g"></button>
+                </template>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="seg">
+                  <template x-for="f in ['All','Approve','Challenge','Cut']" :key="f">
+                    <button :class="{'on': decFilter===f}" @click="decFilter=f" x-text="f==='All'?'All':f"></button>
+                  </template>
+                </div>
+                <div class="relative">
+                  <i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+                  <input type="text" class="field !h-8 !w-36 sm:!w-48 !pl-8 text-[12px]" placeholder="Search packages" x-model="pkgQ" aria-label="Search packages" />
+                </div>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:900px">
+                <thead>
+                  <tr>
+                    <th style="width:38%" :class="{'sorted':sortKey==='name'}" @click="sortBy('name')">Cost package <span x-show="sortKey==='name'" x-text="sortDir>0?'▲':'▼'"></span></th>
+                    <th style="text-align:center">Category</th>
+                    <th :class="{'sorted':sortKey==='base'}" @click="sortBy('base')">Prior base <span x-show="sortKey==='base'" x-text="sortDir>0?'▲':'▼'"></span></th>
+                    <th :class="{'sorted':sortKey==='amount'}" @click="sortBy('amount')">Proposed <span x-show="sortKey==='amount'" x-text="sortDir>0?'▲':'▼'"></span></th>
+                    <th :class="{'sorted':sortKey==='delta'}" @click="sortBy('delta')">Δ vs base <span x-show="sortKey==='delta'" x-text="sortDir>0?'▲':'▼'"></span></th>
+                    <th style="width:158px;text-align:right">Decision</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(p,idx) in filteredPackages" :key="p.id">
+                    <tr class="clickable" :class="{'zebra': idx%2===1}" @click="openPackage(p)"
+                        :style="'border-left:3px solid '+decisionColor(p.decision)+';'+(p.decision==='Cut'?'opacity:.72':'')">
+                      <td>
+                        <div class="flex items-start gap-3">
+                          <div class="w-8 h-8 flex items-center justify-center mono text-[10px] font-bold shrink-0"
+                               style="background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line);border-radius:var(--r-sm)" x-text="p.oi"></div>
+                          <div class="min-w-0">
+                            <div class="font-semibold text-[13.5px]" :style="p.decision==='Cut'?'text-decoration:line-through;color:var(--ink-2)':''" x-text="p.name"></div>
+                            <div class="text-[12px] mt-0.5 leading-snug" style="color:var(--ink-2);max-width:44ch" x-text="p.why"></div>
+                            <div class="lbl mt-1" style="font-size:9px">Owner · <span x-text="p.owner"></span></div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style="text-align:center"><span class="chip chip-flat" x-text="p.cat"></span></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="'$'+p.base"></td>
+                      <td class="num font-bold" x-text="'$'+p.amount"></td>
+                      <td class="num" :class="(p.amount-p.base)<=0?'fav':'unfav'" x-text="fmtSigned(p.amount-p.base)"></td>
+                      <td class="decision-cell" style="text-align:right" @click.stop>
+                        <select class="isel !h-8 !w-[142px] ml-auto !text-[12px] mono"
+                                x-model="p.decision" @change="decide(p)"
+                                :style="'font-weight:700;border-color:'+decisionColor(p.decision)+';color:'+decisionColor(p.decision)+';background:'+decisionSoft(p.decision)"
+                                :aria-label="'Decision for '+p.name">
+                          <option>Approve</option><option>Challenge</option><option>Cut</option>
+                        </select>
+                      </td>
+                    </tr>
+                  </template>
+                  <tr x-show="filteredPackages.length===0">
+                    <td colspan="6" style="text-align:center;padding:34px">
+                      <div class="flex flex-col items-center gap-2">
+                        <i data-lucide="package-search" class="w-6 h-6" style="color:var(--ink-3)"></i>
+                        <div class="font-semibold">No packages match</div>
+                        <div class="text-[12px]" style="color:var(--ink-2)">Clear the filters or search to see the full register.</div>
+                        <button class="btn btn-outline btn-sm mt-1" @click="catFilter='All';decFilter='All';pkgQ=''">Reset filters</button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-t flex-wrap" style="border-color:var(--line);background:var(--surface-2)">
+              <div class="flex items-center gap-3">
+                <span class="chip chip-fav"><i data-lucide="check" class="w-3 h-3"></i> <span x-text="countBy('Approve')"></span> approved</span>
+                <span class="chip chip-warn"><i data-lucide="alert-triangle" class="w-3 h-3"></i> <span x-text="countBy('Challenge')"></span> challenged</span>
+                <span class="chip chip-unfav"><i data-lucide="scissors" class="w-3 h-3"></i> <span x-text="countBy('Cut')"></span> cut</span>
+              </div>
+              <span class="mono text-[11.5px]" style="color:var(--ink-2)">Justified spend <b style="color:var(--ink)" x-text="'$'+justified+'K'"></b> of <b style="color:var(--ink)" x-text="'$'+baseline+'K'"></b> baseline</span>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= CATEGORIES ================= -->
+        <section x-show="page==='cat'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Spend by Category</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Zero-base baseline vs current proposal · <span x-text="cycleLabel"></span> · USD thousands</p>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card p-4 xl:col-span-2">
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <div><h2 class="display text-[15px]">Baseline vs Proposed</h2><div class="lbl mt-0.5">Grouped by category · $K</div></div>
+                <div class="flex items-center gap-4">
+                  <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-2.5" style="background:var(--line-2);border-radius:2px"></span>Baseline</span>
+                  <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-2.5" style="background:var(--accent);border-radius:2px"></span>Proposed</span>
+                </div>
+              </div>
+              <div class="relative mt-3" style="height:280px"><canvas id="cat_bars"></canvas></div>
+            </div>
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Proposed Share</h2><span class="lbl">$K</span></div>
+              <div class="relative mt-3 mx-auto" style="height:172px;max-width:172px"><canvas id="cat_mix"></canvas></div>
+              <div class="mt-4 space-y-1.5">
+                <template x-for="(r,i) in catData()" :key="'cs'+r.c">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 shrink-0" :style="'background:'+catColors[i]+';border-radius:2px'"></span>
+                    <span class="text-[12px] flex-1" style="color:var(--ink-2)" x-text="r.c"></span>
+                    <span class="num text-[12px] font-bold" x-text="'$'+r.prop+'K'"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </section>
+
+          <section class="card overflow-hidden mt-4">
+            <div class="p-4 pb-3 border-b" style="border-color:var(--line)"><h2 class="display text-[16px]">Category Detail</h2><div class="lbl mt-0.5">Favorable = proposal under baseline</div></div>
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:640px">
+                <thead><tr><th style="width:34%">Category</th><th>Packages</th><th>Zero-base</th><th>Proposed</th><th>Δ vs base</th><th style="text-align:right">Status</th></tr></thead>
+                <tbody>
+                  <template x-for="(r,i) in catData()" :key="'cd'+r.c">
+                    <tr :class="{'zebra': i%2===1}">
+                      <td>
+                        <div class="flex items-center gap-2.5">
+                          <span class="w-2.5 h-2.5 shrink-0" :style="'background:'+catColors[i]+';border-radius:2px'"></span>
+                          <span class="font-semibold" x-text="r.c"></span>
+                        </div>
+                      </td>
+                      <td class="num" style="color:var(--ink-2)" x-text="r.count"></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="'$'+r.base"></td>
+                      <td class="num font-bold" x-text="'$'+r.prop"></td>
+                      <td class="num" :class="(r.prop-r.base)<=0?'fav':'unfav'" x-text="fmtSigned(r.prop-r.base)"></td>
+                      <td style="text-align:right"><span class="chip" :class="(r.prop-r.base)<=0?'chip-fav':'chip-unfav'" x-text="(r.prop-r.base)<=0?'Under base':'Over base'"></span></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= SAVINGS ================= -->
+        <section x-show="page==='save'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Savings Tracker</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Target vs achieved against the zero-base · <span x-text="cycleLabel"></span> · USD thousands</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="text-right">
+                <div class="lbl">Target savings</div>
+                <div class="num display text-[15px]" x-text="targetPct+'% · $'+targetSavings+'K'"></div>
+              </div>
+              <div class="stepper" role="group" aria-label="Target savings percent">
+                <button @click="setTarget(targetPct-1)" aria-label="Decrease target">−</button>
+                <div class="val num" x-text="targetPct+'%'"></div>
+                <button @click="setTarget(targetPct+1)" aria-label="Increase target">+</button>
+              </div>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            <div class="card p-3.5"><div class="lbl">Baseline</div><div class="num display text-[20px] mt-1.5" x-text="'$'+baseline+'K'"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">prior-year run rate</div></div>
+            <div class="card p-3.5"><div class="lbl">Target</div><div class="num display text-[20px] mt-1.5" x-text="'$'+targetSavings+'K'"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)" x-text="targetPct+'% of baseline'"></div></div>
+            <div class="card p-3.5"><div class="lbl">Achieved</div><div class="num display text-[20px] mt-1.5 fav" x-text="'$'+achieved+'K'"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)" x-text="pct(achieved,baseline)+' of baseline'"></div></div>
+            <div class="card p-3.5"><div class="lbl">Gap to target</div><div class="num display text-[20px] mt-1.5" :class="achieved>=targetSavings?'fav':'unfav'" x-text="(achieved>=targetSavings?'+$':'−$')+Math.abs(targetSavings-achieved)+'K'"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)" x-text="achieved>=targetSavings?'on target':'more to cut'"></div></div>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card p-4 xl:col-span-2 flex flex-col">
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <div><h2 class="display text-[15px]">Cumulative Savings</h2><div class="lbl mt-0.5">Achieved vs target trajectory · $K</div></div>
+                <div class="flex items-center gap-4">
+                  <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-2.5" style="background:var(--fav);border-radius:2px"></span>Achieved</span>
+                  <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-0.5" style="background:var(--ink-2)"></span>Target</span>
+                </div>
+              </div>
+              <div class="relative mt-3 flex-1" style="height:260px"><canvas id="save_line"></canvas></div>
+            </div>
+            <div class="card overflow-hidden flex flex-col">
+              <div class="p-4 pb-3 border-b" style="border-color:var(--line)"><h2 class="display text-[15px]">Savings by Category</h2><div class="lbl mt-0.5">Baseline − proposed</div></div>
+              <div class="overflow-x-auto flex-1">
+                <table class="tbl" style="min-width:280px">
+                  <thead><tr><th>Category</th><th>Saved</th></tr></thead>
+                  <tbody>
+                    <template x-for="(r,i) in catData()" :key="'sv'+r.c">
+                      <tr :class="{'zebra': i%2===1}">
+                        <td class="font-semibold" x-text="r.c"></td>
+                        <td class="num font-bold" :class="(r.base-r.prop)>=0?'fav':'unfav'" x-text="fmtSigned(r.base-r.prop)"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= APPROVALS ================= -->
+        <section x-show="page==='appr'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Approvals Queue</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)"><span x-text="pendingQueue.length"></span> challenged package<span x-show="pendingQueue.length!==1">s</span> awaiting a committee decision</p>
+            </div>
+            <button class="btn btn-outline btn-sm" @click="notify('Reminders sent to owners — mockup')"><i data-lucide="bell-ring" class="w-4 h-4"></i> Nudge owners</button>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="xl:col-span-2 space-y-3">
+              <template x-for="p in pendingQueue" :key="'q'+p.id">
+                <div class="card p-4" style="border-left:3px solid var(--warn)">
+                  <div class="flex items-start justify-between gap-3 flex-wrap">
+                    <div class="flex items-start gap-3 min-w-0">
+                      <div class="w-9 h-9 flex items-center justify-center mono text-[11px] font-bold shrink-0"
+                           style="background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line);border-radius:var(--r-sm)" x-text="p.oi"></div>
+                      <div class="min-w-0">
+                        <div class="font-semibold text-[14px]" x-text="p.name"></div>
+                        <div class="text-[12px] mt-0.5 leading-snug" style="color:var(--ink-2)" x-text="p.why"></div>
+                        <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                          <span class="chip chip-flat" x-text="p.cat"></span>
+                          <span class="lbl" style="font-size:9px">Owner · <span x-text="p.owner"></span></span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="text-right shrink-0">
+                      <div class="num display text-[16px]" x-text="'$'+p.amount+'K'"></div>
+                      <div class="num text-[11px]" :class="(p.amount-p.base)<=0?'fav':'unfav'" x-text="fmtSigned(p.amount-p.base)+' vs base'"></div>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2 mt-3 pt-3 border-t" style="border-color:var(--line)">
+                    <button class="btn btn-sm flex-1" style="background:var(--fav-soft);color:var(--fav)" @click="setDecision(p,'Approve')"><i data-lucide="check" class="w-4 h-4"></i> Approve</button>
+                    <button class="btn btn-outline btn-sm flex-1" @click="openPackage(p)"><i data-lucide="pencil" class="w-4 h-4"></i> Review</button>
+                    <button class="btn btn-sm flex-1" style="background:var(--unfav-soft);color:var(--unfav)" @click="setDecision(p,'Cut')"><i data-lucide="scissors" class="w-4 h-4"></i> Cut</button>
+                  </div>
+                </div>
+              </template>
+              <div x-show="pendingQueue.length===0" class="card p-8 text-center">
+                <div class="flex flex-col items-center gap-2">
+                  <i data-lucide="check-check" class="w-7 h-7" style="color:var(--fav)"></i>
+                  <div class="display text-[16px]">Queue cleared</div>
+                  <div class="text-[12px]" style="color:var(--ink-2)">Every package has a decision. Nothing left to defend.</div>
+                  <button class="btn btn-outline btn-sm mt-1" @click="go('pkg')">Open the register</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <div class="card p-4">
+                <div class="flex items-center justify-between"><h2 class="display text-[15px]">Decision Progress</h2><span class="num display text-[15px]" x-text="approvedPct+'%'"></span></div>
+                <div class="meter mt-3"><span :style="'width:'+approvedPct+'%'"></span></div>
+                <div class="text-[11.5px] mono mt-2" style="color:var(--ink-2)"><b style="color:var(--ink)" x-text="countBy('Approve')"></b> approved · <b style="color:var(--ink)" x-text="countBy('Cut')"></b> cut of <span x-text="packages.length"></span></div>
+              </div>
+              <div class="card p-4">
+                <div class="flex items-center justify-between"><h2 class="display text-[15px]">Decision Mix</h2><span class="lbl">$K</span></div>
+                <div class="relative mt-3 mx-auto" style="height:158px;max-width:158px"><canvas id="appr_mix"></canvas></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= REPORTS ================= -->
+        <section x-show="page==='reports'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Reports</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Standard packs &amp; ad-hoc generation</p>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="xl:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <template x-for="r in reports" :key="r.n">
+                <div class="card p-4 flex items-start gap-3">
+                  <div class="w-10 h-10 flex items-center justify-center shrink-0" style="background:var(--accent-soft);color:var(--accent-ink);border-radius:var(--r-sm)"><i :data-lucide="r.i" class="w-5 h-5"></i></div>
+                  <div class="min-w-0 flex-1">
+                    <div class="font-semibold text-[14px]" x-text="r.n"></div>
+                    <div class="text-[11.5px] mt-0.5" style="color:var(--ink-3)" x-text="r.d"></div>
+                    <div class="flex items-center gap-2 mt-2.5">
+                      <button class="btn btn-ghost btn-sm" @click="notify('Generating '+r.n+' — mockup')"><i data-lucide="play" class="w-3.5 h-3.5"></i> Generate</button>
+                      <button class="iconbtn !w-8 !h-8" @click="notify('Opened '+r.n)" aria-label="Open"><i data-lucide="external-link" class="w-4 h-4"></i></button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Generate Custom</h2>
+              <div class="mt-3 space-y-3">
+                <div><label class="flbl">Report type</label>
+                  <select class="isel"><option>Package register</option><option>Savings summary</option><option>Category variance</option><option>Approvals log</option><option>Committee pack</option></select></div>
+                <div><label class="flbl">Period</label>
+                  <div class="seg w-full"><template x-for="p in ['Cycle','Quarter','Year']" :key="p"><button class="flex-1" :class="{'on': repPeriod===p}" @click="repPeriod=p" x-text="p"></button></template></div></div>
+                <div><label class="flbl">Format</label>
+                  <select class="isel"><option>PDF</option><option>Excel (XLSX)</option><option>Google Slides</option></select></div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Include justifications</div><div class="text-[11px]" style="color:var(--ink-3)">Full defense per package</div></div>
+                  <button class="switch" :class="{'on': repJustify}" @click="repJustify=!repJustify" role="switch" :aria-checked="repJustify" aria-label="Include justifications"></button>
+                </div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Email to committee</div><div class="text-[11px]" style="color:var(--ink-3)">On generation</div></div>
+                  <button class="switch" :class="{'on': repEmail}" @click="repEmail=!repEmail" role="switch" :aria-checked="repEmail" aria-label="Email to committee"></button>
+                </div>
+                <div x-show="repEmail"><label class="flbl">Recipients</label><input class="field" type="email" placeholder="committee@company.com" /></div>
+                <div><label class="flbl">Notes</label><textarea class="field" placeholder="Optional context for this report…"></textarea></div>
+                <button class="btn btn-primary btn-block" @click="notify('Report queued — mockup')"><i data-lucide="file-output" class="w-4 h-4"></i> Generate report</button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= SETTINGS ================= -->
+        <section x-show="page==='settings'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Settings</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Edition, fiscal cycle, and budget-owner preferences</p>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Appearance</h2>
+              <div class="mt-3 space-y-3.5">
+                <div>
+                  <label class="flbl">Edition</label>
+                  <div class="seg w-full">
+                    <button class="flex-1" :class="{'on': edition==='light'}" @click="edition='light'">Concrete</button>
+                    <button class="flex-1" :class="{'on': edition==='dark'}" @click="edition='dark'">Graphite</button>
+                  </div>
+                  <p class="text-[11px] mt-1.5" style="color:var(--ink-3)">Concrete is the hero; Graphite is the after-hours copy.</p>
+                </div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Compact tables</div><div class="text-[11px]" style="color:var(--ink-3)">Denser rows in the register</div></div>
+                  <button class="switch" :class="{'on': prefCompact}" @click="prefCompact=!prefCompact" role="switch" :aria-checked="prefCompact" aria-label="Compact tables"></button>
+                </div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Auto-flag over-base</div><div class="text-[11px]" style="color:var(--ink-3)">Mark proposals above baseline</div></div>
+                  <button class="switch" :class="{'on': prefFlag}" @click="prefFlag=!prefFlag; notify('Over-base auto-flag '+(prefFlag?'on':'off'))" role="switch" :aria-checked="prefFlag" aria-label="Auto-flag over-base"></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Budget Cycle</h2>
+              <div class="mt-3 space-y-3.5">
+                <div><label class="flbl">Fiscal year</label>
+                  <select class="isel" x-model="fiscalYear" @change="notify('Fiscal year → '+fiscalYear)">
+                    <option>FY2026</option><option>FY2027</option><option>FY2028</option>
+                  </select></div>
+                <div><label class="flbl">Cost center</label>
+                  <select class="isel" x-model="costCenter" @change="notify('Cost center → '+costCenter)">
+                    <option>All departments</option><option>Go-to-market</option><option>Product</option><option>Operations</option><option>People</option><option>Facilities</option>
+                  </select></div>
+                <div>
+                  <label class="flbl">Budget owner</label>
+                  <div class="flex items-center gap-2" x-show="!editOwner">
+                    <div class="flex items-center gap-2.5 flex-1 px-3 h-[38px]" style="background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm)">
+                      <div class="w-6 h-6 flex items-center justify-center mono text-[10px] font-bold" style="background:var(--accent-soft);color:var(--accent-ink);border-radius:2px" x-text="initials(ownerName)"></div>
+                      <span class="font-semibold text-[13px]" x-text="ownerName"></span>
+                    </div>
+                    <button class="btn btn-outline btn-sm" @click="startOwner()"><i data-lucide="pencil" class="w-3.5 h-3.5"></i> Edit</button>
+                  </div>
+                  <div class="flex items-center gap-2" x-show="editOwner" x-cloak>
+                    <input class="field flex-1" x-model="ownerDraft" @keydown.enter="saveOwner()" @keydown.escape="editOwner=false" x-init="$watch('editOwner', v=>{ if(v) $nextTick(()=>$el.focus()) })" aria-label="Budget owner name" />
+                    <button class="iconbtn" @click="saveOwner()" aria-label="Save owner"><i data-lucide="check" class="w-5 h-5" style="color:var(--fav)"></i></button>
+                    <button class="iconbtn" @click="editOwner=false" aria-label="Cancel"><i data-lucide="x" class="w-5 h-5"></i></button>
+                  </div>
+                  <p class="text-[11px] mt-1.5" style="color:var(--ink-3)">Click Edit to rename inline, then Save or press Enter.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <footer class="flex items-center justify-between flex-wrap gap-2 pt-1 pb-3">
+          <span class="lbl" style="color:var(--ink-3)">Zero · Zero-Based Budgeting · v1.0</span>
+          <span class="mono text-[11px]" style="color:var(--ink-3)">Figures illustrative · not for filing</span>
+        </footer>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ===== MOBILE NAV DRAWER ===== -->
+<div x-show="mobileNav" x-transition.opacity class="fixed inset-0 z-40 lg:hidden scrim" @click="mobileNav=false"></div>
+<aside x-show="mobileNav" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
+       class="fixed inset-y-0 left-0 z-50 w-72 chrome flex flex-col lg:hidden">
+  <div class="flex items-center justify-between px-4 border-b chrome-seam" style="height:60px;border-bottom-width:1px">
+    <div class="flex items-center gap-2.5"><div class="w-8 h-8 flex items-center justify-center" style="background:var(--on-accent);color:var(--chrome);border-radius:var(--r-sm)"><i data-lucide="gauge" class="w-4 h-4"></i></div>
+      <span class="display text-[16px]" style="color:var(--chrome-ink)">Zero</span></div>
+    <button class="iconbtn chrome-icon" @click="mobileNav=false" aria-label="Close navigation"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <nav class="p-3 space-y-0.5 flex-1 overflow-y-auto">
+    <template x-for="n in nav" :key="'m'+n.k">
+      <a class="nav-item" :class="{'on': n.k===page}" href="#" @click.prevent="go(n.k); mobileNav=false"><i :data-lucide="n.i" class="w-[18px] h-[18px]"></i><span x-text="n.t"></span>
+        <span x-show="navBadge(n.k)" class="ml-auto mono text-[10px] px-1.5 py-0.5" style="background:var(--chrome-line);color:var(--chrome-ink-2);border-radius:var(--r-sm)" x-text="navBadge(n.k)"></span></a>
+    </template>
+  </nav>
+  <div class="p-3 border-t chrome-seam" style="border-top-width:1px">
+    <button class="btn btn-primary btn-block" @click="openModal(); mobileNav=false"><i data-lucide="plus" class="w-4 h-4"></i> New package</button>
+  </div>
+</aside>
+
+<!-- ===== EDIT DRAWER (cost package) ===== -->
+<div x-show="drawerOpen" x-transition.opacity class="fixed inset-0 z-[55] scrim" @click="drawerOpen=false"></div>
+<aside x-show="drawerOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+       class="fixed inset-y-0 right-0 z-[60] w-full sm:w-[420px] flex flex-col" style="background:var(--surface);border-left:1px solid var(--line-2);box-shadow:var(--shadow-lg)">
+  <div class="flex items-center justify-between px-4 border-b" style="height:60px;border-color:var(--line)">
+    <div><div class="lbl">Edit package</div><div class="display text-[16px] truncate" style="max-width:300px" x-text="editForm.name"></div></div>
+    <button class="iconbtn" @click="drawerOpen=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <div class="flex-1 overflow-y-auto p-4 space-y-3.5">
+    <div><label class="flbl">Package name</label><input class="field" type="text" x-model="editForm.name" /></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="flbl">Category</label>
+        <select class="isel" x-model="editForm.cat"><option>Go-to-market</option><option>Product</option><option>Operations</option><option>People</option><option>Facilities</option></select></div>
+      <div><label class="flbl">Owner</label><input class="field" type="text" x-model="editForm.owner" /></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="flbl">Prior base ($K)</label><input class="field mono" type="number" x-model.number="editForm.base" /></div>
+      <div><label class="flbl">Proposed ($K)</label><input class="field mono" type="number" x-model.number="editForm.amount" /></div>
+    </div>
+    <div class="rounded p-3 flex items-center justify-between" style="background:var(--surface-2);border-radius:var(--r-sm)">
+      <span class="lbl">Δ vs baseline</span>
+      <span class="num display text-[18px]" :class="((+editForm.amount||0)-(+editForm.base||0))<=0?'fav':'unfav'" x-text="fmtSigned((+editForm.amount||0)-(+editForm.base||0))+'K'"></span>
+    </div>
+    <div><label class="flbl">Decision</label>
+      <select class="isel" x-model="editForm.decision"><option>Approve</option><option>Challenge</option><option>Cut</option></select></div>
+    <div><label class="flbl">Justification</label><textarea class="field" x-model="editForm.why" placeholder="Defend this package against zero…"></textarea></div>
+    <div class="flex items-center justify-between py-1">
+      <div><div class="text-[13px] font-semibold">Escalate to committee</div><div class="text-[11px]" style="color:var(--ink-3)">Flag for board review</div></div>
+      <button class="switch" :class="{'on': editForm.escalate}" @click="editForm.escalate=!editForm.escalate" role="switch" :aria-checked="editForm.escalate" aria-label="Escalate to committee"></button>
+    </div>
+  </div>
+  <div class="p-4 border-t flex items-center gap-2" style="border-color:var(--line)">
+    <button class="btn btn-outline flex-1" @click="drawerOpen=false">Cancel</button>
+    <button class="btn btn-primary flex-1" @click="savePackage()"><i data-lucide="check" class="w-4 h-4"></i> Save changes</button>
+  </div>
+</aside>
+
+<!-- ===== MODAL (New cost package) ===== -->
+<div x-show="modalOpen" x-transition.opacity class="fixed inset-0 z-[70] scrim flex items-start sm:items-center justify-center p-4 overflow-y-auto" @click="modalOpen=false">
+  <div @click.stop x-show="modalOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       class="card w-full max-w-lg my-8" style="box-shadow:var(--shadow-lg)">
+    <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color:var(--line)">
+      <div><div class="lbl">Cost register</div><div class="display text-[17px]">New Cost Package</div></div>
+      <button class="iconbtn" @click="modalOpen=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="p-5 space-y-3.5 max-h-[70vh] overflow-y-auto">
+      <div><label class="flbl">Package name</label><input class="field" type="text" x-model="np.name" placeholder="e.g. Regional field events" /></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="flbl">Category</label>
+          <select class="isel" x-model="np.cat"><option>Go-to-market</option><option>Product</option><option>Operations</option><option>People</option><option>Facilities</option></select></div>
+        <div><label class="flbl">Owner</label><input class="field" type="text" x-model="np.owner" placeholder="Full name" /></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="flbl">Prior base ($K)</label><input class="field mono" type="number" x-model.number="np.base" /></div>
+        <div><label class="flbl">Proposed ($K)</label>
+          <div class="stepper w-full"><button @click="np.amount=Math.max(0,np.amount-10)" aria-label="Decrease amount">−</button>
+            <input class="mono flex-1" type="number" x-model.number="np.amount" /><button @click="np.amount+=10" aria-label="Increase amount">+</button></div></div>
+      </div>
+      <div class="rounded p-3 flex items-center justify-between" style="background:var(--surface-2);border-radius:var(--r-sm)">
+        <span class="lbl">Δ vs baseline</span>
+        <span class="num display text-[16px]" :class="((+np.amount||0)-(+np.base||0))<=0?'fav':'unfav'" x-text="fmtSigned((+np.amount||0)-(+np.base||0))+'K'"></span>
+      </div>
+      <div><label class="flbl">Justification</label><textarea class="field" x-model="np.why" placeholder="Why does this dollar exist? Defend it from zero…"></textarea></div>
+      <div><label class="flbl">Tags</label>
+        <div class="flex flex-wrap gap-2">
+          <template x-for="tg in ['Discretionary','Committed','One-time','Headcount','Vendor']" :key="tg">
+            <button class="chipbtn" :class="{'on': np.tags.includes(tg)}" @click="toggleTag(tg)" x-text="tg"></button>
+          </template>
+        </div>
+      </div>
+      <div class="flex items-center justify-between py-1">
+        <div><div class="text-[13px] font-semibold">Recurring package</div><div class="text-[11px]" style="color:var(--ink-3)">Repeats every cycle</div></div>
+        <button class="switch" :class="{'on': np.recurring}" @click="np.recurring=!np.recurring" role="switch" :aria-checked="np.recurring" aria-label="Recurring package"></button>
+      </div>
+    </div>
+    <div class="px-5 py-4 border-t flex items-center gap-2" style="border-color:var(--line)">
+      <button class="btn btn-outline flex-1" @click="modalOpen=false">Cancel</button>
+      <button class="btn btn-primary flex-1" @click="createPackage()"><i data-lucide="check" class="w-4 h-4"></i> Add package</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOASTS ===== -->
+<div class="fixed bottom-4 right-4 z-[80] space-y-2 w-[calc(100%-2rem)] sm:w-auto sm:max-w-sm" aria-live="polite">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="toast px-3.5 py-3 flex items-start gap-3" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+      <i :data-lucide="t.icon" class="w-4 h-4 mt-0.5 shrink-0" :style="'color:'+t.color"></i>
+      <span class="text-[13px]" style="color:var(--ink)" x-text="t.msg"></span>
+    </div>
+  </template>
+</div>
+
+<script>
+function zero() {
+  return {
+    edition: 'light',
+    page: 'dash',
+    mobileNav: false,
+    modalOpen: false,
+    drawerOpen: false,
+    cycle: 'FY27',
+    fiscalYear: 'FY2027',
+    costCenter: 'All departments',
+    catFilter: 'All',
+    decFilter: 'All',
+    pkgQ: '',
+    sortKey: 'amount', sortDir: -1,
+    targetPct: 15,
+    repPeriod: 'Cycle', repJustify: true, repEmail: false,
+    prefCompact: false, prefFlag: true,
+    editOwner: false, ownerName: 'Casey Flynn', ownerDraft: '',
+    np: { name:'', cat:'Go-to-market', owner:'', base:0, amount:0, why:'', tags:[], recurring:false },
+    editForm: {}, drawerRef: null,
+    toasts: [], _tid: 0, charts: {},
+
+    cycles: ['FY26','FY27','FY28'],
+    categories: ['All','Go-to-market','Product','Operations','People','Facilities'],
+    catColors: ['#15803D','#1D4ED8','#B45309','#0D9488','#6B7280'],
+
+    nav: [
+      { k:'dash',     t:'Overview',       i:'layout-dashboard' },
+      { k:'pkg',      t:'Cost Packages',  i:'package' },
+      { k:'cat',      t:'Categories',     i:'layers' },
+      { k:'save',     t:'Savings',        i:'trending-down' },
+      { k:'appr',     t:'Approvals',      i:'check-check' },
+      { k:'reports',  t:'Reports',        i:'folder-open' },
+      { k:'settings', t:'Settings',       i:'settings' },
+    ],
+
+    packages: [
+      { id:1, name:'Field marketing events',   cat:'Go-to-market', owner:'Priya N.', oi:'PN', base:410, amount:320, why:'Three flagship events; 2.1× pipeline ROI. Regional roadshows trimmed.', decision:'Approve',   escalate:false },
+      { id:2, name:'Paid search & social',     cat:'Go-to-market', owner:'Marco D.', oi:'MD', base:480, amount:540, why:'CAC up 14%; requesting an increase to defend market share.', decision:'Challenge', escalate:true },
+      { id:3, name:'Sales headcount (4 AE)',   cat:'Go-to-market', owner:'Ana R.',  oi:'AR', base:640, amount:680, why:'Quota coverage at 0.8×; four reps bring it to 1.1×.', decision:'Approve',   escalate:false },
+      { id:4, name:'Product analytics stack',  cat:'Product',      owner:'Sam K.',  oi:'SK', base:120, amount:96,  why:'Consolidate three overlapping tools into one — net reduction.', decision:'Approve',   escalate:false },
+      { id:5, name:'R&D cloud compute',        cat:'Product',      owner:'Devi L.', oi:'DL', base:300, amount:410, why:'Model-training load up 60%; no committed-use discount yet.', decision:'Challenge', escalate:true },
+      { id:6, name:'Office lease expansion',   cat:'Facilities',   owner:'Owen T.', oi:'OT', base:180, amount:240, why:'Extra floor for hybrid, but occupancy is only 41%.', decision:'Cut',       escalate:false },
+      { id:7, name:'Learning & development',   cat:'People',       owner:'Kim H.',  oi:'KH', base:88,  amount:88,  why:'Flat renewal; includes mandatory compliance training.', decision:'Approve',   escalate:false },
+      { id:8, name:'Legacy data center',       cat:'Operations',   owner:'Ravi P.', oi:'RP', base:260, amount:150, why:'Migrate remaining workloads to cloud; decommission racks.', decision:'Cut',       escalate:false },
+      { id:9, name:'Travel & entertainment',   cat:'Operations',   owner:'Lena F.', oi:'LF', base:210, amount:130, why:'Shift QBRs to virtual; keep executive customer visits only.', decision:'Challenge', escalate:false },
+    ],
+
+    kpis: [
+      { key:'baseline',  t:'Baseline Budget',  i:'database',       chip:'flat',  icon:'minus',           sub:'prior year',  sp:[2.9,2.85,2.8,2.75,2.7,2.688] },
+      { key:'justified', t:'Justified',        i:'file-check-2',   chip:'fav',   icon:'check',           sub:'approved',    sp:[1.4,1.35,1.2,1.25,1.18,1.184] },
+      { key:'savings',   t:'Proposed Savings', i:'trending-down',  chip:'fav',   icon:'arrow-down-right',sub:'vs baseline', sp:[.2,.28,.33,.36,.4,.424] },
+      { key:'approved',  t:'Approved %',       i:'check-check',    chip:'fav',   icon:'arrow-up-right',  sub:'of packages', sp:[30,33,38,40,42,44] },
+      { key:'cut',       t:'Cut $',            i:'scissors',       chip:'unfav', icon:'scissors',        sub:'eliminated',  sp:[.1,.18,.25,.3,.36,.39] },
+    ],
+    kpiValue(k) { return ({
+      baseline:  () => '$'+(this.baseline/1000).toFixed(2)+'M',
+      justified: () => '$'+this.justified+'K',
+      savings:   () => '$'+this.savings+'K',
+      approved:  () => this.approvedPct+'%',
+      cut:       () => '$'+this.cut+'K',
+    }[k.key] || (()=>''))(); },
+    kpiDelta(k) { return ({
+      baseline:  () => 'zero-base',
+      justified: () => this.pct(this.justified, this.baseline),
+      savings:   () => this.pct(this.savings, this.baseline),
+      approved:  () => this.countBy('Approve')+' of '+this.packages.length,
+      cut:       () => this.countBy('Cut')+' packages',
+    }[k.key] || (()=>''))(); },
+
+    reports: [
+      { n:'Committee Decision Pack', d:'Generated Jun 28', i:'presentation' },
+      { n:'Savings Summary',         d:'Generated Jun 27', i:'trending-down' },
+      { n:'Category Variance',       d:'Generated Jun 26', i:'layers' },
+      { n:'Approvals Log',           d:'Due Jul 15',       i:'check-check' },
+      { n:'Zero-Base Register',      d:'Generated Jun 25', i:'package' },
+      { n:'Owner Accountability',    d:'Generated Jun 24', i:'users' },
+    ],
+
+    // ---------- getters ----------
+    get filteredPackages() {
+      const q = this.pkgQ.trim().toLowerCase();
+      let rows = this.packages.filter(p =>
+        (this.catFilter==='All' || p.cat===this.catFilter) &&
+        (this.decFilter==='All' || p.decision===this.decFilter) &&
+        (!q || p.name.toLowerCase().includes(q) || p.owner.toLowerCase().includes(q)));
+      const k = this.sortKey, d = this.sortDir;
+      rows = [...rows].sort((a,b) => {
+        let av, bv;
+        if (k==='name') { av=a.name.toLowerCase(); bv=b.name.toLowerCase(); return av<bv?-d:av>bv?d:0; }
+        if (k==='delta') { av=a.amount-a.base; bv=b.amount-b.base; }
+        else { av=a[k]; bv=b[k]; }
+        return (av-bv)*d;
+      });
+      return rows;
+    },
+    get pendingQueue() { return this.packages.filter(p=>p.decision==='Challenge'); },
+    get baseline() { return this.packages.reduce((s,p)=>s+p.base,0); },
+    get spend() { return this.packages.reduce((s,p)=>s + (p.decision==='Cut' ? 0 : p.amount), 0); },
+    get justified() { return this.packages.filter(p=>p.decision==='Approve').reduce((s,p)=>s+p.amount,0); },
+    get cut() { return this.packages.filter(p=>p.decision==='Cut').reduce((s,p)=>s+p.amount,0); },
+    get savings() { return this.baseline - this.spend; },
+    get achieved() { return this.savings; },
+    get targetSavings() { return Math.round(this.baseline * this.targetPct/100); },
+    get decidedCount() { return this.packages.length; },
+    get approvedPct() { return Math.round(this.countBy('Approve')/this.packages.length*100); },
+    get cycleLabel() { return { FY26:'FY2026 · actuals', FY27:'FY2027 · planning cycle', FY28:'FY2028 · draft' }[this.cycle]; },
+
+    // ---------- helpers ----------
+    navBadge(k) { if (k==='pkg') return this.packages.length; if (k==='appr') return this.pendingQueue.length || ''; return ''; },
+    initials(n) { return (n||'').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase() || '—'; },
+    countBy(d) { return this.packages.filter(p=>p.decision===d).length; },
+    sumBy(d) { return this.packages.filter(p=>p.decision===d).reduce((s,p)=>s+p.amount,0); },
+    fmtSigned(n) { if (n === 0) return '±$0'; return (n > 0 ? '+$' : '−$') + Math.abs(n).toLocaleString('en-US'); },
+    pct(a, b) { if (!b) return '—'; const p = a / b * 100; return p.toFixed(1) + '%'; },
+    decisionColor(d) { return { Approve:'var(--fav)', Challenge:'var(--warn)', Cut:'var(--unfav)' }[d] || 'var(--ink)'; },
+    decisionSoft(d) { return { Approve:'var(--fav-soft)', Challenge:'var(--warn-soft)', Cut:'var(--unfav-soft)' }[d] || 'var(--surface-2)'; },
+    decisionChip(d) { return { Approve:'chip-fav', Challenge:'chip-warn', Cut:'chip-unfav' }[d] || 'chip-flat'; },
+    mixRows() { return [
+      { l:'Approved',   v:this.sumBy('Approve'),   c:this.css('--fav') },
+      { l:'Challenged', v:this.sumBy('Challenge'), c:this.css('--warn') },
+      { l:'Cut',        v:this.sumBy('Cut'),       c:this.css('--unfav') },
+    ]; },
+    catData() {
+      const cats = ['Go-to-market','Product','Operations','People','Facilities'];
+      return cats.map(c => {
+        const rows = this.packages.filter(p=>p.cat===c);
+        return {
+          c, count: rows.length,
+          base: rows.reduce((s,p)=>s+p.base,0),
+          prop: rows.reduce((s,p)=>s + (p.decision==='Cut'?0:p.amount), 0),
+        };
+      });
+    },
+
+    // ---------- actions ----------
+    toggleEdition() { this.edition = this.edition === 'light' ? 'dark' : 'light'; },
+    setCycle(c) { this.cycle = c; this.fiscalYear = 'FY20'+c.slice(2); this.notify('Cycle → '+c); },
+    setTarget(v) { this.targetPct = Math.max(0, Math.min(40, v)); this.$nextTick(()=>this.renderFor(this.page)); },
+    sortBy(k) { if (this.sortKey===k) this.sortDir*=-1; else { this.sortKey=k; this.sortDir = k==='name'?1:-1; } },
+    go(k) { this.page = k; this.mobileNav = false; },
+    closeAll() { this.modalOpen = false; this.drawerOpen = false; this.mobileNav = false; this.editOwner = false; },
+    openModal() { this.np = { name:'', cat:'Go-to-market', owner:'', base:0, amount:0, why:'', tags:[], recurring:false }; this.modalOpen = true; this.$nextTick(() => lucide.createIcons()); },
+    toggleTag(t) { this.np.tags = this.np.tags.includes(t) ? this.np.tags.filter(x=>x!==t) : [...this.np.tags, t]; },
+    createPackage() {
+      const name = this.np.name.trim() || 'Untitled package';
+      const owner = this.np.owner.trim() || 'Unassigned';
+      const id = Math.max(0, ...this.packages.map(p=>p.id)) + 1;
+      this.packages.push({ id, name, cat:this.np.cat, owner, oi:this.initials(owner),
+        base:+this.np.base||0, amount:+this.np.amount||0, why:this.np.why.trim() || 'Awaiting justification.', decision:'Challenge', escalate:false });
+      this.modalOpen = false;
+      this.notify('Added "'+name+'" · $'+(+this.np.amount||0)+'K proposed', 'Challenge');
+      this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); });
+    },
+    decide(p) {
+      this.notify(p.name+' → '+p.decision, p.decision);
+      this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); });
+    },
+    setDecision(p, d) {
+      p.decision = d;
+      this.notify(p.name+' → '+d, d);
+      this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); });
+    },
+    openPackage(p) { this.drawerRef = p; this.editForm = Object.assign({}, p); this.drawerOpen = true; this.$nextTick(() => lucide.createIcons()); },
+    savePackage() {
+      if (this.drawerRef) {
+        this.editForm.base = +this.editForm.base || 0;
+        this.editForm.amount = +this.editForm.amount || 0;
+        this.editForm.oi = this.initials(this.editForm.owner);
+        Object.assign(this.drawerRef, this.editForm);
+      }
+      this.drawerOpen = false;
+      this.notify('Saved "'+this.editForm.name+'"', this.editForm.decision);
+      this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); });
+    },
+    startOwner() { this.ownerDraft = this.ownerName; this.editOwner = true; },
+    saveOwner() { if (this.ownerDraft.trim()) this.ownerName = this.ownerDraft.trim(); this.editOwner = false; this.notify('Budget owner updated'); },
+
+    notify(msg, decision) {
+      const map = { Approve:['check-circle-2','var(--fav)'], Challenge:['alert-triangle','var(--warn)'], Cut:['scissors','var(--unfav)'] };
+      const [icon,color] = map[decision] || ['check-circle-2','var(--accent-ink)'];
+      const id = ++this._tid;
+      this.toasts.push({ id, msg, icon, color });
+      this.$nextTick(() => lucide.createIcons());
+      setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 2600);
+    },
+
+    init() {
+      this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); });
+      this.$watch('edition', () => this.$nextTick(() => { lucide.createIcons(); this.recolor(); }));
+      this.$watch('page', (p) => this.$nextTick(() => { lucide.createIcons(); this.renderFor(p); }));
+      ['catFilter','decFilter','pkgQ','sortKey','sortDir','modalOpen','drawerOpen','repEmail','editOwner','mobileNav']
+        .forEach(k => this.$watch(k, () => this.$nextTick(() => lucide.createIcons())));
+    },
+
+    css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); },
+
+    // ---------- charts ----------
+    renderFor(page) {
+      Chart.defaults.font.family = "'Anonymous Pro', monospace";
+      Chart.defaults.font.size = 10;
+      const map = {
+        dash: () => { this.drawSparks(); this.drawSavingsInto('ov_savings'); this.drawMixInto('ov_mix'); this.drawCategoryInto('ov_category'); },
+        cat:  () => { this.drawCategoryInto('cat_bars'); this.drawCatShareInto('cat_mix'); },
+        save: () => { this.drawSavingsInto('save_line'); },
+        appr: () => { this.drawMixInto('appr_mix'); },
+      };
+      (map[page] || (()=>{}))();
+    },
+    recolor() { Object.values(this.charts).forEach(c => { try { c.destroy(); } catch(e){} }); this.charts = {}; this.renderFor(this.page); },
+
+    _mk(id, cfg) {
+      const el = document.getElementById(id); if (!el || el.offsetParent === null) return;
+      const prev = Chart.getChart(el); if (prev) prev.destroy();
+      this.charts[id] = new Chart(el.getContext('2d'), cfg);
+    },
+    _grad(ctx, area, color) { const g = ctx.createLinearGradient(0, area.top, 0, area.bottom); g.addColorStop(0, color+'40'); g.addColorStop(1, color+'00'); return g; },
+    _tt() { return { backgroundColor:this.css('--surface'), borderColor:this.css('--line-2'), borderWidth:1, titleColor:this.css('--ink'), bodyColor:this.css('--ink-2'), padding:8 }; },
+    _axis(fmt) { return { grid:{ color:this.css('--line') }, ticks:{ color:this.css('--ink-3'), callback:fmt } }; },
+
+    drawSparks() {
+      this.kpis.forEach((k,i) => {
+        const col = k.chip==='unfav' ? this.css('--unfav') : k.chip==='warn' ? this.css('--warn') : k.chip==='flat' ? this.css('--flat') : this.css('--fav');
+        this._mk('ksp'+i, { type:'line', data:{ labels:k.sp.map((_,j)=>j), datasets:[{ data:k.sp, borderColor:col, borderWidth:1.6, tension:0.4, pointRadius:0, fill:true,
+          backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, col) : col+'22' }]},
+          options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
+      });
+    },
+    drawSavingsInto(id) {
+      const fav = this.css('--fav'), ink = this.css('--ink-2');
+      const tgt = this.targetSavings;
+      const target = [0,1,2,3,4,5,6].map(m => Math.round(tgt * m/6));
+      const achieved = [0, 60, 150, 240, 330, 400, this.achieved];
+      this._mk(id, { data:{ labels:['Q0','Q1','Q2','Q3','Q4','Q5','Now'], datasets:[
+        { type:'line', label:'Achieved', data:achieved, borderColor:fav, borderWidth:2.2, tension:0.35, pointRadius:0, pointHoverRadius:4, fill:true,
+          backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, fav) : fav+'22', order:2 },
+        { type:'line', label:'Target trajectory', data:target, borderColor:ink, borderWidth:2, borderDash:[5,4], pointRadius:0, tension:0, order:1 } ]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false},
+          tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.dataset.label+': $'+c.parsed.y.toLocaleString()+'K' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} }, y:{ ...this._axis((v)=>'$'+v+'K'), min:0 } } } });
+    },
+    drawMixInto(id) {
+      const rows = this.mixRows();
+      this._mk(id, { type:'doughnut', data:{ labels:rows.map(r=>r.l), datasets:[{ data:rows.map(r=>r.v), backgroundColor:rows.map(r=>r.c), borderColor:this.css('--surface'), borderWidth:3, hoverOffset:6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'64%', animation:false, plugins:{legend:{display:false},
+          tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.label+' · $'+c.parsed.toLocaleString()+'K' }}} } });
+    },
+    drawCatShareInto(id) {
+      const rows = this.catData();
+      this._mk(id, { type:'doughnut', data:{ labels:rows.map(r=>r.c), datasets:[{ data:rows.map(r=>r.prop), backgroundColor:this.catColors, borderColor:this.css('--surface'), borderWidth:3, hoverOffset:6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'62%', animation:false, plugins:{legend:{display:false},
+          tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.label+' · $'+c.parsed.toLocaleString()+'K' }}} } });
+    },
+    drawCategoryInto(id) {
+      const base = this.css('--line-2'), acc = this.css('--accent'), rows = this.catData();
+      this._mk(id, { type:'bar', data:{ labels:rows.map(r=>r.c), datasets:[
+        { label:'Zero-base baseline', data:rows.map(r=>r.base), backgroundColor:base, borderRadius:3, barPercentage:0.7, categoryPercentage:0.72 },
+        { label:'Proposed', data:rows.map(r=>r.prop), backgroundColor:acc, borderRadius:3, barPercentage:0.7, categoryPercentage:0.72 } ]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false},
+          tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.dataset.label+': $'+c.parsed.y.toLocaleString()+'K' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-2'), font:{size:11}} }, y:{ ...this._axis((v)=>'$'+v+'K'), min:0 } } } });
+    },
+  };
+}
+</script>
+</body>
+</html>
