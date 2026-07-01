@@ -8,7 +8,7 @@ Self-contained, zero-build themes — each with a full design spec and a live, i
 
 [**▶ Browse the live gallery**](https://prabhuakshay.github.io/my-themes/)
 
-![Themes](https://img.shields.io/badge/themes-12-161616)
+![Themes](https://img.shields.io/badge/themes-13-161616)
 ![License](https://img.shields.io/badge/license-MIT-0f62fe)
 ![Build](https://img.shields.io/badge/build-zero--build-525252)
 
@@ -36,8 +36,9 @@ intent behind every token and component is documented, not just demonstrated.
 | **[Tessera](./themes/tessera/)** | Procurement / inventory — the *warehouse mosaic*: true-neutral zinc, cobalt accent, tiled KPIs, SKU & PO tables. Familjen Grotesk. Floor + Nightshift. | [Demo](https://prabhuakshay.github.io/my-themes/themes/tessera/) · [Spec](./themes/tessera/tessera.md) · [README](./themes/tessera/README.md) |
 | **[Prism](./themes/prism/)** | Marketing / campaign analytics — the *spectrum*: bright white, magenta + a five-hue spectrum, channel mix & campaigns. Bricolage Grotesque. Daylight + Nightshift. | [Demo](https://prabhuakshay.github.io/my-themes/themes/prism/) · [Spec](./themes/prism/prism.md) · [README](./themes/prism/README.md) |
 | **[Dossier](./themes/dossier/)** | Legal / contract lifecycle — the *case file*: serif-led porcelain, burgundy + navy, hairline rules, renewals & obligations. Spectral. Daylight + Lamplight. | [Demo](https://prabhuakshay.github.io/my-themes/themes/dossier/) · [Spec](./themes/dossier/dossier.md) · [README](./themes/dossier/README.md) |
+| **[Sterling](./themes/sterling/)** | Corporate finance / office of the CFO — the *ledger*: ink-navy binder, gilt accent, statement tables that tie out, favorable/unfavorable variance, the month-end close. Hanken Grotesk. Statement + Ledger. | [Demo](https://prabhuakshay.github.io/my-themes/themes/sterling/) · [Spec](./themes/sterling/sterling.md) · [README](./themes/sterling/README.md) |
 
-> _Twelve full systems — each a distinct pole for the same enterprise user, and each a complete,
+> _Thirteen full systems — each a distinct pole for the same enterprise user, and each a complete,
 > token-driven, light + dark app demo with its own written spec. More land in their own folders
 > under [`themes/`](./themes)._
 

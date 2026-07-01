@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Sterling — Corporate Finance Design System (Office of the CFO)</title>
+<meta name="description" content="Sterling — a statement-grade design system for corporate finance and the office of the CFO. Income statement, balance sheet, cash flow, budget vs. actual with favorable/unfavorable variance, the month-end close, AR/AP aging, reports — a full app shell with a new-entry modal and an edit drawer. Statement + Ledger editions." />
+<meta name="theme-color" content="#172436" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23172436'/%3E%3Cpath d='M16 6v20M9 12h14M9 20h14' stroke='%23C79A47' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='11' cy='16' r='2' fill='%23C79A47'/%3E%3Ccircle cx='21' cy='16' r='2' fill='%23C79A47'/%3E%3C/svg%3E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: { fontFamily: {
+      sans: ['"Hanken Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+    } } },
+  };
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<style>
+  /* ============================================================
+     STERLING — EDITION TOKENS
+     "Statement" (light) is the hero — corporate finance is
+     paper/report-first. "Ledger" (dark) is the after-hours copy.
+     The chrome (sidebar) is a deep ink-navy binder in both modes.
+     Gilt is the brand; favorable/unfavorable variance is the
+     semantic core. An edition swap is one class on <html>.
+     ============================================================ */
+
+  :root, .light {
+    color-scheme: light;
+    --canvas:#F4F6F9; --surface:#FFFFFF; --surface-2:#EDF1F5;
+    --line:#E4E9EF; --line-2:#CBD5E0;
+    --ink:#17212E; --ink-2:#52607A; --ink-3:#8794A6;
+    --chrome:#172436; --chrome-2:#21344B; --chrome-line:#2C4058;
+    --chrome-ink:#EDF1F6; --chrome-ink-2:#93A4BC;
+    --accent:#B4893B; --accent-2:#9C7530; --accent-ink:#86611F;
+    --accent-soft:#F5ECD9; --on-accent:#1E1608;
+    --link:#2D6CB5;
+    --fav:#1E8E5A; --fav-soft:#E2F1E9; --unfav:#C34733; --unfav-soft:#F8E6E1;
+    --flat:#6B7789; --warn:#B5871E;
+    --r:8px; --r-sm:5px;
+    --shadow:0 1px 2px rgba(23,33,46,.05), 0 2px 8px rgba(23,33,46,.06);
+    --shadow-lg:0 12px 34px rgba(23,33,46,.15), 0 3px 10px rgba(23,33,46,.10);
+    --scrim:rgba(23,33,46,.48);
+  }
+
+  .dark {
+    color-scheme: dark;
+    --canvas:#10151C; --surface:#161C25; --surface-2:#1E2733;
+    --line:#28323F; --line-2:#3A4757;
+    --ink:#E8EDF3; --ink-2:#9DA9B8; --ink-3:#66717F;
+    --chrome:#0C1119; --chrome-2:#17202B; --chrome-line:#212C39;
+    --chrome-ink:#E8EDF3; --chrome-ink-2:#8B98A8;
+    --accent:#D8B15A; --accent-2:#E6C577; --accent-ink:#D8B15A;
+    --accent-soft:rgba(216,177,90,.14); --on-accent:#14100A;
+    --link:#5AA0E6;
+    --fav:#35C08A; --fav-soft:rgba(53,192,138,.15); --unfav:#E06A54; --unfav-soft:rgba(224,106,84,.15);
+    --flat:#94A0AF; --warn:#E0B24E;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 26px rgba(0,0,0,.46);
+    --shadow-lg:0 14px 44px rgba(0,0,0,.6), 0 4px 12px rgba(0,0,0,.5);
+    --scrim:rgba(4,7,11,.66);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
+    background: var(--canvas); color: var(--ink);
+    font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  [x-cloak] { display: none !important; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .num  { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  a, button, select, input, textarea, [tabindex] { outline: none; }
+  a:focus-visible, button:focus-visible, select:focus-visible,
+  input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--link); outline-offset: 2px; border-radius: var(--r-sm);
+  }
+
+  .lbl { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+  .display { font-weight: 800; letter-spacing: -.02em; }
+  .chrome { background: var(--chrome); color: var(--chrome-ink); }
+  .chrome-seam { border-color: var(--chrome-line) !important; }
+  .fav { color: var(--fav); } .unfav { color: var(--unfav); } .flat { color: var(--flat); }
+
+  .nav-item { position: relative; display: flex; align-items: center; gap: 11px; height: 40px;
+    padding: 0 13px; border-radius: var(--r-sm); color: var(--chrome-ink-2); cursor: pointer;
+    font-weight: 500; transition: background .12s, color .12s; }
+  .nav-item:hover { background: var(--chrome-2); color: var(--chrome-ink); }
+  .nav-item.on { background: var(--chrome-2); color: var(--chrome-ink); font-weight: 600; }
+  .nav-item.on::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 3px; background: var(--accent); border-radius: 0 3px 3px 0; }
+  .nav-item.on i { color: var(--accent); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px;
+    padding: 0 15px; border-radius: var(--r-sm); font-weight: 600; font-size: 13px;
+    border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+    transition: background .12s, border-color .12s, transform .06s; }
+  .btn:active { transform: scale(.985); }
+  .btn-primary { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+  .btn-primary:hover { background: var(--accent-2); }
+  .btn-outline { background: transparent; color: var(--ink); border-color: var(--line-2); }
+  .btn-outline:hover { background: var(--surface-2); }
+  .btn-ghost { background: var(--surface-2); color: var(--ink); }
+  .btn-ghost:hover { background: var(--line); }
+  .btn-sm { height: 32px; padding: 0 11px; font-size: 12px; }
+  .btn-block { width: 100%; }
+  .iconbtn { width: 38px; height: 38px; border-radius: var(--r-sm); display: flex; align-items: center;
+    justify-content: center; color: var(--ink-2); cursor: pointer; border: 1px solid transparent; background: transparent; }
+  .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
+  .chrome-icon { color: var(--chrome-ink-2); background: var(--chrome-2); }
+  .chrome-icon:hover { background: var(--chrome-line); color: var(--chrome-ink); }
+
+  .field, .isel, textarea.field { width: 100%; background: var(--surface-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 11px; font-size: 13px;
+    font-family: 'Hanken Grotesk', sans-serif; }
+  .field, .isel { height: 38px; }
+  textarea.field { padding: 9px 11px; min-height: 78px; resize: vertical; line-height: 1.5; }
+  .field::placeholder, textarea.field::placeholder { color: var(--ink-3); }
+  .isel { appearance: none; -webkit-appearance: none; padding-right: 30px; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+    background-position: calc(100% - 15px) 16px, calc(100% - 10px) 16px; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  .flbl { font-size: 11px; font-weight: 700; color: var(--ink-2); margin-bottom: 5px; display: block; letter-spacing: .01em; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; height: 21px; padding: 0 8px;
+    border-radius: 5px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: .03em; }
+  .chip-fav { color: var(--fav); background: var(--fav-soft); }
+  .chip-unfav { color: var(--unfav); background: var(--unfav-soft); }
+  .chip-flat { color: var(--flat); background: var(--surface-2); }
+  .chip-warn { color: var(--warn); background: rgba(181,135,30,.13); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  /* filter chips (toggle) */
+  .chipbtn { cursor: pointer; border: 1px solid var(--line-2); background: transparent; color: var(--ink-2);
+    height: 30px; padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 600; transition: .12s; }
+  .chipbtn:hover { background: var(--surface-2); }
+  .chipbtn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+
+  /* toggle switch */
+  .switch { width: 40px; height: 23px; border-radius: 999px; background: var(--line-2); position: relative;
+    cursor: pointer; transition: background .15s; flex: none; border: 0; }
+  .switch.on { background: var(--accent); }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 19px; height: 19px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+  .switch.on::after { transform: translateX(17px); }
+
+  /* stepper */
+  .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: var(--surface-2); overflow: hidden; }
+  .stepper button { width: 36px; height: 38px; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; font-size: 17px; line-height: 1; }
+  .stepper button:hover { background: var(--line); color: var(--ink); }
+  .stepper input { width: 92px; height: 38px; border: 0; background: transparent; text-align: center; color: var(--ink);
+    font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+
+  /* segmented control */
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px; }
+  .seg button { height: 28px; padding: 0 12px; border: 0; background: transparent; color: var(--ink-2);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; border-radius: 4px; cursor: pointer; letter-spacing: .03em; }
+  .seg button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+  /* statement / data tables */
+  table { border-collapse: collapse; width: 100%; }
+  .stmt th { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--ink-3); text-align: right; padding: 8px 14px; white-space: nowrap;
+    border-bottom: 1px solid var(--line-2); }
+  .stmt th:first-child { text-align: left; }
+  .stmt td { padding: 7px 14px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  .stmt td:first-child { text-align: left; }
+  .stmt tr:last-child td { border-bottom: 0; }
+  .stmt .row-sub td { font-weight: 700; border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); background: var(--surface-2); }
+  .stmt .row-total td { font-weight: 800; border-top: 2px solid var(--ink); border-bottom: 0; padding-top: 10px; padding-bottom: 10px; font-size: 14px; }
+  .indent-1 { padding-left: 30px !important; color: var(--ink-2); font-weight: 500; }
+
+  .tbl th { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--ink-3); text-align: right; padding: 9px 12px; white-space: nowrap;
+    border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; }
+  .tbl th:first-child, .tbl td:first-child { text-align: left; }
+  .tbl td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  .tbl tbody tr { transition: background .1s; }
+  .tbl tbody tr:hover { background: var(--surface-2); }
+  .tbl tbody tr:last-child td { border-bottom: 0; }
+  .tbl tbody tr.clickable { cursor: pointer; }
+
+  .toast { background: var(--surface); border: 1px solid var(--line-2); border-left: 3px solid var(--accent);
+    box-shadow: var(--shadow-lg); border-radius: var(--r-sm); }
+  .scrim { background: var(--scrim); backdrop-filter: blur(2px); }
+  .spark { display: block; }
+  .track { height: 7px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .track > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+
+  .kv { display: flex; align-items: baseline; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .kv:last-child { border-bottom: 0; }
+</style>
+</head>
+
+<body x-data="cfo()" x-cloak x-init="init()" :class="edition" @keydown.escape.window="closeAll()">
+
+<div class="h-screen flex flex-col">
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="chrome border-b chrome-seam shrink-0 flex items-center gap-3 px-3 sm:px-4" style="height:60px;border-bottom-width:1px">
+    <button class="iconbtn chrome-icon lg:hidden" @click="mobileNav=true" aria-label="Open navigation">
+      <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
+
+    <div class="flex items-center gap-2.5 select-none">
+      <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background:var(--accent);color:var(--on-accent)">
+        <i data-lucide="scale" class="w-5 h-5"></i>
+      </div>
+      <div class="leading-none">
+        <div class="display text-[17px]" style="color:var(--chrome-ink)">Sterling</div>
+        <div class="lbl mt-1" style="font-size:8.5px;color:var(--chrome-ink-2)">Office of the CFO</div>
+      </div>
+    </div>
+
+    <div class="hidden md:flex items-center gap-2 ml-4">
+      <div class="seg" style="background:var(--chrome-2);border-color:var(--chrome-line)">
+        <template x-for="pr in ['MTD','QTD','YTD']" :key="pr">
+          <button :class="{'on': period===pr}" @click="setPeriod(pr)" x-text="pr"
+                  :style="period===pr ? 'background:var(--chrome-line);color:var(--chrome-ink)' : 'color:var(--chrome-ink-2)'"></button>
+        </template>
+      </div>
+      <div class="flex items-center gap-2 h-9 px-3 rounded-md" style="background:var(--chrome-2)">
+        <i data-lucide="calendar" class="w-4 h-4" style="color:var(--chrome-ink-2)"></i>
+        <span class="mono text-[12px] font-bold" style="color:var(--chrome-ink)">Jun · FY2026</span>
+      </div>
+    </div>
+
+    <div class="flex-1"></div>
+
+    <div class="hidden sm:flex items-center gap-2.5 px-3 h-9 rounded-md" style="background:var(--chrome-2)">
+      <span class="dot" style="background:var(--accent)"></span>
+      <span class="mono text-[11px] font-bold" style="color:var(--chrome-ink)">CLOSE · DAY 3/5</span>
+      <span class="mono text-[11px]" style="color:var(--chrome-ink-2)" x-text="closeDone+'/'+tasks.length+' tasks'"></span>
+    </div>
+
+    <button class="btn btn-primary btn-sm hidden sm:inline-flex" @click="openModal()">
+      <i data-lucide="plus" class="w-4 h-4"></i> New entry
+    </button>
+    <button class="iconbtn chrome-icon" @click="toggleEdition()" :aria-label="'Switch to '+(edition==='light'?'Ledger':'Statement')+' edition'">
+      <i :data-lucide="edition==='light' ? 'moon' : 'sun'" class="w-5 h-5"></i>
+    </button>
+    <button class="iconbtn chrome-icon relative" aria-label="Notifications">
+      <i data-lucide="bell" class="w-5 h-5"></i>
+      <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style="background:var(--accent)"></span>
+    </button>
+    <div class="w-9 h-9 rounded-md hidden sm:flex items-center justify-center mono text-[12px] font-bold shrink-0"
+         style="background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--line-2)">AP</div>
+  </header>
+
+  <div class="flex flex-1 min-h-0">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="chrome border-r chrome-seam w-60 shrink-0 hidden lg:flex flex-col" style="border-right-width:1px">
+      <nav class="p-3 flex-1 min-h-0 overflow-y-auto">
+        <div class="lbl px-3 pt-1 pb-2" style="color:var(--chrome-ink-2)">Statements</div>
+        <div class="space-y-0.5">
+          <template x-for="n in nav" :key="n.k">
+            <a class="nav-item" :class="{'on': page===n.k}" href="#" @click.prevent="go(n.k)">
+              <i :data-lucide="n.i" class="w-[18px] h-[18px]"></i>
+              <span x-text="n.t"></span>
+              <span x-show="n.badge" class="ml-auto mono text-[10px] px-1.5 py-0.5 rounded"
+                    style="background:var(--chrome-line);color:var(--chrome-ink-2)" x-text="n.badge"></span>
+            </a>
+          </template>
+        </div>
+      </nav>
+      <div class="p-3 border-t chrome-seam" style="border-top-width:1px">
+        <label class="lbl block mb-1.5 px-1" style="color:var(--chrome-ink-2)">Reporting Entity</label>
+        <select class="isel" style="background:var(--chrome-2);color:var(--chrome-ink);border-color:var(--chrome-line)"
+                @change="notify('Entity → '+$event.target.value)">
+          <option>Consolidated · Group</option><option>North America</option><option>EMEA</option><option>APAC</option>
+        </select>
+        <div class="flex items-center gap-2 mt-2.5 px-1">
+          <i data-lucide="lock" class="w-3.5 h-3.5" style="color:var(--chrome-ink-2)"></i>
+          <span class="text-[11px]" style="color:var(--chrome-ink-2)">USD · books locked to May</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="flex-1 min-w-0 overflow-y-auto">
+      <div class="p-3 sm:p-4 lg:p-5 space-y-4 max-w-[1600px] mx-auto">
+
+        <!-- ================= OVERVIEW ================= -->
+        <section x-show="page==='overview'">
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Financial Overview</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">
+                <span x-text="periodLabel"></span> · USD thousands · vs. approved budget · <span class="mono">illustrative</span>
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-outline btn-sm" @click="go('reports')"><i data-lucide="download" class="w-4 h-4"></i> Board pack</button>
+              <button class="btn btn-primary btn-sm" @click="go('budget')"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i> Reforecast</button>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mt-4">
+            <template x-for="(k,i) in kpis" :key="k.t">
+              <div class="card p-3.5">
+                <div class="flex items-center justify-between">
+                  <span class="lbl" x-text="k.t"></span>
+                  <i :data-lucide="k.i" class="w-4 h-4" style="color:var(--ink-3)"></i>
+                </div>
+                <div class="num display text-[20px] mt-2" x-text="k.v"></div>
+                <div class="flex items-center gap-1.5 mt-1.5">
+                  <span class="chip" :class="k.fav?'chip-fav':'chip-unfav'">
+                    <i :data-lucide="k.fav?'arrow-up-right':'arrow-down-right'" class="w-3 h-3"></i><span x-text="k.d"></span>
+                  </span>
+                  <span class="text-[10.5px] mono" style="color:var(--ink-3)">vs plan</span>
+                </div>
+                <div class="mt-2.5" style="height:28px"><canvas :id="'ksp'+i" class="spark"></canvas></div>
+              </div>
+            </template>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="flex items-center justify-between gap-3 p-4 pb-3 flex-wrap border-b" style="border-color:var(--line)">
+                <div>
+                  <h2 class="display text-[16px]">Income Statement</h2>
+                  <div class="lbl mt-0.5">Profit &amp; Loss · <span x-text="period"></span></div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="chip chip-fav"><i data-lucide="check" class="w-3 h-3"></i> Ties out</span>
+                  <button class="btn btn-outline btn-sm" @click="go('pnl')">Open <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
+                </div>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="stmt num" style="min-width:620px">
+                  <thead><tr><th style="width:44%">Line item</th><th>Actual</th><th>Budget</th><th>Var $</th><th>Var %</th></tr></thead>
+                  <tbody>
+                    <template x-for="r in pnl" :key="r.l">
+                      <tr :class="r.type==='sub' ? 'row-sub' : r.type==='total' ? 'row-total' : ''">
+                        <td :class="r.indent ? 'indent-1' : ''" x-text="r.l"></td>
+                        <td x-text="fmt(r.a)"></td>
+                        <td style="color:var(--ink-2)" x-text="fmt(r.b)"></td>
+                        <td :class="varFav(r)?'fav':'unfav'" x-text="fmtSigned(r.a-r.b)"></td>
+                        <td :class="varFav(r)?'fav':'unfav'" x-text="pct(r.a,r.b)"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+              <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-t flex-wrap" style="border-color:var(--line);background:var(--surface-2)">
+                <span class="lbl">Margins</span>
+                <div class="flex items-center gap-4 mono text-[11.5px]" style="color:var(--ink-2)">
+                  <span>Gross <b style="color:var(--ink)">64.0%</b></span><span>EBITDA <b style="color:var(--ink)">20.4%</b></span><span>Net <b style="color:var(--ink)">11.5%</b></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-4 flex flex-col">
+              <div class="flex items-center justify-between">
+                <div><h2 class="display text-[16px]">Month-End Close</h2><div class="lbl mt-0.5">June · Day 3 of 5</div></div>
+                <span class="num display text-[16px]" x-text="Math.round(closeDone/tasks.length*100)+'%'"></span>
+              </div>
+              <div class="track mt-3"><span :style="'width:'+(closeDone/tasks.length*100)+'%'"></span></div>
+              <div class="mt-3 space-y-1.5 flex-1 overflow-y-auto" style="max-height:360px">
+                <template x-for="t in tasks" :key="t.n">
+                  <div class="flex items-center gap-2.5 p-2 rounded-md" style="background:var(--surface-2)">
+                    <div class="w-7 h-7 rounded-full flex items-center justify-center mono text-[10px] font-bold shrink-0" style="background:var(--accent-soft);color:var(--accent-ink)" x-text="t.o"></div>
+                    <div class="min-w-0 flex-1">
+                      <div class="text-[12.5px] font-semibold truncate" :style="t.s==='Done'?'color:var(--ink-3);text-decoration:line-through':''" x-text="t.n"></div>
+                      <div class="lbl" style="font-size:9px">Day <span x-text="t.d"></span></div>
+                    </div>
+                    <select class="isel !h-7 !w-[104px] !text-[10.5px] !px-2 mono shrink-0" x-model="t.s" @change="notify(t.n+' → '+t.s)" :style="'font-weight:700;color:'+statusColor(t.s)">
+                      <option>Not started</option><option>In progress</option><option>In review</option><option>Done</option>
+                    </select>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Budget vs. Actual</h2><span class="lbl">Revenue</span></div>
+              <div class="flex items-center gap-4 mt-2 mb-1">
+                <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-2.5 rounded-sm" style="background:var(--accent)"></span>Actual</span>
+                <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--ink-2)"><span class="w-3 h-0.5" style="background:var(--ink-2)"></span>Budget</span>
+              </div>
+              <div class="relative mt-1" style="height:236px"><canvas id="bvaChart"></canvas></div>
+            </div>
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Operating Spend</h2><span class="lbl">Mix · $K</span></div>
+              <div class="relative mt-3 mx-auto" style="height:170px;max-width:170px"><canvas id="opexChart"></canvas></div>
+              <div class="mt-3.5 space-y-1.5">
+                <template x-for="o in opex" :key="o.l">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="'background:'+o.c"></span>
+                    <span class="text-[12px] flex-1" style="color:var(--ink-2)" x-text="o.l"></span>
+                    <span class="num text-[12px] font-bold" x-text="fmt(o.v)"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Cash &amp; Runway</h2><span class="chip chip-fav">22 mo</span></div>
+              <div class="mt-2"><div class="num display text-[24px]">$18.4M</div><div class="text-[11.5px] mono" style="color:var(--ink-2)">Operating cash flow <span class="fav">+$1.18M</span> MTD</div></div>
+              <div class="relative mt-2" style="height:150px"><canvas id="cashChart"></canvas></div>
+              <div class="grid grid-cols-2 gap-2 mt-3">
+                <div class="rounded-md p-2.5" style="background:var(--surface-2)"><div class="lbl">Net burn</div><div class="num text-[14px] font-bold mt-0.5 fav">−$0 · CF+</div></div>
+                <div class="rounded-md p-2.5" style="background:var(--surface-2)"><div class="lbl">Undrawn RCF</div><div class="num text-[14px] font-bold mt-0.5">$25.0M</div></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= INCOME STATEMENT ================= -->
+        <section x-show="page==='pnl'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h1 class="display text-[22px] sm:text-[26px]">Income Statement</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">
+                <span x-text="periodLabel"></span> · USD thousands ·
+                Prepared by
+                <template x-if="!editPrep">
+                  <button class="font-semibold underline decoration-dotted underline-offset-2" style="color:var(--link)" @click="startPrep()" x-text="prepName"></button>
+                </template>
+                <template x-if="editPrep">
+                  <span class="inline-flex items-center gap-1 align-middle">
+                    <input class="field !h-7 !w-40 !text-[12px] inline" x-model="prepDraft" @keydown.enter="savePrep()" @keydown.escape="editPrep=false" x-init="$nextTick(()=>$el.focus())" />
+                    <button class="iconbtn !w-7 !h-7" @click="savePrep()" aria-label="Save"><i data-lucide="check" class="w-4 h-4" style="color:var(--fav)"></i></button>
+                    <button class="iconbtn !w-7 !h-7" @click="editPrep=false" aria-label="Cancel"><i data-lucide="x" class="w-4 h-4"></i></button>
+                  </span>
+                </template>
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="chip chip-fav"><i data-lucide="check" class="w-3 h-3"></i> Ties out</span>
+              <button class="btn btn-outline btn-sm" @click="notify('Exported P&L (XLSX) — mockup')"><i data-lucide="download" class="w-4 h-4"></i> Export</button>
+              <button class="btn btn-primary btn-sm" @click="openModal()"><i data-lucide="plus" class="w-4 h-4"></i> Journal entry</button>
+            </div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="p-4 pb-3 border-b" style="border-color:var(--line)"><h2 class="display text-[16px]">Profit &amp; Loss</h2><div class="lbl mt-0.5">Actual vs. budget · <span x-text="period"></span></div></div>
+              <div class="overflow-x-auto">
+                <table class="stmt num" style="min-width:640px">
+                  <thead><tr><th style="width:42%">Line item</th><th>Actual</th><th>Budget</th><th>Var $</th><th>Var %</th><th>% Rev</th></tr></thead>
+                  <tbody>
+                    <template x-for="r in pnl" :key="'p'+r.l">
+                      <tr :class="r.type==='sub' ? 'row-sub' : r.type==='total' ? 'row-total' : ''">
+                        <td :class="r.indent ? 'indent-1' : ''" x-text="r.l"></td>
+                        <td x-text="fmt(r.a)"></td>
+                        <td style="color:var(--ink-2)" x-text="fmt(r.b)"></td>
+                        <td :class="varFav(r)?'fav':'unfav'" x-text="fmtSigned(r.a-r.b)"></td>
+                        <td :class="varFav(r)?'fav':'unfav'" x-text="pct(r.a,r.b)"></td>
+                        <td style="color:var(--ink-3)" x-text="(r.a/6360*100).toFixed(1)+'%'"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <div class="card p-4">
+                <div class="flex items-center justify-between"><h2 class="display text-[15px]">Revenue &amp; Net Income</h2><span class="lbl">$K</span></div>
+                <div class="relative mt-3" style="height:180px"><canvas id="pnlTrendChart"></canvas></div>
+              </div>
+              <div class="card p-4">
+                <div class="flex items-center justify-between"><h2 class="display text-[15px]">Margin Trend</h2><span class="lbl">%</span></div>
+                <div class="relative mt-3" style="height:160px"><canvas id="marginChart"></canvas></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= BALANCE SHEET ================= -->
+        <section x-show="page==='balance'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Balance Sheet</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">As of Jun 30, 2026 · USD thousands · vs. May 31</p></div>
+            <div class="flex items-center gap-2"><span class="chip chip-fav"><i data-lucide="check" class="w-3 h-3"></i> Balanced</span>
+              <button class="btn btn-outline btn-sm" @click="notify('Exported balance sheet — mockup')"><i data-lucide="download" class="w-4 h-4"></i> Export</button></div>
+          </div>
+
+          <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            <template x-for="m in bsMetrics" :key="m.t">
+              <div class="card p-3.5"><div class="lbl" x-text="m.t"></div><div class="num display text-[20px] mt-1.5" x-text="m.v"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)" x-text="m.s"></div></div>
+            </template>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="p-4 pb-3 border-b" style="border-color:var(--line)"><h2 class="display text-[16px]">Statement of Financial Position</h2></div>
+              <div class="overflow-x-auto">
+                <table class="stmt num" style="min-width:560px">
+                  <thead><tr><th style="width:52%">Line item</th><th>Jun 30</th><th>May 31</th><th>Change</th></tr></thead>
+                  <tbody>
+                    <template x-for="r in bs" :key="r.l">
+                      <tr :class="r.type==='sub' ? 'row-sub' : r.type==='total' ? 'row-total' : ''">
+                        <td :class="r.indent ? 'indent-1' : ''" x-text="r.l"></td>
+                        <td x-text="fmt(r.cur)"></td>
+                        <td style="color:var(--ink-2)" x-text="fmt(r.pri)"></td>
+                        <td style="color:var(--ink-2)" x-text="fmtSigned(r.cur-r.pri)"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Asset Composition</h2><span class="lbl">$K</span></div>
+              <div class="relative mt-3 mx-auto" style="height:180px;max-width:180px"><canvas id="assetMixChart"></canvas></div>
+              <div class="mt-4 space-y-1.5">
+                <template x-for="a in assetMix" :key="a.l">
+                  <div class="flex items-center gap-2.5"><span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="'background:'+a.c"></span>
+                    <span class="text-[12px] flex-1" style="color:var(--ink-2)" x-text="a.l"></span><span class="num text-[12px] font-bold" x-text="fmt(a.v)"></span></div>
+                </template>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= CASH FLOW ================= -->
+        <section x-show="page==='cash'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Cash Flow</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Indirect method · <span x-text="periodLabel"></span> · USD thousands</p></div>
+            <button class="btn btn-outline btn-sm" @click="notify('Exported cash flow — mockup')"><i data-lucide="download" class="w-4 h-4"></i> Export</button>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="p-4 pb-3 border-b" style="border-color:var(--line)"><h2 class="display text-[16px]">Statement of Cash Flows</h2></div>
+              <div class="overflow-x-auto">
+                <table class="stmt num" style="min-width:520px">
+                  <thead><tr><th style="width:56%">Line item</th><th>This period</th><th>Prior</th></tr></thead>
+                  <tbody>
+                    <template x-for="r in cf" :key="r.l">
+                      <tr :class="r.type==='sub' ? 'row-sub' : r.type==='total' ? 'row-total' : ''">
+                        <td :class="r.indent ? 'indent-1' : ''" x-text="r.l"></td>
+                        <td :style="r.neutral ? '' : (r.cur>=0?'color:var(--fav)':'color:var(--unfav)')" x-text="fmtSigned(r.cur)"></td>
+                        <td style="color:var(--ink-2)" x-text="fmtSigned(r.pri)"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <div class="card p-4">
+                <div class="flex items-center justify-between"><h2 class="display text-[15px]">Cash by Activity</h2><span class="lbl">$K</span></div>
+                <div class="relative mt-3" style="height:180px"><canvas id="cashActChart"></canvas></div>
+              </div>
+              <div class="card p-4">
+                <div class="flex items-center justify-between"><h2 class="display text-[15px]">Cash Balance</h2><span class="lbl">$M</span></div>
+                <div class="relative mt-3" style="height:150px"><canvas id="cashTrendChart"></canvas></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= BUDGET vs ACTUAL ================= -->
+        <section x-show="page==='budget'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Budget vs. Actual</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Operating spend by department · <span x-text="periodLabel"></span> · USD thousands</p></div>
+          </div>
+
+          <!-- reforecast stepper + filter chips -->
+          <section class="card p-4 mt-4">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="lbl mr-1">Filter</span>
+                <template x-for="g in ['All','Go-to-market','Product','Operations']" :key="g">
+                  <button class="chipbtn" :class="{'on': budgetGroup===g}" @click="budgetGroup=g" x-text="g"></button>
+                </template>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="lbl">Reforecast adj.</span>
+                <div class="stepper">
+                  <button @click="reforecast=Math.max(-20,reforecast-1)" aria-label="Decrease">−</button>
+                  <input class="mono" type="text" :value="(reforecast>0?'+':'')+reforecast+'%'" readonly />
+                  <button @click="reforecast=Math.min(20,reforecast+1)" aria-label="Increase">+</button>
+                </div>
+                <button class="btn btn-primary btn-sm" @click="notify('Applied '+(reforecast>0?'+':'')+reforecast+'% reforecast — mockup')">Apply</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="card xl:col-span-2 overflow-hidden">
+              <div class="p-4 pb-3 border-b" style="border-color:var(--line)"><h2 class="display text-[16px]">Department Spend</h2><div class="lbl mt-0.5">Favorable = under budget</div></div>
+              <div class="overflow-x-auto">
+                <table class="tbl" style="min-width:640px">
+                  <thead><tr><th style="width:34%">Department</th><th>Group</th><th>Actual</th><th>Budget</th><th>Var $</th><th>Var %</th></tr></thead>
+                  <tbody>
+                    <template x-for="r in filteredBudget" :key="r.d">
+                      <tr>
+                        <td><span class="font-semibold" x-text="r.d"></span></td>
+                        <td style="text-align:right"><span class="chip chip-flat" x-text="r.g"></span></td>
+                        <td class="num" x-text="fmt(r.a)"></td>
+                        <td class="num" style="color:var(--ink-2)" x-text="fmt(r.b)"></td>
+                        <td class="num" :class="(r.a-r.b)<=0?'fav':'unfav'" x-text="fmtSigned(r.a-r.b)"></td>
+                        <td class="num" :class="(r.a-r.b)<=0?'fav':'unfav'" x-text="pct(r.a,r.b)"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card p-4">
+              <div class="flex items-center justify-between"><h2 class="display text-[15px]">Variance to Budget</h2><span class="lbl">$K</span></div>
+              <div class="relative mt-3" style="height:320px"><canvas id="budgetChart"></canvas></div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= AR / AP ================= -->
+        <section x-show="page==='arap'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Receivables &amp; Payables</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Aging &amp; collections · USD thousands · click a row to edit</p></div>
+            <button class="btn btn-primary btn-sm" @click="openModal()"><i data-lucide="plus" class="w-4 h-4"></i> New invoice</button>
+          </div>
+
+          <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            <div class="card p-3.5"><div class="lbl">Total AR</div><div class="num display text-[20px] mt-1.5" x-text="'$'+arTotal+'K'"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">DSO 44 days</div></div>
+            <div class="card p-3.5"><div class="lbl">Total AP</div><div class="num display text-[20px] mt-1.5" x-text="'$'+apTotal+'K'"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">DPO 38 days</div></div>
+            <div class="card p-3.5"><div class="lbl">Overdue 60+</div><div class="num display text-[20px] mt-1.5 unfav" x-text="'$'+overdue+'K'"></div><div class="text-[11px] mt-0.5" style="color:var(--ink-3)">1 account disputed</div></div>
+            <div class="card p-3.5"><div class="lbl">Net Working Cap.</div><div class="num display text-[20px] mt-1.5" x-text="'$'+(arTotal-apTotal)+'K'"></div><div class="text-[11px] mt-0.5 fav">+$180K vs May</div></div>
+          </section>
+
+          <section class="card overflow-hidden mt-4">
+            <div class="flex items-center justify-between gap-3 p-4 pb-3 flex-wrap">
+              <div class="flex items-center gap-2"><h2 class="display text-[16px]">Aging Detail</h2><span class="chip chip-flat" x-text="filteredAging.length+' accounts'"></span></div>
+              <div class="flex items-center gap-2">
+                <div class="seg"><template x-for="f in ['All','AR','AP']" :key="f"><button :class="{'on': agingFilter===f}" @click="agingFilter=f" x-text="f"></button></template></div>
+                <div class="relative"><i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+                  <input type="text" class="field !h-8 !w-36 sm:!w-48 !pl-8 text-[12px]" placeholder="Account" x-model="agingQ" /></div>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:900px">
+                <thead><tr><th style="width:200px">Account</th><th style="text-align:center">Type</th><th>Current</th><th>1–30</th><th>31–60</th><th>60+</th><th>Total</th><th style="text-align:right">Status</th></tr></thead>
+                <tbody>
+                  <template x-for="r in filteredAging" :key="r.a">
+                    <tr class="clickable" @click="openAccount(r)">
+                      <td>
+                        <div class="flex items-center gap-2.5">
+                          <div class="w-8 h-8 rounded-md flex items-center justify-center mono text-[10px] font-bold shrink-0" style="background:var(--surface-2);color:var(--ink-2)" x-text="r.a.split(' ').map(w=>w[0]).slice(0,2).join('')"></div>
+                          <span class="font-semibold text-[13px]" x-text="r.a"></span>
+                        </div>
+                      </td>
+                      <td style="text-align:center"><span class="chip" :class="r.t==='AR'?'chip-fav':'chip-warn'" x-text="r.t"></span></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="fmt(r.c)"></td>
+                      <td class="num" style="color:var(--ink-2)" x-text="fmt(r.d1)"></td>
+                      <td class="num" :style="r.d2>0?'color:var(--warn)':'color:var(--ink-3)'" x-text="fmt(r.d2)"></td>
+                      <td class="num" :style="r.d3>0?'color:var(--unfav)':'color:var(--ink-3)'" x-text="fmt(r.d3)"></td>
+                      <td class="num font-bold" x-text="fmt(r.c+r.d1+r.d2+r.d3)"></td>
+                      <td style="text-align:right" @click.stop>
+                        <select class="isel !h-7 !w-[112px] ml-auto !text-[11px] !px-2 mono" x-model="r.st" @change="notify(r.a+' → '+r.st)" :style="'font-weight:700;color:'+agingColor(r.st)">
+                          <option>On track</option><option>Follow up</option><option>Disputed</option><option>Paid</option>
+                        </select>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= CLOSE ================= -->
+        <section x-show="page==='close'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Month-End Close</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">June FY2026 · Day 3 of 5 · <span x-text="closeDone+' of '+tasks.length+' complete'"></span></p></div>
+            <div class="flex items-center gap-2"><span class="num display text-[18px]" x-text="Math.round(closeDone/tasks.length*100)+'%'"></span></div>
+          </div>
+          <div class="track mt-3"><span :style="'width:'+(closeDone/tasks.length*100)+'%'"></span></div>
+
+          <section class="card overflow-hidden mt-4">
+            <div class="p-4 pb-3 border-b" style="border-color:var(--line)"><h2 class="display text-[16px]">Close Checklist</h2><div class="lbl mt-0.5">Owner · task · status</div></div>
+            <div class="overflow-x-auto">
+              <table class="tbl" style="min-width:640px">
+                <thead><tr><th style="width:46%">Task</th><th style="text-align:center">Owner</th><th style="text-align:center">Day</th><th style="text-align:right">Status</th></tr></thead>
+                <tbody>
+                  <template x-for="t in tasks" :key="'c'+t.n">
+                    <tr>
+                      <td><span class="font-semibold" :style="t.s==='Done'?'color:var(--ink-3);text-decoration:line-through':''" x-text="t.n"></span></td>
+                      <td style="text-align:center"><span class="inline-flex w-7 h-7 rounded-full items-center justify-center mono text-[10px] font-bold" style="background:var(--accent-soft);color:var(--accent-ink)" x-text="t.o"></span></td>
+                      <td class="num" style="text-align:center;color:var(--ink-2)" x-text="t.d"></td>
+                      <td style="text-align:right">
+                        <select class="isel !h-7 !w-[118px] ml-auto !text-[11px] !px-2 mono" x-model="t.s" @change="notify(t.n+' → '+t.s)" :style="'font-weight:700;color:'+statusColor(t.s)">
+                          <option>Not started</option><option>In progress</option><option>In review</option><option>Done</option>
+                        </select>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= REPORTS ================= -->
+        <section x-show="page==='reports'" x-cloak>
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div><h1 class="display text-[22px] sm:text-[26px]">Reports</h1>
+              <p class="text-[13px] mt-0.5" style="color:var(--ink-2)">Standard packs &amp; ad-hoc generation</p></div>
+          </div>
+
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <div class="xl:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <template x-for="r in reports" :key="r.n">
+                <div class="card p-4 flex items-start gap-3">
+                  <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background:var(--accent-soft);color:var(--accent-ink)"><i :data-lucide="r.i" class="w-5 h-5"></i></div>
+                  <div class="min-w-0 flex-1">
+                    <div class="font-semibold text-[14px]" x-text="r.n"></div>
+                    <div class="text-[11.5px] mt-0.5" style="color:var(--ink-3)" x-text="r.d"></div>
+                    <div class="flex items-center gap-2 mt-2.5">
+                      <button class="btn btn-ghost btn-sm" @click="notify('Generating '+r.n+' — mockup')"><i data-lucide="play" class="w-3.5 h-3.5"></i> Generate</button>
+                      <button class="iconbtn !w-8 !h-8" @click="notify('Opened '+r.n)" aria-label="Open"><i data-lucide="external-link" class="w-4 h-4"></i></button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- custom generation form -->
+            <div class="card p-4">
+              <h2 class="display text-[15px]">Generate Custom</h2>
+              <div class="mt-3 space-y-3">
+                <div><label class="flbl">Report type</label>
+                  <select class="isel"><option>Income statement</option><option>Balance sheet</option><option>Cash flow</option><option>Budget variance</option><option>KPI scorecard</option></select></div>
+                <div><label class="flbl">Period</label>
+                  <div class="seg w-full"><template x-for="p in ['Month','Quarter','Year']" :key="p"><button class="flex-1" :class="{'on': repPeriod===p}" @click="repPeriod=p" x-text="p"></button></template></div></div>
+                <div><label class="flbl">Format</label>
+                  <select class="isel"><option>PDF</option><option>Excel (XLSX)</option><option>Google Slides</option></select></div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Include commentary</div><div class="text-[11px]" style="color:var(--ink-3)">CFO narrative &amp; flux notes</div></div>
+                  <button class="switch" :class="{'on': repCommentary}" @click="repCommentary=!repCommentary" role="switch" :aria-checked="repCommentary"></button>
+                </div>
+                <div class="flex items-center justify-between py-1">
+                  <div><div class="text-[13px] font-semibold">Email to board</div><div class="text-[11px]" style="color:var(--ink-3)">On generation</div></div>
+                  <button class="switch" :class="{'on': repEmail}" @click="repEmail=!repEmail" role="switch" :aria-checked="repEmail"></button>
+                </div>
+                <div x-show="repEmail"><label class="flbl">Recipients</label><input class="field" type="text" placeholder="board@company.com" /></div>
+                <div><label class="flbl">Notes</label><textarea class="field" placeholder="Optional context for this report…"></textarea></div>
+                <button class="btn btn-primary btn-block" @click="notify('Report queued — mockup')"><i data-lucide="file-output" class="w-4 h-4"></i> Generate report</button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <footer class="flex items-center justify-between flex-wrap gap-2 pt-1 pb-3">
+          <span class="lbl" style="color:var(--ink-3)">Sterling · Office of the CFO · v1.0</span>
+          <span class="mono text-[11px]" style="color:var(--ink-3)">Figures illustrative · not for filing</span>
+        </footer>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ===== MOBILE NAV DRAWER ===== -->
+<div x-show="mobileNav" x-transition.opacity class="fixed inset-0 z-40 lg:hidden scrim" @click="mobileNav=false"></div>
+<aside x-show="mobileNav" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
+       class="fixed inset-y-0 left-0 z-50 w-72 chrome flex flex-col lg:hidden">
+  <div class="flex items-center justify-between px-4 border-b chrome-seam" style="height:60px;border-bottom-width:1px">
+    <div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-md flex items-center justify-center" style="background:var(--accent);color:var(--on-accent)"><i data-lucide="scale" class="w-4 h-4"></i></div>
+      <span class="display text-[16px]" style="color:var(--chrome-ink)">Sterling</span></div>
+    <button class="iconbtn chrome-icon" @click="mobileNav=false" aria-label="Close navigation"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <nav class="p-3 space-y-0.5 flex-1 overflow-y-auto">
+    <template x-for="n in nav" :key="'m'+n.k">
+      <a class="nav-item" :class="{'on': page===n.k}" href="#" @click.prevent="go(n.k); mobileNav=false"><i :data-lucide="n.i" class="w-[18px] h-[18px]"></i><span x-text="n.t"></span></a>
+    </template>
+  </nav>
+  <div class="p-3 border-t chrome-seam" style="border-top-width:1px">
+    <button class="btn btn-primary btn-block" @click="openModal(); mobileNav=false"><i data-lucide="plus" class="w-4 h-4"></i> New entry</button>
+  </div>
+</aside>
+
+<!-- ===== EDIT DRAWER (AR/AP account) ===== -->
+<div x-show="drawerOpen" x-transition.opacity class="fixed inset-0 z-[55] scrim" @click="drawerOpen=false"></div>
+<aside x-show="drawerOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+       class="fixed inset-y-0 right-0 z-[60] w-full sm:w-[420px] flex flex-col" style="background:var(--surface);border-left:1px solid var(--line-2);box-shadow:var(--shadow-lg)">
+  <div class="flex items-center justify-between px-4 border-b" style="height:60px;border-color:var(--line)">
+    <div><div class="lbl">Edit account</div><div class="display text-[16px]" x-text="editForm.a"></div></div>
+    <button class="iconbtn" @click="drawerOpen=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <div class="flex-1 overflow-y-auto p-4 space-y-3.5">
+    <div><label class="flbl">Account name</label><input class="field" type="text" x-model="editForm.a" /></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="flbl">Type</label><select class="isel" x-model="editForm.t"><option>AR</option><option>AP</option></select></div>
+      <div><label class="flbl">Status</label><select class="isel" x-model="editForm.st"><option>On track</option><option>Follow up</option><option>Disputed</option><option>Paid</option></select></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="flbl">Current</label><input class="field mono" type="number" x-model.number="editForm.c" /></div>
+      <div><label class="flbl">1–30 days</label><input class="field mono" type="number" x-model.number="editForm.d1" /></div>
+      <div><label class="flbl">31–60 days</label><input class="field mono" type="number" x-model.number="editForm.d2" /></div>
+      <div><label class="flbl">60+ days</label><input class="field mono" type="number" x-model.number="editForm.d3" /></div>
+    </div>
+    <div class="rounded-md p-3 flex items-center justify-between" style="background:var(--surface-2)">
+      <span class="lbl">Total outstanding</span>
+      <span class="num display text-[18px]" x-text="'$'+((+editForm.c||0)+(+editForm.d1||0)+(+editForm.d2||0)+(+editForm.d3||0))+'K'"></span>
+    </div>
+    <div><label class="flbl">Collections note</label><textarea class="field" x-model="editForm.note" placeholder="Add a note for the collections team…"></textarea></div>
+    <div class="flex items-center justify-between py-1">
+      <div><div class="text-[13px] font-semibold">Escalate to controller</div><div class="text-[11px]" style="color:var(--ink-3)">Flag for review</div></div>
+      <button class="switch" :class="{'on': editForm.escalate}" @click="editForm.escalate=!editForm.escalate" role="switch" :aria-checked="editForm.escalate"></button>
+    </div>
+  </div>
+  <div class="p-4 border-t flex items-center gap-2" style="border-color:var(--line)">
+    <button class="btn btn-outline flex-1" @click="drawerOpen=false">Cancel</button>
+    <button class="btn btn-primary flex-1" @click="saveAccount()"><i data-lucide="check" class="w-4 h-4"></i> Save changes</button>
+  </div>
+</aside>
+
+<!-- ===== MODAL (New journal entry) ===== -->
+<div x-show="modalOpen" x-transition.opacity class="fixed inset-0 z-[70] scrim flex items-start sm:items-center justify-center p-4 overflow-y-auto" @click="modalOpen=false">
+  <div @click.stop x-show="modalOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       class="card w-full max-w-lg my-8" style="box-shadow:var(--shadow-lg)">
+    <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color:var(--line)">
+      <div><div class="lbl">General ledger</div><div class="display text-[17px]">New Journal Entry</div></div>
+      <button class="iconbtn" @click="modalOpen=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="p-5 space-y-3.5 max-h-[70vh] overflow-y-auto">
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="flbl">Entity</label><select class="isel"><option>Consolidated · Group</option><option>North America</option><option>EMEA</option><option>APAC</option></select></div>
+        <div><label class="flbl">Date</label><input class="field mono" type="text" value="2026-06-30" /></div>
+      </div>
+      <div><label class="flbl">Type</label>
+        <div class="seg w-full"><template x-for="t in ['Debit','Credit']" :key="t"><button class="flex-1" :class="{'on': jeType===t}" @click="jeType=t" x-text="t"></button></template></div>
+      </div>
+      <div><label class="flbl">Account</label>
+        <select class="isel"><option>1000 · Cash &amp; equivalents</option><option>1200 · Accounts receivable</option><option>2000 · Accounts payable</option><option>4000 · Revenue</option><option>5000 · Cost of revenue</option><option>6000 · Operating expense</option></select></div>
+      <div><label class="flbl">Amount (USD thousands)</label>
+        <div class="stepper"><button @click="jeAmount=Math.max(0,jeAmount-50)" aria-label="Decrease">−</button>
+          <input class="mono" type="number" x-model.number="jeAmount" /><button @click="jeAmount+=50" aria-label="Increase">+</button></div>
+      </div>
+      <div><label class="flbl">Memo</label><textarea class="field" placeholder="Description of the entry…"></textarea></div>
+      <div><label class="flbl">Tags</label>
+        <div class="flex flex-wrap gap-2">
+          <template x-for="tg in ['Accrual','Reclass','Intercompany','FX','Adjustment']" :key="tg">
+            <button class="chipbtn" :class="{'on': jeTags.includes(tg)}" @click="toggleTag(tg)" x-text="tg"></button>
+          </template>
+        </div>
+      </div>
+      <div class="flex items-center justify-between py-1">
+        <div><div class="text-[13px] font-semibold">Recurring entry</div><div class="text-[11px]" style="color:var(--ink-3)">Repeat every period</div></div>
+        <button class="switch" :class="{'on': jeRecurring}" @click="jeRecurring=!jeRecurring" role="switch" :aria-checked="jeRecurring"></button>
+      </div>
+    </div>
+    <div class="px-5 py-4 border-t flex items-center gap-2" style="border-color:var(--line)">
+      <button class="btn btn-outline flex-1" @click="modalOpen=false">Cancel</button>
+      <button class="btn btn-primary flex-1" @click="postEntry()"><i data-lucide="check" class="w-4 h-4"></i> Post entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="fixed bottom-4 right-4 z-[80] space-y-2 w-[calc(100%-2rem)] sm:w-auto sm:max-w-sm">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="toast px-3.5 py-3 flex items-start gap-3" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+      <i data-lucide="check-circle-2" class="w-4 h-4 mt-0.5 shrink-0" style="color:var(--accent-ink)"></i>
+      <span class="text-[13px]" style="color:var(--ink)" x-text="t.msg"></span>
+    </div>
+  </template>
+</div>
+
+<script>
+function cfo() {
+  return {
+    edition: 'light',
+    page: 'overview',
+    mobileNav: false,
+    modalOpen: false,
+    drawerOpen: false,
+    period: 'MTD',
+    agingFilter: 'All', agingQ: '',
+    budgetGroup: 'All',
+    reforecast: 0,
+    repPeriod: 'Month', repCommentary: true, repEmail: false,
+    jeType: 'Debit', jeAmount: 250, jeRecurring: false, jeTags: [],
+    editPrep: false, prepName: 'J. Tran, FP&A', prepDraft: '',
+    editForm: {}, drawerRef: null,
+    toasts: [], _tid: 0, charts: {},
+
+    nav: [
+      { k:'overview', t:'Overview',        i:'layout-dashboard' },
+      { k:'pnl',      t:'Income Statement',i:'trending-up' },
+      { k:'balance',  t:'Balance Sheet',   i:'scale' },
+      { k:'cash',     t:'Cash Flow',       i:'banknote' },
+      { k:'budget',   t:'Budget vs Actual',i:'target' },
+      { k:'arap',     t:'AR / AP',         i:'file-text', badge:'12' },
+      { k:'close',    t:'Close',           i:'calendar-check', badge:'5' },
+      { k:'reports',  t:'Reports',         i:'folder-open' },
+    ],
+
+    pnl: [
+      { l:'Product revenue',        a:4820, b:4600, indent:true },
+      { l:'Services revenue',       a:1540, b:1700, indent:true },
+      { l:'Total Revenue',          a:6360, b:6300, type:'sub' },
+      { l:'Cost of revenue',        a:2290, b:2205, indent:true, expense:true },
+      { l:'Gross Profit',           a:4070, b:4095, type:'sub' },
+      { l:'Sales & marketing',      a:1180, b:1250, indent:true, expense:true },
+      { l:'Research & development', a:980,  b:940,  indent:true, expense:true },
+      { l:'General & admin',        a:610,  b:640,  indent:true, expense:true },
+      { l:'Total Operating Exp.',   a:2770, b:2830, type:'sub', expense:true },
+      { l:'EBITDA',                 a:1300, b:1265, type:'sub' },
+      { l:'Depreciation & amort.',  a:240,  b:235,  indent:true, expense:true },
+      { l:'Operating Income',       a:1060, b:1030, type:'sub' },
+      { l:'Interest & other',       a:85,   b:90,   indent:true, expense:true },
+      { l:'Income tax',             a:244,  b:235,  indent:true, expense:true },
+      { l:'Net Income',             a:731,  b:705,  type:'total' },
+    ],
+
+    bs: [
+      { l:'Cash & equivalents',        cur:18400, pri:17640, indent:true },
+      { l:'Accounts receivable',       cur:4120,  pri:4360,  indent:true },
+      { l:'Inventory',                 cur:2260,  pri:2180,  indent:true },
+      { l:'Prepaid & other',           cur:890,   pri:910,   indent:true },
+      { l:'Total Current Assets',      cur:25670, pri:25090, type:'sub' },
+      { l:'Property & equipment, net', cur:9240,  pri:9180,  indent:true },
+      { l:'Goodwill & intangibles',    cur:6510,  pri:6560,  indent:true },
+      { l:'Total Assets',              cur:41420, pri:40830, type:'total' },
+      { l:'Accounts payable',          cur:2180,  pri:2320,  indent:true },
+      { l:'Accrued liabilities',       cur:1540,  pri:1490,  indent:true },
+      { l:'Deferred revenue',          cur:3260,  pri:3140,  indent:true },
+      { l:'Total Current Liabilities', cur:6980,  pri:6950,  type:'sub' },
+      { l:'Long-term debt',            cur:8000,  pri:8100,  indent:true },
+      { l:'Total Liabilities',         cur:14980, pri:15050, type:'sub' },
+      { l:'Common stock & APIC',       cur:15600, pri:15600, indent:true },
+      { l:'Retained earnings',         cur:10840, pri:10180, indent:true },
+      { l:'Total Liab. & Equity',      cur:41420, pri:40830, type:'total' },
+    ],
+    bsMetrics: [
+      { t:'Current Ratio', v:'3.68', s:'Current assets / liab.' },
+      { t:'Quick Ratio',   v:'3.35', s:'ex-inventory' },
+      { t:'Debt / Equity', v:'0.30', s:'LT debt / equity' },
+      { t:'Cash Ratio',    v:'2.64', s:'Cash / current liab.' },
+    ],
+    assetMix: [
+      { l:'Cash & equivalents', v:18400, c:'#B4893B' },
+      { l:'Property & equip.',  v:9240,  c:'#2D6CB5' },
+      { l:'Goodwill & intang.', v:6510,  c:'#1E8E5A' },
+      { l:'Receivables',        v:4120,  c:'#8794A6' },
+      { l:'Inventory',          v:2260,  c:'#C34733' },
+      { l:'Prepaid & other',    v:890,   c:'#B5871E' },
+    ],
+
+    cf: [
+      { l:'Net income',                  cur:731,   pri:698,   indent:true },
+      { l:'Depreciation & amortization', cur:240,   pri:235,   indent:true },
+      { l:'Stock-based compensation',    cur:180,   pri:172,   indent:true },
+      { l:'Δ Net working capital',       cur:29,    pri:-64,   indent:true },
+      { l:'Cash from Operations',        cur:1180,  pri:1041,  type:'sub' },
+      { l:'Capital expenditures',        cur:-320,  pri:-280,  indent:true },
+      { l:'Acquisitions & other',        cur:0,     pri:-150,  indent:true },
+      { l:'Cash from Investing',         cur:-320,  pri:-430,  type:'sub' },
+      { l:'Debt repayment',              cur:-100,  pri:-100,  indent:true },
+      { l:'Dividends & buybacks',        cur:0,     pri:0,     indent:true },
+      { l:'Cash from Financing',         cur:-100,  pri:-100,  type:'sub' },
+      { l:'Net Change in Cash',          cur:760,   pri:511,   type:'sub' },
+      { l:'Beginning cash',              cur:17640, pri:17129, indent:true, neutral:true },
+      { l:'Ending Cash',                 cur:18400, pri:17640, type:'total', neutral:true },
+    ],
+
+    budget: [
+      { d:'Sales',       g:'Go-to-market', a:720, b:760 },
+      { d:'Marketing',   g:'Go-to-market', a:460, b:490 },
+      { d:'R&D',         g:'Product',      a:560, b:540 },
+      { d:'Engineering', g:'Product',      a:420, b:400 },
+      { d:'G&A',         g:'Operations',   a:300, b:320 },
+      { d:'Support',     g:'Operations',   a:190, b:200 },
+      { d:'Facilities',  g:'Operations',   a:120, b:110 },
+    ],
+
+    kpis: [
+      { t:'Revenue',      i:'circle-dollar-sign', v:'$6,360K', d:'+1.0%',   fav:true,  sp:[5.98,6.12,6.05,6.24,6.18,6.36] },
+      { t:'Gross Margin', i:'percent',            v:'64.0%',   d:'−1.0 pt', fav:false, sp:[65.1,64.8,65.0,64.4,64.6,64.0] },
+      { t:'EBITDA',       i:'trending-up',        v:'$1,300K', d:'+2.8%',   fav:true,  sp:[1.18,1.22,1.20,1.26,1.24,1.30] },
+      { t:'Op. Cash Flow',i:'banknote',           v:'$1,180K', d:'+21.6%',  fav:true,  sp:[0.7,0.85,0.9,1.02,0.98,1.18] },
+      { t:'Net Income',   i:'wallet',             v:'$731K',   d:'+3.7%',   fav:true,  sp:[0.62,0.68,0.66,0.70,0.69,0.73] },
+      { t:'Cash on Hand', i:'landmark',           v:'$18.4M',  d:'+2.8%',   fav:true,  sp:[15.9,16.4,16.8,17.3,17.9,18.4] },
+    ],
+
+    tasks: [
+      { n:'Bank reconciliations',     o:'MR', d:1, s:'Done' },
+      { n:'Revenue accruals',         o:'JT', d:2, s:'Done' },
+      { n:'AP cut-off & accruals',    o:'SL', d:2, s:'Done' },
+      { n:'Fixed assets & depr.',     o:'AP', d:3, s:'In progress' },
+      { n:'Intercompany elimination', o:'RK', d:3, s:'In review' },
+      { n:'FX revaluation',           o:'MR', d:4, s:'Not started' },
+      { n:'Flux analysis (P&L)',      o:'JT', d:4, s:'Not started' },
+      { n:'Board reporting pack',     o:'CF', d:5, s:'Not started' },
+    ],
+
+    opex: [
+      { l:'Sales & marketing', v:1180, c:'#B4893B' },
+      { l:'Research & dev.',   v:980,  c:'#2D6CB5' },
+      { l:'General & admin',   v:610,  c:'#1E8E5A' },
+      { l:'Depreciation',      v:240,  c:'#8794A6' },
+    ],
+
+    aging: [
+      { a:'Northwind Traders', t:'AR', c:120, d1:40, d2:0,  d3:0,  st:'On track', note:'', escalate:false },
+      { a:'Contoso Ltd',       t:'AR', c:80,  d1:60, d2:30, d3:15, st:'Follow up', note:'', escalate:false },
+      { a:'Fabrikam Inc',      t:'AR', c:0,   d1:0,  d2:22, d3:48, st:'Disputed',  note:'Quality claim under review', escalate:true },
+      { a:'Adventure Works',   t:'AR', c:210, d1:0,  d2:0,  d3:0,  st:'On track', note:'', escalate:false },
+      { a:'Acme Supplies',     t:'AP', c:90,  d1:30, d2:0,  d3:0,  st:'On track', note:'', escalate:false },
+      { a:'Globex Corp',       t:'AP', c:0,   d1:55, d2:0,  d3:0,  st:'Follow up', note:'', escalate:false },
+      { a:'Initech LLC',       t:'AP', c:145, d1:0,  d2:0,  d3:0,  st:'Paid',     note:'', escalate:false },
+    ],
+
+    reports: [
+      { n:'Board Reporting Pack',   d:'Generated Jun 28', i:'presentation' },
+      { n:'Monthly Flux Analysis',  d:'Generated Jun 27', i:'git-compare-arrows' },
+      { n:'13-Week Cash Forecast',  d:'Generated Jun 25', i:'banknote' },
+      { n:'Covenant Compliance',    d:'Due Jul 15',       i:'shield-check' },
+      { n:'KPI Scorecard',          d:'Generated Jun 26', i:'gauge' },
+      { n:'Balance Sheet Recon',    d:'Generated Jun 24', i:'scale' },
+    ],
+
+    // ---------- getters ----------
+    get closeDone() { return this.tasks.filter(t => t.s === 'Done').length; },
+    get periodLabel() { return { MTD:'June 2026 (month to date)', QTD:'Q2 FY2026 (quarter to date)', YTD:'FY2026 (year to date)' }[this.period]; },
+    get filteredAging() {
+      const q = this.agingQ.trim().toLowerCase();
+      return this.aging.filter(r => (this.agingFilter === 'All' || r.t === this.agingFilter) && (!q || r.a.toLowerCase().includes(q)));
+    },
+    get filteredBudget() { return this.budget.filter(r => this.budgetGroup === 'All' || r.g === this.budgetGroup); },
+    get arTotal() { return this.aging.filter(r=>r.t==='AR').reduce((s,r)=>s+r.c+r.d1+r.d2+r.d3,0); },
+    get apTotal() { return this.aging.filter(r=>r.t==='AP').reduce((s,r)=>s+r.c+r.d1+r.d2+r.d3,0); },
+    get overdue() { return this.aging.reduce((s,r)=>s+r.d3,0); },
+
+    // ---------- formatting ----------
+    fmt(n) { return n === 0 ? '—' : n.toLocaleString('en-US'); },
+    fmtSigned(n) { if (n === 0) return '—'; return (n > 0 ? '+' : '−') + Math.abs(n).toLocaleString('en-US'); },
+    pct(a, b) { if (!b) return '—'; const p = (a - b) / b * 100; return (p >= 0 ? '+' : '−') + Math.abs(p).toFixed(1) + '%'; },
+    varFav(r) { const d = r.a - r.b; return r.expense ? d <= 0 : d >= 0; },
+    statusColor(s) { return { 'Done':'var(--fav)', 'In review':'var(--link)', 'In progress':'var(--warn)', 'Not started':'var(--ink-3)' }[s] || 'var(--ink)'; },
+    agingColor(s) { return { 'On track':'var(--fav)', 'Paid':'var(--ink-3)', 'Follow up':'var(--warn)', 'Disputed':'var(--unfav)' }[s] || 'var(--ink)'; },
+
+    // ---------- actions ----------
+    setPeriod(p) { this.period = p; this.notify('Period → ' + p); },
+    toggleEdition() { this.edition = this.edition === 'light' ? 'dark' : 'light'; },
+    go(k) { this.page = k; },
+    closeAll() { this.modalOpen = false; this.drawerOpen = false; this.mobileNav = false; this.editPrep = false; },
+    openModal() { this.modalOpen = true; this.$nextTick(() => lucide.createIcons()); },
+    toggleTag(t) { this.jeTags = this.jeTags.includes(t) ? this.jeTags.filter(x=>x!==t) : [...this.jeTags, t]; },
+    postEntry() { this.modalOpen = false; this.notify('Journal entry posted · $' + this.jeAmount + 'K ' + this.jeType.toLowerCase()); },
+    openAccount(r) { this.drawerRef = r; this.editForm = Object.assign({}, r); this.drawerOpen = true; this.$nextTick(() => lucide.createIcons()); },
+    saveAccount() { if (this.drawerRef) Object.assign(this.drawerRef, this.editForm); this.drawerOpen = false; this.notify('Saved ' + this.editForm.a); },
+    startPrep() { this.prepDraft = this.prepName; this.editPrep = true; },
+    savePrep() { if (this.prepDraft.trim()) this.prepName = this.prepDraft.trim(); this.editPrep = false; this.notify('Preparer updated'); },
+
+    notify(msg) {
+      const id = ++this._tid;
+      this.toasts.push({ id, msg });
+      this.$nextTick(() => lucide.createIcons());
+      setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 2600);
+    },
+
+    init() {
+      this.$nextTick(() => { lucide.createIcons(); this.renderFor(this.page); });
+      this.$watch('edition', () => this.$nextTick(() => { lucide.createIcons(); this.recolor(); }));
+      this.$watch('page', (p) => this.$nextTick(() => { lucide.createIcons(); this.renderFor(p); }));
+      ['agingFilter','agingQ','budgetGroup','modalOpen','drawerOpen','repEmail'].forEach(k =>
+        this.$watch(k, () => this.$nextTick(() => lucide.createIcons())));
+    },
+
+    css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); },
+
+    // ---------- charts ----------
+    renderFor(page) {
+      Chart.defaults.font.family = "'JetBrains Mono', monospace";
+      Chart.defaults.font.size = 10;
+      const map = {
+        overview: () => { this.drawKpiSparks(); this.drawBVA(); this.drawOpex(); this.drawCash(); },
+        pnl:      () => { this.drawPnlTrend(); this.drawMargin(); },
+        balance:  () => { this.drawAssetMix(); },
+        cash:     () => { this.drawCashAct(); this.drawCashTrend(); },
+        budget:   () => { this.drawBudget(); },
+      };
+      (map[page] || (()=>{}))();
+    },
+    recolor() { Object.values(this.charts).forEach(c => { try { c.destroy(); } catch(e){} }); this.charts = {}; this.renderFor(this.page); },
+
+    _mk(id, cfg) {
+      const el = document.getElementById(id); if (!el || el.offsetParent === null) return;
+      const prev = Chart.getChart(el); if (prev) prev.destroy();
+      this.charts[id] = new Chart(el.getContext('2d'), cfg);
+    },
+    _grad(ctx, area, color) { const g = ctx.createLinearGradient(0, area.top, 0, area.bottom); g.addColorStop(0, color+'44'); g.addColorStop(1, color+'00'); return g; },
+    _tt() { return { backgroundColor:this.css('--surface'), borderColor:this.css('--line-2'), borderWidth:1, titleColor:this.css('--ink'), bodyColor:this.css('--ink-2'), padding:8 }; },
+    _axis(fmt) { return { grid:{ color:this.css('--line') }, ticks:{ color:this.css('--ink-3'), callback:fmt } }; },
+
+    drawKpiSparks() {
+      this.kpis.forEach((k,i) => {
+        const col = k.fav ? this.css('--fav') : this.css('--unfav');
+        this._mk('ksp'+i, { type:'line', data:{ labels:k.sp.map((_,j)=>j), datasets:[{ data:k.sp, borderColor:col, borderWidth:1.6, tension:0.4, pointRadius:0, fill:true,
+          backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, col) : col+'22' }]},
+          options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } });
+      });
+    },
+    drawBVA() {
+      const acc = this.css('--accent'), ink = this.css('--ink-2');
+      this._mk('bvaChart', { data:{ labels:['Jan','Feb','Mar','Apr','May','Jun'], datasets:[
+        { type:'bar', label:'Actual', data:[5980,6120,6050,6240,6180,6360], backgroundColor:acc, borderRadius:4, barPercentage:0.62, categoryPercentage:0.7, order:2 },
+        { type:'line', label:'Budget', data:[5900,6000,6100,6150,6250,6300], borderColor:ink, borderWidth:2, borderDash:[5,4], pointRadius:0, tension:0, order:1 } ]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.dataset.label+': $'+c.parsed.y.toLocaleString()+'K' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} }, y:{ ...this._axis((v)=>'$'+(v/1000).toFixed(1)+'M'), min:5000 } } } });
+    },
+    drawOpex() {
+      this._mk('opexChart', { type:'doughnut', data:{ labels:this.opex.map(o=>o.l), datasets:[{ data:this.opex.map(o=>o.v), backgroundColor:this.opex.map(o=>o.c), borderColor:this.css('--surface'), borderWidth:3, hoverOffset:6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'66%', animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.label+' · $'+c.parsed.toLocaleString()+'K' }}} } });
+    },
+    drawCash() {
+      const acc = this.css('--accent');
+      this._mk('cashChart', { type:'line', data:{ labels:['Jan','Feb','Mar','Apr','May','Jun'], datasets:[{ data:[15.9,16.4,16.8,17.3,17.9,18.4], borderColor:acc, borderWidth:2, tension:0.35, pointRadius:0, pointHoverRadius:4, fill:true,
+        backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, acc) : acc+'22' }]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), displayColors:false, callbacks:{ title:()=>'', label:(c)=>'$'+c.parsed.y.toFixed(1)+'M' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} }, y:{ position:'right', ...this._axis((v)=>'$'+v+'M') } } } });
+    },
+    drawPnlTrend() {
+      const acc = this.css('--accent'), fav = this.css('--fav');
+      this._mk('pnlTrendChart', { data:{ labels:['Jan','Feb','Mar','Apr','May','Jun'], datasets:[
+        { type:'bar', label:'Revenue', data:[5980,6120,6050,6240,6180,6360], backgroundColor:acc, borderRadius:4, barPercentage:0.6, yAxisID:'y', order:2 },
+        { type:'line', label:'Net income', data:[620,680,660,700,690,731], borderColor:fav, borderWidth:2, tension:0.35, pointRadius:0, yAxisID:'y1', order:1 } ]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.dataset.label+': $'+c.parsed.y.toLocaleString()+'K' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} }, y:{ ...this._axis((v)=>'$'+(v/1000).toFixed(1)+'M'), min:5000 }, y1:{ position:'right', grid:{display:false}, ticks:{color:this.css('--ink-3'), callback:(v)=>'$'+v+'K'}, min:0 } } } });
+    },
+    drawMargin() {
+      const gp = this.css('--accent'), eb = this.css('--link'), nt = this.css('--fav');
+      this._mk('marginChart', { type:'line', data:{ labels:['Jan','Feb','Mar','Apr','May','Jun'], datasets:[
+        { label:'Gross', data:[65.1,64.8,65.0,64.4,64.6,64.0], borderColor:gp, borderWidth:2, tension:0.35, pointRadius:0 },
+        { label:'EBITDA', data:[19.7,20.0,19.8,20.2,20.1,20.4], borderColor:eb, borderWidth:2, tension:0.35, pointRadius:0 },
+        { label:'Net', data:[10.4,11.1,10.9,11.2,11.2,11.5], borderColor:nt, borderWidth:2, tension:0.35, pointRadius:0 } ]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.dataset.label+': '+c.parsed.y+'%' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} }, y:{ ...this._axis((v)=>v+'%') } } } });
+    },
+    drawAssetMix() {
+      this._mk('assetMixChart', { type:'doughnut', data:{ labels:this.assetMix.map(a=>a.l), datasets:[{ data:this.assetMix.map(a=>a.v), backgroundColor:this.assetMix.map(a=>a.c), borderColor:this.css('--surface'), borderWidth:3, hoverOffset:6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'64%', animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>' '+c.label+' · $'+c.parsed.toLocaleString()+'K' }}} } });
+    },
+    drawCashAct() {
+      const fav = this.css('--fav'), unfav = this.css('--unfav');
+      const data = [1180,-320,-100];
+      this._mk('cashActChart', { type:'bar', data:{ labels:['Operating','Investing','Financing'], datasets:[{ data, backgroundColor:data.map(v=>v>=0?fav:unfav), borderRadius:4, barPercentage:0.6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>(c.parsed.y>=0?'+$':'−$')+Math.abs(c.parsed.y).toLocaleString()+'K' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} }, y:{ ...this._axis((v)=>'$'+(v/1000).toFixed(1)+'M') } } } });
+    },
+    drawCashTrend() {
+      const acc = this.css('--accent');
+      this._mk('cashTrendChart', { type:'line', data:{ labels:['Jan','Feb','Mar','Apr','May','Jun'], datasets:[{ data:[15.9,16.4,16.8,17.3,17.9,18.4], borderColor:acc, borderWidth:2, tension:0.35, pointRadius:0, fill:true,
+        backgroundColor:(c)=> c.chart.chartArea ? this._grad(c.chart.ctx, c.chart.chartArea, acc) : acc+'22' }]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), displayColors:false, callbacks:{ title:()=>'', label:(c)=>'$'+c.parsed.y.toFixed(1)+'M' }}},
+          scales:{ x:{ grid:{display:false}, ticks:{color:this.css('--ink-3')} }, y:{ position:'right', ...this._axis((v)=>'$'+v+'M') } } } });
+    },
+    drawBudget() {
+      const fav = this.css('--fav'), unfav = this.css('--unfav');
+      const rows = this.filteredBudget;
+      const vars = rows.map(r => r.a - r.b);
+      this._mk('budgetChart', { type:'bar', data:{ labels:rows.map(r=>r.d), datasets:[{ data:vars, backgroundColor:vars.map(v=>v<=0?fav:unfav), borderRadius:4, barThickness:16 }]},
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false, plugins:{legend:{display:false}, tooltip:{...this._tt(), callbacks:{ label:(c)=>(c.parsed.x<=0?'Favorable ':'Unfavorable ')+(c.parsed.x>=0?'+':'−')+'$'+Math.abs(c.parsed.x)+'K' }}},
+          scales:{ x:{ ...this._axis((v)=>(v>=0?'+':'−')+Math.abs(v)) }, y:{ grid:{display:false}, ticks:{color:this.css('--ink-2'), font:{size:11}} } } } });
+    },
+  };
+}
+</script>
+</body>
+</html>
