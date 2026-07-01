@@ -8,7 +8,7 @@ Self-contained, zero-build themes — each with a full design spec and a live, i
 
 [**▶ Browse the live gallery**](https://prabhuakshay.github.io/my-themes/)
 
-![Themes](https://img.shields.io/badge/themes-3-161616)
+![Themes](https://img.shields.io/badge/themes-4-161616)
 ![License](https://img.shields.io/badge/license-MIT-0f62fe)
 ![Build](https://img.shields.io/badge/build-zero--build-525252)
 
@@ -27,9 +27,10 @@ intent behind every token and component is documented, not just demonstrated.
 | **[Meridian Enterprise](./themes/meridian-enterprise/)** | Calm, governance-grade B2B design system — a Carbon-grade *instrument panel*: mono tokens, 2px grid, sharp 1px borders, cool gray, light + dark. | [Demo](https://prabhuakshay.github.io/my-themes/themes/meridian-enterprise/) · [Spec](./themes/meridian-enterprise/meridian-enterprise.md) · [README](./themes/meridian-enterprise/README.md) |
 | **[Broadsheet](./themes/broadsheet/)** | Editorial system for enterprise data — a *front page*: tinted newsprint, serif headlines, claret accent, hairline rules, every figure bylined. Day + Evening. | [Demo](https://prabhuakshay.github.io/my-themes/themes/broadsheet/) · [Spec](./themes/broadsheet/broadsheet.md) · [README](./themes/broadsheet/README.md) |
 | **[Frontline](./themes/frontline/)** | Responsive system for field & ops software — a *field app*: hi-vis palette, five-state operational status, tactile elevated cards, offline-aware. Desktop **and** phone. Field + Shift. | [Demo](https://prabhuakshay.github.io/my-themes/themes/frontline/) · [Spec](./themes/frontline/frontline.md) · [README](./themes/frontline/README.md) |
+| **[Vellum](./themes/vellum/)** | Premium system for BI apps built around data entry — *the record is the hero*: warm porcelain paper, iris ink, tabular figures, a legible records pipeline, an entry sheet that's a page not a modal. Light only. | [Demo](https://prabhuakshay.github.io/my-themes/themes/vellum/) · [Spec](./themes/vellum/vellum.md) · [README](./themes/vellum/README.md) |
 
-> _Three poles for the same enterprise user — the instrument panel, the front page, and the field
-> app. More land in their own folders under [`themes/`](./themes)._
+> _Four poles for the same enterprise user — the instrument panel, the front page, the field app,
+> and the records studio. More land in their own folders under [`themes/`](./themes)._
 
 ## Repository layout
 
@@ -45,9 +46,13 @@ my-themes/
 │   │   ├── index.html              # live, self-contained demo
 │   │   ├── broadsheet.md           # full design specification
 │   │   └── README.md               # theme overview
-│   └── frontline/
+│   ├── frontline/
+│   │   ├── index.html              # live, self-contained demo
+│   │   ├── frontline.md            # full design specification
+│   │   └── README.md               # theme overview
+│   └── vellum/
 │       ├── index.html              # live, self-contained demo
-│       ├── frontline.md            # full design specification
+│       ├── vellum.md               # full design specification
 │       └── README.md               # theme overview
 ├── CLAUDE.md                       # standards for building new themes
 ├── PRINCIPALS.md                   # the UI/UX instruction set all themes follow

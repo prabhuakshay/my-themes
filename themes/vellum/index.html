@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Vellum — a premium design system for BI apps built around data entry</title>
+<meta name="description" content="Vellum — a premium, light-mode design system for BI apps where data entry is the hero. Iris ink on warm porcelain, a records pipeline, BI dashboards with real charts, sortable data tables, inline edits, an entry sheet, review queue, edit drawers, modals and toasts." />
+<meta name="theme-color" content="#4B45C7" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={ theme:{ fontFamily:{ sans:['"Hanken Grotesk"','system-ui','sans-serif'], mono:['"JetBrains Mono"','ui-monospace','monospace'] } } };</script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+  /* ============ VELLUM — LIGHT-ONLY TOKENS ============ */
+  :root{
+    --canvas:#F1EFEA; --surface:#FFFFFF; --surface-2:#F7F6F2; --surface-3:#EFEDE7;
+    --ink:#211E1A; --ink-2:#5D584F; --ink-3:#948E83;
+    --line:#E7E3DA; --line-2:#D6D0C4;
+    --accent:#4B45C7; --accent-press:#3B3699; --accent-ink:#3A3596; --accent-soft:#ECEBFA;
+    --pos:#1E8A5A; --pos-ink:#146C46; --neg:#C63A45; --neg-ink:#A62B35; --warn:#B26A0E;
+    /* records pipeline */
+    --s-draft:#8A8579; --s-review:#3A6DD6; --s-approved:#1E8A5A; --s-posted:#4B45C7; --s-flagged:#C63A45;
+    --shadow:0 1px 2px rgba(30,26,20,.05), 0 4px 14px rgba(30,26,20,.05);
+    --shadow-lg:0 12px 30px rgba(30,26,20,.12), 0 30px 64px rgba(30,26,20,.16);
+    --r:12px; --r-sm:10px; --r-xs:8px; color-scheme:light;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; }
+  body{ font-family:"Hanken Grotesk",system-ui,sans-serif; color:var(--ink); background:var(--canvas); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+  .mono{ font-family:"JetBrains Mono",ui-monospace,monospace; font-feature-settings:"tnum" 1; }
+  [x-cloak]{ display:none !important; }
+  ::-webkit-scrollbar{ width:11px; height:11px; } ::-webkit-scrollbar-thumb{ background:var(--line-2); border-radius:7px; border:3px solid var(--surface); } ::-webkit-scrollbar-track{ background:transparent; }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
+
+  .lbl{ font-family:"JetBrains Mono",monospace; font-size:10.5px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); }
+  .flabel{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-2); margin-bottom:7px; }
+  .num{ font-family:"Hanken Grotesk",sans-serif; font-weight:800; letter-spacing:-.02em; font-feature-settings:"tnum" 1; }
+
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); }
+  .sheet{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); }
+  .sidebar{ background:var(--surface); border-right:1px solid var(--line-2); }
+  .topbar{ background:color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter:saturate(1.4) blur(8px); border-bottom:1px solid var(--line-2); }
+
+  /* nav */
+  .nav-item{ position:relative; display:flex; align-items:center; gap:12px; height:40px; padding:0 12px; border-radius:var(--r-sm); color:var(--ink-2); cursor:pointer; font-weight:500; transition:background .12s, color .12s; }
+  .nav-item:hover{ background:var(--surface-2); color:var(--ink); }
+  .nav-item.on{ background:var(--accent-soft); color:var(--accent-ink); font-weight:600; }
+  .nav-item.on i{ color:var(--accent); }
+  .nav-item.on::before{ content:""; position:absolute; left:-3px; top:9px; bottom:9px; width:3px; border-radius:0 3px 3px 0; background:var(--accent); }
+
+  /* status chip */
+  .chip{ display:inline-flex; align-items:center; gap:6px; height:23px; padding:0 9px; border-radius:99px; font-size:11.5px; font-weight:600; letter-spacing:.01em; white-space:nowrap; }
+  .chip .d{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+
+  /* buttons */
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--r-sm); font-weight:600; font-size:14px; border:1px solid transparent; cursor:pointer; transition:background .12s, border-color .12s, transform .05s, box-shadow .12s; white-space:nowrap; }
+  .btn:active{ transform:translateY(1px); }
+  .btn-primary{ background:var(--accent); color:#fff; box-shadow:0 1px 2px rgba(59,54,153,.35); } .btn-primary:hover{ background:var(--accent-press); }
+  .btn-outline{ background:var(--surface); color:var(--ink); border-color:var(--line-2); } .btn-outline:hover{ background:var(--surface-2); }
+  .btn-ghost{ background:var(--surface-2); color:var(--ink); } .btn-ghost:hover{ background:var(--surface-3); }
+  .btn-sm{ height:34px; padding:0 12px; font-size:13px; } .btn-lg{ height:48px; font-size:15px; } .btn-block{ width:100%; }
+  .iconbtn{ width:38px; height:38px; border-radius:var(--r-sm); display:flex; align-items:center; justify-content:center; color:var(--ink-2); cursor:pointer; border:1px solid transparent; transition:background .12s, color .12s; }
+  .iconbtn:hover{ background:var(--surface-2); color:var(--ink); }
+
+  /* inputs */
+  .field, .isel{ height:42px; background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-sm); padding:0 12px; font-size:14px; color:var(--ink); font-family:inherit; width:100%; transition:border-color .12s, box-shadow .12s; }
+  .field:focus, .isel:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+  textarea.field{ height:auto; padding:10px 12px; resize:vertical; line-height:1.5; }
+  .field::placeholder{ color:var(--ink-3); }
+  .isel{ appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23948E83' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>"); background-repeat:no-repeat; background-position:right 11px center; padding-right:34px; cursor:pointer; }
+
+  /* filter chip / segmented */
+  .fchip{ height:32px; padding:0 13px; border-radius:99px; border:1px solid var(--line-2); background:var(--surface); font-weight:600; font-size:12.5px; color:var(--ink-2); white-space:nowrap; cursor:pointer; display:inline-flex; align-items:center; gap:7px; transition:background .12s, border-color .12s, color .12s; }
+  .fchip:hover{ background:var(--surface-2); }
+  .fchip.on{ background:var(--ink); color:var(--surface); border-color:var(--ink); }
+  .seg{ display:inline-flex; padding:3px; gap:2px; border:1px solid var(--line-2); border-radius:var(--r-sm); background:var(--surface-2); }
+  .seg button{ height:32px; padding:0 13px; border:0; border-radius:7px; font-weight:600; font-size:12.5px; color:var(--ink-2); background:transparent; cursor:pointer; transition:background .12s, color .12s, box-shadow .12s; }
+  .seg button:hover{ color:var(--ink); }
+  .seg button.on{ background:var(--surface); color:var(--ink); box-shadow:var(--shadow); }
+
+  /* toggle / stepper */
+  .tg{ width:44px; height:26px; border-radius:99px; background:var(--line-2); position:relative; cursor:pointer; transition:background .16s; flex:none; }
+  .tg.on{ background:var(--accent); } .tg b{ position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:left .16s; box-shadow:0 1px 3px rgba(0,0,0,.28); } .tg.on b{ left:21px; }
+  .step{ width:36px; height:36px; border-radius:9px; border:1px solid var(--line-2); background:var(--surface); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink-2); flex:none; transition:background .12s; } .step:hover{ background:var(--surface-2); color:var(--ink); } .step:active{ background:var(--surface-3); }
+
+  /* table */
+  table.tbl{ width:100%; border-collapse:collapse; }
+  table.tbl th{ font-family:"JetBrains Mono",monospace; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); text-align:left; font-weight:600; padding:13px 16px 11px; border-bottom:1px solid var(--line); white-space:nowrap; background:var(--surface); position:sticky; top:0; z-index:1; }
+  table.tbl th.r, table.tbl td.r{ text-align:right; }
+  table.tbl td{ padding:13px 16px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  table.tbl tbody tr{ cursor:pointer; transition:background .1s; } table.tbl tbody tr:hover td{ background:var(--surface-2); }
+  table.tbl tbody tr:last-child td{ border-bottom:0; }
+  .dense table.tbl td{ padding-top:8px; padding-bottom:8px; }
+
+  /* inline edit */
+  .ie{ border:1px solid transparent; border-radius:7px; padding:2px 7px; margin:-2px -7px; cursor:text; transition:background .1s, border-color .1s; }
+  .ie:hover{ background:var(--surface-2); border-color:var(--line-2); }
+
+  /* sparkline */
+  .spark{ display:flex; align-items:flex-end; gap:2px; height:26px; }
+  .spark span{ flex:1; border-radius:2px 2px 0 0; background:color-mix(in srgb, var(--accent) 26%, transparent); min-height:2px; }
+  .spark span:last-child{ background:var(--accent); }
+
+  /* overlays */
+  .scrim{ position:fixed; inset:0; background:rgba(30,26,20,.42); z-index:50; backdrop-filter:blur(1.5px); }
+  .drawer{ position:fixed; top:0; right:0; bottom:0; width:min(460px,94vw); background:var(--surface); z-index:60; box-shadow:var(--shadow-lg); display:flex; flex-direction:column; }
+  .ndrawer{ position:fixed; top:0; left:0; bottom:0; width:280px; background:var(--surface); z-index:60; box-shadow:var(--shadow-lg); display:flex; flex-direction:column; }
+  .modal{ position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; padding:16px; }
+  .modal-card{ width:100%; max-width:480px; background:var(--surface); border-radius:var(--r); box-shadow:var(--shadow-lg); max-height:92vh; display:flex; flex-direction:column; }
+
+  .keyline{ position:fixed; top:0; left:0; right:0; height:2px; z-index:45; background:linear-gradient(90deg, var(--accent), #8B84F2 60%, var(--accent)); }
+  .progress{ height:7px; border-radius:99px; background:var(--surface-3); overflow:hidden; }
+  .progress b{ display:block; height:100%; border-radius:99px; background:var(--accent); }
+</style>
+</head>
+
+<body x-data="vellum()" x-init="boot()" :class="dense && 'dense'">
+<div class="keyline"></div>
+<div class="flex h-[100dvh] overflow-hidden">
+
+  <!-- ============ SIDEBAR (desktop) ============ -->
+  <aside class="sidebar hidden lg:flex flex-col flex-none h-full transition-all" :style="`width:${collapsed?'74px':'256px'}`">
+    <div class="flex items-center gap-3 h-[66px] flex-none px-4" style="border-bottom:1px solid var(--line)">
+      <div class="w-9 h-9 rounded-[10px] flex items-center justify-center flex-none num" style="background:var(--accent); color:#fff; font-size:18px; box-shadow:0 2px 6px rgba(59,54,153,.4)">V</div>
+      <div x-show="!collapsed" class="min-w-0">
+        <div style="font-size:16px; font-weight:800; letter-spacing:-.02em; line-height:1.1">Vellum</div>
+        <div class="lbl" style="font-size:9.5px">Spend &amp; Records</div>
+      </div>
+    </div>
+    <nav class="flex-1 min-h-0 overflow-y-auto p-3">
+      <div class="lbl px-3 mb-2" x-show="!collapsed">Workspace</div>
+      <div class="flex flex-col gap-1">
+        <template x-for="n in nav" :key="n.id">
+          <div class="nav-item" :class="page===n.id&&'on'" @click="go(n.id)" @keydown.enter="go(n.id)" tabindex="0" role="button" :title="n.label" :style="collapsed&&'justify-content:center; padding:0'">
+            <i :data-lucide="n.icon" class="w-[19px] h-[19px] flex-none"></i>
+            <span x-show="!collapsed" x-text="n.label"></span>
+            <span x-show="!collapsed && n.id==='review' && reviewCount" class="ml-auto chip" style="height:20px; padding:0 8px; color:var(--accent-ink); background:var(--accent-soft)" x-text="reviewCount"></span>
+          </div>
+        </template>
+      </div>
+      <div class="lbl px-3 mb-2 mt-6" x-show="!collapsed">This period</div>
+      <div class="card p-4 mx-1" x-show="!collapsed" style="box-shadow:none; background:var(--surface-2); border-color:var(--line)">
+        <div class="flex items-baseline justify-between">
+          <span class="lbl">Budget used</span><span class="mono" style="font-size:12px; color:var(--ink-2)">71%</span>
+        </div>
+        <div class="progress mt-2"><b style="width:71%"></b></div>
+        <div class="mono mt-2" style="font-size:11px; color:var(--ink-3)">$68.4k of $96.0k</div>
+      </div>
+    </nav>
+    <div class="flex-none p-3" style="border-top:1px solid var(--line)">
+      <div class="nav-item" @click="collapsed=!collapsed" tabindex="0" role="button" :style="collapsed&&'justify-content:center; padding:0'">
+        <i :data-lucide="collapsed?'panel-left-open':'panel-left-close'" class="w-[19px] h-[19px] flex-none"></i>
+        <span x-show="!collapsed">Collapse</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="flex-1 min-w-0 flex flex-col h-full">
+
+    <!-- topbar -->
+    <header class="topbar flex-none flex items-center gap-2 sm:gap-3 px-3 sm:px-6 h-[66px] sticky top-0 z-30">
+      <div class="iconbtn lg:hidden" @click="navOpen=true"><i data-lucide="menu" class="w-5 h-5"></i></div>
+      <div class="min-w-0">
+        <div class="lbl hidden sm:block mb-0.5" x-text="meta[page].kicker"></div>
+        <div style="font-size:19px; font-weight:800; letter-spacing:-.02em; line-height:1.1" x-text="meta[page].title"></div>
+      </div>
+      <div class="relative ml-auto hidden md:block">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+        <input class="field" style="width:250px; padding-left:34px" placeholder="Search vendors, records…" x-model="search" @focus="page!=='records'&&go('records')" />
+      </div>
+      <button class="btn btn-primary ml-auto md:ml-0" @click="openNew()"><i data-lucide="plus" class="w-4 h-4"></i><span class="hidden sm:inline">New entry</span></button>
+      <div class="iconbtn relative" @click="go('review')" title="Review queue"><i data-lucide="bell" class="w-5 h-5"></i><span x-show="reviewCount" style="position:absolute; top:6px; right:7px; width:8px; height:8px; border-radius:50%; background:var(--accent); border:2px solid var(--surface)"></span></div>
+      <div class="w-9 h-9 rounded-full hidden sm:flex items-center justify-center num flex-none" style="background:var(--accent-soft); color:var(--accent-ink); font-size:13px; border:1px solid var(--line-2)" x-text="initials"></div>
+    </header>
+
+    <!-- content -->
+    <main class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
+
+      <!-- ========== OVERVIEW (BI) ========== -->
+      <div x-show="page==='overview'">
+        <!-- KPI tiles -->
+        <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+          <template x-for="k in kpis" :key="k.l">
+            <div class="card p-4 sm:p-5">
+              <div class="flex items-start justify-between">
+                <span class="lbl" x-text="k.l"></span>
+              </div>
+              <div class="num mt-2" style="font-size:29px; line-height:1" x-text="k.v"></div>
+              <template x-if="k.bar!==undefined">
+                <div class="mt-3"><div class="progress"><b :style="`width:${k.bar}%`"></b></div><div class="mono mt-2" style="font-size:11px; color:var(--ink-3)" x-text="k.sub"></div></div>
+              </template>
+              <template x-if="k.bar===undefined">
+                <div class="mt-2.5">
+                  <div class="flex items-center gap-2">
+                    <span class="mono" style="font-size:12px; font-weight:600" :style="`color:var(${k.tone==='pos'?'--pos-ink':(k.tone==='warn'?'--warn':(k.tone==='neg'?'--neg-ink':'--ink-2'))})`">
+                      <span x-show="k.tone==='pos'||k.tone==='neg'" x-text="k.tone==='pos'?'▲ ':'▼ '"></span><span x-text="k.delta"></span>
+                    </span>
+                    <span class="spark ml-auto" style="width:74px"><template x-for="(v,i) in k.spark" :key="i"><span :style="`height:${Math.round(v/Math.max(...k.spark)*100)}%`"></span></template></span>
+                  </div>
+                  <div class="mono mt-2" style="font-size:11px; color:var(--ink-3)" x-text="k.sub"></div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+
+        <!-- charts -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+          <div class="card p-5 xl:col-span-2">
+            <div class="flex items-start justify-between mb-4">
+              <div><div class="lbl">Cash out</div><div style="font-size:16px; font-weight:700; margin-top:2px">Spend · last 12 weeks</div></div>
+              <div class="seg"><button class="on">Weekly</button><button @click="ping('Monthly view is a demo stub','info')">Monthly</button></div>
+            </div>
+            <div style="height:240px"><canvas id="cSpend"></canvas></div>
+          </div>
+          <div class="card p-5">
+            <div class="lbl">Pipeline</div><div style="font-size:16px; font-weight:700; margin:2px 0 14px">Records by status</div>
+            <div style="height:168px"><canvas id="cStatus"></canvas></div>
+            <div class="grid grid-cols-1 gap-y-2 mt-4">
+              <template x-for="s in statusOrder" :key="s">
+                <div class="flex items-center gap-2.5" style="font-size:13px">
+                  <span style="width:9px;height:9px;border-radius:3px" :style="`background:var(${statusMeta[s].v})`"></span>
+                  <span x-text="statusMeta[s].label"></span>
+                  <span class="mono ml-auto" style="color:var(--ink-2)" x-text="records.filter(r=>r.status===s).length"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+          <div class="card p-5">
+            <div class="lbl">Where it goes</div><div style="font-size:16px; font-weight:700; margin:2px 0 14px">Spend by category</div>
+            <div style="height:210px"><canvas id="cCat"></canvas></div>
+          </div>
+          <!-- table: top vendors -->
+          <div class="card xl:col-span-2 overflow-hidden">
+            <div class="p-5 pb-0 flex items-center justify-between">
+              <div><div class="lbl">This period</div><div style="font-size:16px; font-weight:700; margin-top:2px">Top vendors by spend</div></div>
+              <button class="btn btn-ghost btn-sm" @click="go('records')">All records <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
+            </div>
+            <div class="overflow-x-auto mt-3">
+              <table class="tbl">
+                <thead><tr><th>Vendor</th><th>Category</th><th class="r">Records</th><th class="r">Spend</th><th class="r">Share</th></tr></thead>
+                <tbody>
+                  <template x-for="v in topVendors" :key="v.name">
+                    <tr @click="search=v.name; go('records')">
+                      <td style="font-weight:600" x-text="v.name"></td>
+                      <td style="color:var(--ink-2)" x-text="v.cat"></td>
+                      <td class="r mono" style="color:var(--ink-2)" x-text="v.n"></td>
+                      <td class="r mono" style="font-weight:600" x-text="money(v.sum)"></td>
+                      <td class="r mono" style="color:var(--ink-2)" x-text="v.share+'%'"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== RECORDS (table + inline edit + drawer) ========== -->
+      <div x-show="page==='records'" x-cloak>
+        <div class="flex items-center gap-2 flex-wrap mb-4">
+          <div class="flex gap-2 flex-wrap items-center">
+            <div class="fchip" :class="filter==='All'&&'on'" @click="filter='All'">All <span class="mono" x-text="records.length"></span></div>
+            <template x-for="s in statusOrder" :key="s">
+              <div class="fchip" :class="filter===s&&'on'" @click="filter=s">
+                <span style="width:7px;height:7px;border-radius:50%" :style="`background:var(${statusMeta[s].v})`"></span>
+                <span x-text="statusMeta[s].label"></span>
+              </div>
+            </template>
+          </div>
+          <div class="relative ml-auto md:hidden">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+            <input class="field" style="padding-left:34px" placeholder="Search…" x-model="search" />
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="overflow-x-auto" style="max-height:calc(100dvh - 220px)">
+            <table class="tbl">
+              <thead><tr>
+                <th>Record</th><th>Vendor</th><th class="hidden md:table-cell">Category</th><th class="hidden lg:table-cell">Dept</th><th class="r">Amount</th><th>Status</th><th class="hidden sm:table-cell">Date</th><th></th>
+              </tr></thead>
+              <tbody>
+                <template x-for="r in filteredRecords" :key="r.id">
+                  <tr @click="openEdit(r)">
+                    <td class="mono" style="font-size:12px; color:var(--ink-2); white-space:nowrap" x-text="r.id"></td>
+                    <td style="font-weight:600; min-width:150px" x-text="r.vendor"></td>
+                    <td class="hidden md:table-cell" style="color:var(--ink-2)" x-text="r.cat"></td>
+                    <td class="hidden lg:table-cell" style="color:var(--ink-2)" x-text="r.dept"></td>
+                    <!-- inline edit: click-to-edit amount -->
+                    <td class="r" @click.stop x-data="{e:false}">
+                      <template x-if="!e"><span class="mono ie" style="font-weight:600" @click="e=true; $nextTick(()=>$root.querySelector('input')?.focus())" x-text="money(r.amount)"></span></template>
+                      <template x-if="e"><input class="field mono" style="height:32px; width:118px; text-align:right; padding:0 8px" type="number" step="0.01" x-model.number="r.amount" @blur="e=false" @keydown.enter="e=false; ping('Amount updated on '+r.id,'pencil')" @keydown.escape="e=false" /></template>
+                    </td>
+                    <!-- inline edit: status select -->
+                    <td @click.stop>
+                      <select class="isel" style="height:30px; padding:0 26px 0 9px; width:auto; font-size:12px; font-weight:600; background-color:transparent; border-color:transparent"
+                              :style="`color:var(${statusMeta[r.status].v})`" x-model="r.status" @change="ping(r.vendor+' → '+statusMeta[r.status].label,'refresh-cw')">
+                        <template x-for="s in statusOrder" :key="s"><option :value="s" :selected="s===r.status" x-text="statusMeta[s].label"></option></template>
+                      </select>
+                    </td>
+                    <td class="hidden sm:table-cell mono" style="font-size:12px; color:var(--ink-2); white-space:nowrap" x-text="r.date"></td>
+                    <td class="r"><i data-lucide="pencil" class="w-4 h-4" style="color:var(--ink-3)"></i></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <!-- empty state -->
+          <div x-show="filteredRecords.length===0" class="flex flex-col items-center justify-center text-center gap-3 py-16 px-6">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center" style="background:var(--surface-2)"><i data-lucide="search-x" class="w-6 h-6" style="color:var(--ink-3)"></i></div>
+            <div style="font-weight:700; font-size:15px">No records match</div>
+            <div style="color:var(--ink-2); max-width:34ch">Try a different search or clear the status filter to see everything.</div>
+            <button class="btn btn-outline btn-sm" @click="search=''; filter='All'">Clear filters</button>
+          </div>
+        </div>
+        <div class="lbl mt-3" x-text="filteredRecords.length+' of '+records.length+' records · '+money(filteredTotal)+' total'"></div>
+      </div>
+
+      <!-- ========== NEW ENTRY (the data-entry sheet) ========== -->
+      <div x-show="page==='entry'" x-cloak>
+        <div class="grid grid-cols-1 xl:grid-cols-[1.55fr_1fr] gap-4" style="max-width:1160px">
+          <!-- the sheet -->
+          <div class="sheet overflow-hidden">
+            <div class="px-5 sm:px-6 py-4 flex items-center gap-3" style="border-bottom:1px solid var(--line)">
+              <div class="w-9 h-9 rounded-[9px] flex items-center justify-center flex-none" style="background:var(--accent-soft)"><i data-lucide="receipt-text" class="w-5 h-5" style="color:var(--accent)"></i></div>
+              <div><div class="lbl">Draft record</div><div style="font-size:16px; font-weight:700">New expense entry</div></div>
+              <span class="chip ml-auto" style="color:var(--s-draft); background:color-mix(in srgb, var(--s-draft) 14%, transparent)"><span class="d"></span>Draft</span>
+            </div>
+
+            <div class="p-5 sm:p-6">
+              <!-- section: details -->
+              <div class="lbl mb-4">Record details</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+                <div class="sm:col-span-2">
+                  <label class="flabel" for="e-vendor">Vendor</label>
+                  <div class="relative">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+                    <input id="e-vendor" class="field" style="padding-left:34px" list="vendorlist" placeholder="Start typing a vendor…" x-model="entry.vendor" />
+                    <datalist id="vendorlist"><option>Figma</option><option>Amazon Web Services</option><option>Google Ads</option><option>Adobe</option><option>Notion</option><option>Rippling</option></datalist>
+                  </div>
+                </div>
+                <div>
+                  <label class="flabel" for="e-cat">Category</label>
+                  <select id="e-cat" class="isel" x-model="entry.cat"><template x-for="c in cats" :key="c"><option x-text="c"></option></template></select>
+                </div>
+                <div>
+                  <label class="flabel" for="e-acct">Paid from</label>
+                  <select id="e-acct" class="isel" x-model="entry.account"><template x-for="a in accounts" :key="a"><option x-text="a"></option></template></select>
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="flabel">Department</label>
+                  <div class="flex flex-wrap gap-2">
+                    <template x-for="d in depts" :key="d"><div class="fchip" :class="entry.dept===d&&'on'" @click="entry.dept=d" x-text="d"></div></template>
+                  </div>
+                </div>
+                <div>
+                  <label class="flabel" for="e-date">Date</label>
+                  <input id="e-date" class="field mono" type="text" x-model="entry.date" />
+                </div>
+                <div>
+                  <label class="flabel">Payment method</label>
+                  <div class="seg" style="width:100%"><template x-for="m in ['Card','ACH','Wire','Check']" :key="m"><button :class="entry.method===m&&'on'" @click="entry.method=m" style="flex:1" x-text="m"></button></template></div>
+                </div>
+              </div>
+
+              <!-- section: amount -->
+              <div class="lbl mb-4 mt-8">Amount</div>
+              <div class="flex items-center gap-3">
+                <div class="step" @click="entry.amount=Math.max(0,Math.round((entry.amount-10)*100)/100)"><i data-lucide="minus" class="w-4 h-4"></i></div>
+                <div class="relative flex-1">
+                  <span class="num" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:22px; color:var(--ink-3)">$</span>
+                  <input class="field num" style="height:58px; font-size:24px; text-align:right; padding:0 16px" type="number" step="0.01" min="0" inputmode="decimal" x-model.number="entry.amount" />
+                </div>
+                <div class="step" @click="entry.amount=Math.round((entry.amount+10)*100)/100"><i data-lucide="plus" class="w-4 h-4"></i></div>
+              </div>
+              <div class="flex gap-2 mt-3 flex-wrap"><template x-for="n in [50,100,500,1000]" :key="n"><button class="btn btn-ghost btn-sm mono" @click="entry.amount=Math.round((entry.amount+n)*100)/100" x-text="'+'+n"></button></template></div>
+
+              <!-- section: line splits -->
+              <div class="flex items-center justify-between mb-4 mt-8"><div class="lbl">Split allocation</div><span class="mono" style="font-size:11px; color:var(--ink-3)" x-text="'allocated '+money(splitTotal)"></span></div>
+              <div class="flex flex-col gap-2">
+                <template x-for="(s,i) in splits" :key="i">
+                  <div class="flex items-center gap-2">
+                    <select class="isel" style="flex:1" x-model="s.cat"><template x-for="c in cats" :key="c"><option :selected="c===s.cat" x-text="c"></option></template></select>
+                    <div class="relative" style="width:130px"><span class="mono" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--ink-3)">$</span><input class="field mono" style="text-align:right; padding-left:22px" type="number" step="0.01" x-model.number="s.amount" /></div>
+                    <div class="iconbtn" @click="splits.length>1 ? splits.splice(i,1) : null" :style="splits.length<=1&&'opacity:.35; pointer-events:none'"><i data-lucide="trash-2" class="w-4 h-4"></i></div>
+                  </div>
+                </template>
+                <button class="btn btn-outline btn-sm" style="width:fit-content" @click="splits.push({cat:entry.cat, amount:0})"><i data-lucide="plus" class="w-4 h-4"></i> Add split</button>
+              </div>
+
+              <!-- section: memo + flags -->
+              <div class="lbl mb-4 mt-8">Notes &amp; flags</div>
+              <label class="flabel" for="e-memo">Memo</label>
+              <textarea id="e-memo" class="field" rows="3" placeholder="What was this for? Add context for the approver…" x-model="entry.memo"></textarea>
+              <div class="mt-4 flex flex-col" style="border-top:1px solid var(--line)">
+                <div class="flex items-center gap-3 py-3.5"><div><div style="font-weight:600">Billable to client</div><div style="font-size:12.5px; color:var(--ink-2)">Tag so it appears on the client invoice.</div></div><div class="tg ml-auto" :class="entry.billable&&'on'" @click="entry.billable=!entry.billable" role="switch" :aria-checked="entry.billable"><b></b></div></div>
+                <div class="flex items-center gap-3 py-3.5" style="border-top:1px solid var(--line)"><div><div style="font-weight:600">Reimbursable</div><div style="font-size:12.5px; color:var(--ink-2)">Employee paid out of pocket.</div></div><div class="tg ml-auto" :class="entry.reimb&&'on'" @click="entry.reimb=!entry.reimb" role="switch" :aria-checked="entry.reimb"><b></b></div></div>
+              </div>
+              <label class="flabel mt-4">Tags</label>
+              <div class="flex flex-wrap gap-2">
+                <template x-for="t in tagOptions" :key="t"><div class="fchip" :class="entry.tags.includes(t)&&'on'" @click="toggleTag(t)"><i x-show="entry.tags.includes(t)" data-lucide="check" class="w-3.5 h-3.5"></i><span x-text="t"></span></div></template>
+              </div>
+            </div>
+          </div>
+
+          <!-- right rail: live summary -->
+          <div class="flex flex-col gap-4">
+            <div class="card p-5" style="position:sticky; top:0">
+              <div class="lbl mb-4">Summary</div>
+              <div class="num" style="font-size:36px; line-height:1" x-text="money(entry.amount||0)"></div>
+              <div class="mono mt-1.5" style="font-size:12px; color:var(--ink-3)" x-text="(entry.vendor||'No vendor')+' · '+entry.cat"></div>
+              <div class="mt-5 flex flex-col gap-3" style="font-size:13px">
+                <div class="flex items-center justify-between"><span style="color:var(--ink-2)">Department</span><span style="font-weight:600" x-text="entry.dept"></span></div>
+                <div class="flex items-center justify-between"><span style="color:var(--ink-2)">Method</span><span style="font-weight:600" x-text="entry.method"></span></div>
+                <div class="flex items-center justify-between"><span style="color:var(--ink-2)">Paid from</span><span class="mono" style="font-size:12px" x-text="entry.account.split(' · ')[1]||entry.account"></span></div>
+                <div class="flex items-center justify-between"><span style="color:var(--ink-2)">Split allocated</span><span class="mono" :style="`color:var(${Math.abs(splitTotal-(entry.amount||0))<0.005?'--pos-ink':'--warn'})`" x-text="money(splitTotal)"></span></div>
+                <div class="flex items-center justify-between" x-show="entry.tags.length"><span style="color:var(--ink-2)">Tags</span><span style="font-weight:600" x-text="entry.tags.join(', ')"></span></div>
+              </div>
+              <div x-show="Math.abs(splitTotal-(entry.amount||0))>=0.005" x-cloak class="mt-4 flex items-start gap-2 p-3 rounded-[10px]" style="background:color-mix(in srgb,var(--warn) 12%,transparent)">
+                <i data-lucide="triangle-alert" class="w-4 h-4 flex-none mt-0.5" style="color:var(--warn)"></i>
+                <span style="font-size:12.5px; color:var(--ink)">Splits don't match the total. Off by <b class="mono" x-text="money(Math.abs(splitTotal-(entry.amount||0)))"></b>.</span>
+              </div>
+            </div>
+            <div class="card p-5">
+              <div class="lbl mb-3">Receipt</div>
+              <div class="flex flex-col items-center justify-center gap-2 py-7" style="border:1.5px dashed var(--line-2); border-radius:12px; color:var(--ink-3)">
+                <i data-lucide="cloud-upload" class="w-8 h-8"></i><span style="font-weight:600; color:var(--ink-2)">Drop a receipt</span><span style="font-size:12px">PDF, PNG or JPG · up to 10MB</span>
+              </div>
+            </div>
+            <div class="flex flex-col gap-2.5">
+              <button class="btn btn-primary btn-lg btn-block" @click="submitEntry('review')"><i data-lucide="send-horizontal" class="w-4 h-4"></i> Submit for review</button>
+              <button class="btn btn-outline btn-block" @click="submitEntry('draft')"><i data-lucide="save" class="w-4 h-4"></i> Save as draft</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== REVIEW (approval queue) ========== -->
+      <div x-show="page==='review'" x-cloak style="max-width:960px">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="lbl">Awaiting your approval</span>
+            <span class="chip mono" style="color:var(--accent-ink); background:var(--accent-soft)" x-text="reviewCount"></span>
+          </div>
+          <div class="mono ml-auto" style="font-size:12px; color:var(--ink-2)" x-text="money(reviewTotal)+' pending'"></div>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <template x-for="r in reviewQueue" :key="r.id">
+            <div class="card p-4 sm:p-5">
+              <div class="flex items-start gap-4 flex-wrap">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="mono" style="font-size:11.5px; color:var(--ink-3)" x-text="r.id"></span>
+                    <span class="chip" :style="chipStyle(r.status)"><span class="d"></span><span x-text="statusMeta[r.status].label"></span></span>
+                    <template x-for="t in (r.tags||[])" :key="t"><span class="chip" style="height:20px; color:var(--ink-2); background:var(--surface-2)" x-text="t"></span></template>
+                  </div>
+                  <div style="font-size:17px; font-weight:700; margin-top:6px" x-text="r.vendor"></div>
+                  <div style="font-size:13px; color:var(--ink-2); margin-top:2px" x-text="r.cat+' · '+r.dept+' · '+r.method+' · '+r.date"></div>
+                  <div x-show="r.memo" style="font-size:13px; color:var(--ink-2); margin-top:8px; padding-left:11px; border-left:2px solid var(--line-2)" x-text="r.memo"></div>
+                </div>
+                <div class="text-right flex-none">
+                  <div class="num" style="font-size:24px" x-text="money(r.amount)"></div>
+                  <div class="flex items-center gap-2 mt-3 justify-end">
+                    <button class="btn btn-outline btn-sm" @click="decide(r,'flagged')"><i data-lucide="flag" class="w-4 h-4" style="color:var(--neg)"></i> Flag</button>
+                    <button class="btn btn-primary btn-sm" @click="decide(r,'approved')"><i data-lucide="check" class="w-4 h-4"></i> Approve</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- empty state -->
+        <div x-show="reviewQueue.length===0" x-cloak class="card flex flex-col items-center justify-center text-center gap-3 py-16 px-6">
+          <div class="w-14 h-14 rounded-full flex items-center justify-center" style="background:color-mix(in srgb,var(--pos) 14%,transparent)"><i data-lucide="check-check" class="w-7 h-7" style="color:var(--pos-ink)"></i></div>
+          <div style="font-weight:800; font-size:18px; letter-spacing:-.01em">All caught up</div>
+          <div style="color:var(--ink-2); max-width:36ch">Nothing is waiting on you. New submissions from the entry sheet will land here.</div>
+          <button class="btn btn-outline btn-sm mt-1" @click="go('entry')"><i data-lucide="plus" class="w-4 h-4"></i> Create an entry</button>
+        </div>
+      </div>
+
+      <!-- ========== ANALYTICS (second BI surface) ========== -->
+      <div x-show="page==='analytics'" x-cloak>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div class="card p-5">
+            <div class="lbl">Plan vs reality</div><div style="font-size:16px; font-weight:700; margin:2px 0 14px">Budget vs actual · 6 months</div>
+            <div style="height:250px"><canvas id="cBva"></canvas></div>
+          </div>
+          <div class="card p-5">
+            <div class="lbl">Ownership</div><div style="font-size:16px; font-weight:700; margin:2px 0 14px">Spend by department</div>
+            <div style="height:250px"><canvas id="cDept"></canvas></div>
+          </div>
+          <div class="card p-5">
+            <div class="lbl">Rails</div><div style="font-size:16px; font-weight:700; margin:2px 0 14px">Spend by payment method</div>
+            <div style="height:210px"><canvas id="cMethod"></canvas></div>
+          </div>
+          <!-- budget utilization table -->
+          <div class="card overflow-hidden">
+            <div class="p-5 pb-0"><div class="lbl">Budget utilization</div><div style="font-size:16px; font-weight:700; margin-top:2px">By department</div></div>
+            <div class="overflow-x-auto mt-3">
+              <table class="tbl">
+                <thead><tr><th>Department</th><th class="r">Budget</th><th class="r">Spent</th><th style="width:120px">Used</th></tr></thead>
+                <tbody>
+                  <template x-for="b in budgets" :key="b.dept">
+                    <tr style="cursor:default">
+                      <td style="font-weight:600" x-text="b.dept"></td>
+                      <td class="r mono" style="color:var(--ink-2)" x-text="money(b.budget)"></td>
+                      <td class="r mono" style="font-weight:600" x-text="money(b.spent)"></td>
+                      <td>
+                        <div class="flex items-center gap-2">
+                          <div class="progress" style="flex:1"><b :style="`width:${Math.min(100,Math.round(b.spent/b.budget*100))}%; background:var(${b.spent/b.budget>0.9?'--neg':(b.spent/b.budget>0.75?'--warn':'--accent')})`"></b></div>
+                          <span class="mono" style="font-size:11px; color:var(--ink-2); width:34px; text-align:right" x-text="Math.round(b.spent/b.budget*100)+'%'"></span>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== SETTINGS ========== -->
+      <div x-show="page==='settings'" x-cloak style="max-width:720px">
+        <div class="card p-5 mb-4">
+          <div class="lbl mb-4">Account</div>
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-full flex items-center justify-center num flex-none" style="background:var(--accent-soft); color:var(--accent-ink); font-size:19px; border:1px solid var(--line-2)" x-text="initials"></div>
+            <div class="min-w-0">
+              <template x-if="!editName"><div class="ie" style="font-size:20px; font-weight:800; letter-spacing:-.01em" @click="editName=true; $nextTick(()=>$refs.nm.focus())" x-text="name"></div></template>
+              <template x-if="editName"><div class="flex items-center gap-2"><input x-ref="nm" class="field" style="width:220px" x-model="name" @keydown.enter="editName=false; ping('Name updated','check')" @keydown.escape="editName=false" /><button class="btn btn-primary btn-sm" @click="editName=false; ping('Name updated','check')">Save</button></div></template>
+              <div class="mono" style="font-size:12px; color:var(--ink-2)">Finance approver · Org admin</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="flex items-center justify-between p-4 gap-4" style="border-bottom:1px solid var(--line)"><div><div style="font-weight:600">Table density</div><div style="font-size:13px; color:var(--ink-2)">Comfortable spacing or tighter rows.</div></div>
+            <div class="seg"><button :class="!dense&&'on'" @click="dense=false">Comfortable</button><button :class="dense&&'on'" @click="dense=true">Compact</button></div></div>
+          <div class="flex items-center justify-between p-4 gap-4" style="border-bottom:1px solid var(--line)"><div><div style="font-weight:600">Default account</div><div style="font-size:13px; color:var(--ink-2)">Pre-selected when you start a new entry.</div></div>
+            <select class="isel" style="width:210px" x-model="entry.account"><template x-for="a in accounts" :key="a"><option x-text="a"></option></template></select></div>
+          <div class="flex items-center justify-between p-4 gap-4" style="border-bottom:1px solid var(--line)"><div><div style="font-weight:600">Weekly spend digest</div><div style="font-size:13px; color:var(--ink-2)">Email summary every Monday morning.</div></div>
+            <div class="tg on" x-data="{on:true}" :class="on&&'on'" @click="on=!on"><b></b></div></div>
+          <div class="flex items-center justify-between p-4 gap-4" style="border-bottom:1px solid var(--line)"><div><div style="font-weight:600">Auto-post on approval</div><div style="font-size:13px; color:var(--ink-2)">Approved records post to the ledger automatically.</div></div>
+            <div class="tg" x-data="{on:false}" :class="on&&'on'" @click="on=!on"><b></b></div></div>
+          <div class="flex items-center justify-between p-4 gap-4"><div><div style="font-weight:600">Preview the modal</div><div style="font-size:13px; color:var(--ink-2)">Open the quick-entry dialog pattern.</div></div>
+            <button class="btn btn-outline btn-sm" @click="openNew()">Open modal</button></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============ MOBILE NAV DRAWER (left) ============ -->
+<template x-if="navOpen">
+  <div>
+    <div class="scrim lg:hidden" @click="navOpen=false" x-transition.opacity></div>
+    <div class="ndrawer lg:hidden" x-transition:enter="transition duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0">
+      <div class="flex items-center gap-3 h-[66px] flex-none px-4" style="border-bottom:1px solid var(--line)">
+        <div class="w-9 h-9 rounded-[10px] flex items-center justify-center num" style="background:var(--accent); color:#fff; font-size:18px">V</div>
+        <div><div style="font-size:16px; font-weight:800; letter-spacing:-.02em; line-height:1.1">Vellum</div><div class="lbl" style="font-size:9.5px">Spend &amp; Records</div></div>
+        <div class="iconbtn ml-auto" @click="navOpen=false"><i data-lucide="x" class="w-5 h-5"></i></div>
+      </div>
+      <nav class="flex-1 overflow-y-auto p-3">
+        <div class="lbl px-3 mb-2">Workspace</div>
+        <div class="flex flex-col gap-1">
+          <template x-for="n in nav" :key="'m'+n.id">
+            <div class="nav-item" :class="page===n.id&&'on'" @click="go(n.id); navOpen=false"><i :data-lucide="n.icon" class="w-[19px] h-[19px]"></i><span x-text="n.label"></span>
+              <span x-show="n.id==='review' && reviewCount" class="ml-auto chip" style="height:20px; padding:0 8px; color:var(--accent-ink); background:var(--accent-soft)" x-text="reviewCount"></span></div>
+          </template>
+        </div>
+      </nav>
+      <div class="p-3 flex items-center gap-3" style="border-top:1px solid var(--line)">
+        <div class="w-9 h-9 rounded-full flex items-center justify-center num" style="background:var(--accent-soft); color:var(--accent-ink); font-size:13px; border:1px solid var(--line-2)" x-text="initials"></div>
+        <div class="min-w-0"><div style="font-weight:600; font-size:13px" x-text="name"></div><div class="mono" style="font-size:11px; color:var(--ink-2)">Finance approver</div></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ EDIT DRAWER (right) ============ -->
+<template x-if="drawer">
+  <div @keydown.escape.window="drawer=null">
+    <div class="scrim" @click="drawer=null" x-transition.opacity></div>
+    <div class="drawer" x-transition:enter="transition duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0">
+      <div class="flex items-center gap-3 h-[66px] flex-none px-5" style="border-bottom:1px solid var(--line)">
+        <div><div class="lbl" x-text="drawer.id"></div><div style="font-size:17px; font-weight:800; letter-spacing:-.01em">Edit record</div></div>
+        <div class="iconbtn ml-auto" @click="drawer=null"><i data-lucide="x" class="w-5 h-5"></i></div>
+      </div>
+      <div class="flex-1 overflow-y-auto p-5">
+        <label class="flabel">Vendor</label>
+        <input class="field mb-4" x-model="drawer.vendor" />
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div><label class="flabel">Category</label><select class="isel" x-model="drawer.cat"><template x-for="c in cats" :key="c"><option :selected="c===drawer.cat" x-text="c"></option></template></select></div>
+          <div><label class="flabel">Department</label><select class="isel" x-model="drawer.dept"><template x-for="d in depts" :key="d"><option :selected="d===drawer.dept" x-text="d"></option></template></select></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div><label class="flabel">Amount</label><div class="relative"><span class="mono" style="position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--ink-3)">$</span><input class="field mono" style="padding-left:22px; text-align:right" type="number" step="0.01" x-model.number="drawer.amount" /></div></div>
+          <div><label class="flabel">Date</label><input class="field mono" x-model="drawer.date" /></div>
+        </div>
+        <label class="flabel">Payment method</label>
+        <div class="seg mb-4" style="width:100%"><template x-for="m in ['Card','ACH','Wire','Check']" :key="m"><button :class="drawer.method===m&&'on'" @click="drawer.method=m" style="flex:1" x-text="m"></button></template></div>
+        <label class="flabel">Status</label>
+        <select class="isel mb-4" x-model="drawer.status"><template x-for="s in statusOrder" :key="s"><option :value="s" :selected="s===drawer.status" x-text="statusMeta[s].label"></option></template></select>
+        <label class="flabel">Memo</label>
+        <textarea class="field" rows="4" placeholder="Add context…" x-model="drawer.memo"></textarea>
+      </div>
+      <div class="flex-none p-4 flex gap-3" style="border-top:1px solid var(--line)">
+        <button class="btn btn-outline" style="flex:1" @click="drawer=null">Cancel</button>
+        <button class="btn btn-primary" style="flex:2" @click="ping('Saved '+drawer.id,'check'); drawer=null"><i data-lucide="check" class="w-4 h-4"></i> Save changes</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ MODAL (quick new entry) ============ -->
+<template x-if="modal">
+  <div>
+    <div class="scrim" @click="modal=false" x-transition.opacity></div>
+    <div class="modal" @keydown.escape.window="modal=false">
+      <div class="modal-card" x-transition:enter="transition duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+        <div class="flex items-center gap-3 p-5 pb-3"><div><div class="lbl">Quick capture</div><div style="font-size:19px; font-weight:800; letter-spacing:-.01em">New entry</div></div><div class="iconbtn ml-auto" @click="modal=false"><i data-lucide="x" class="w-5 h-5"></i></div></div>
+        <div class="px-5 pb-2 overflow-y-auto">
+          <label class="flabel">Vendor</label>
+          <input class="field mb-3" x-model="nw.vendor" placeholder="e.g. Figma" />
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div><label class="flabel">Category</label><select class="isel" x-model="nw.cat"><template x-for="c in cats" :key="c"><option x-text="c"></option></template></select></div>
+            <div><label class="flabel">Department</label><select class="isel" x-model="nw.dept"><template x-for="d in depts" :key="d"><option x-text="d"></option></template></select></div>
+          </div>
+          <label class="flabel">Amount</label>
+          <div class="relative mb-1"><span class="num" style="position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--ink-3); font-size:16px">$</span><input class="field num" style="text-align:right; font-size:16px" type="number" step="0.01" min="0" x-model.number="nw.amount" placeholder="0.00" /></div>
+        </div>
+        <div class="flex gap-3 p-5 pt-3">
+          <button class="btn btn-outline" style="flex:1" @click="modal=false">Cancel</button>
+          <button class="btn btn-primary" style="flex:2" @click="createQuick()"><i data-lucide="plus" class="w-4 h-4"></i> Create record</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ TOAST ============ -->
+<div x-show="toast" x-cloak x-transition class="fixed left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 bottom-6 z-[70] flex items-center gap-3 px-4 py-3" style="background:var(--ink); color:#fff; border-radius:12px; box-shadow:var(--shadow-lg)">
+  <span class="w-6 h-6 rounded-full flex items-center justify-center flex-none" style="background:rgba(255,255,255,.14)"><i :data-lucide="toastIcon" class="w-4 h-4" style="color:#C9C5F5"></i></span>
+  <span style="font-weight:600" x-text="toastMsg"></span>
+</div>
+
+<script>
+  function vellum(){
+    return {
+      page:'overview', collapsed:false, navOpen:false, dense:false,
+      drawer:null, modal:false, toast:false, toastMsg:'', toastIcon:'check',
+      filter:'All', search:'', editName:false, name:'Priya Raman', _n:0,
+      nw:{vendor:'', cat:'Software', dept:'Engineering', amount:null},
+      entry:{ vendor:'', cat:'Software', dept:'Engineering', date:'Jun 30, 2026', method:'Card', amount:0, memo:'', billable:false, reimb:false, account:'Operating · ****4021', tags:['Recurring'] },
+      splits:[{cat:'Software', amount:0}],
+      tagOptions:['Recurring','Prepaid','Priority','Prorated','Capex'],
+      cats:['Software','Travel','Marketing','Facilities','Equipment','Professional services','Utilities'],
+      depts:['Engineering','Sales','Marketing','Operations','Finance','People'],
+      methods:['Card','ACH','Wire','Check'],
+      accounts:['Operating · ****4021','Payroll · ****7788','Reserve · ****1330'],
+      nav:[
+        {id:'overview',  label:'Overview',   icon:'layout-dashboard'},
+        {id:'records',   label:'Records',    icon:'table-2'},
+        {id:'entry',     label:'New Entry',  icon:'square-pen'},
+        {id:'review',    label:'Review',     icon:'inbox'},
+        {id:'analytics', label:'Analytics',  icon:'chart-line'},
+        {id:'settings',  label:'Settings',   icon:'settings'},
+      ],
+      meta:{
+        overview:{kicker:'Fiscal Q2 · Jun 2026', title:'Spend overview'},
+        records:{kicker:'Ledger', title:'Records'},
+        entry:{kicker:'Data entry', title:'New entry'},
+        review:{kicker:'Approvals', title:'Review queue'},
+        analytics:{kicker:'Reporting', title:'Analytics'},
+        settings:{kicker:'Priya Raman', title:'Settings'},
+      },
+      statusOrder:['draft','review','approved','posted','flagged'],
+      statusMeta:{
+        draft:{label:'Draft', v:'--s-draft'}, review:{label:'In review', v:'--s-review'},
+        approved:{label:'Approved', v:'--s-approved'}, posted:{label:'Posted', v:'--s-posted'}, flagged:{label:'Flagged', v:'--s-flagged'},
+      },
+      kpis:[
+        {l:'Spend · MTD', v:'$68,420', delta:'+8.2% vs May', tone:'neutral', sub:'$63,240 last month', spark:[4,6,5,7,6,8,7,9,8,10,9,11]},
+        {l:'Pending approval', v:'$10,714', delta:'3 records', tone:'warn', sub:'oldest is 2 days old', spark:[2,3,2,4,3,5,4,3,5,4,6,5]},
+        {l:'Avg approval time', v:'4.2h', delta:'−0.6h', tone:'pos', sub:'target under 8h', spark:[9,8,8,7,7,6,6,5,5,4,4,4]},
+        {l:'Budget used', v:'71%', bar:71, sub:'$68.4k of $96.0k'},
+      ],
+      records:[
+        {id:'EXP-2122', vendor:'Adobe', cat:'Software', dept:'Marketing', amount:1799, date:'Jun 21', method:'Card', status:'draft', tags:['Recurring'], memo:'Creative Cloud teams renewal.'},
+        {id:'EXP-2119', vendor:'Uber', cat:'Travel', dept:'Sales', amount:214.30, date:'Jun 22', method:'Card', status:'review', tags:['Reimbursable'], memo:'Client visit — downtown offices.'},
+        {id:'EXP-2116', vendor:'Rippling', cat:'Software', dept:'People', amount:3960, date:'Jun 22', method:'ACH', status:'posted', tags:['Recurring']},
+        {id:'EXP-2113', vendor:'Staples', cat:'Equipment', dept:'Operations', amount:318.70, date:'Jun 23', method:'Card', status:'approved'},
+        {id:'EXP-2110', vendor:'LinkedIn', cat:'Marketing', dept:'People', amount:2400, date:'Jun 24', method:'Card', status:'draft', memo:'Recruiter seats — Q3.'},
+        {id:'EXP-2106', vendor:'Hilton', cat:'Travel', dept:'Sales', amount:1290, date:'Jun 24', method:'Card', status:'flagged', tags:['Reimbursable'], memo:'Missing itemized receipt — needs attachment.'},
+        {id:'EXP-2103', vendor:'Notion', cat:'Software', dept:'Operations', amount:480, date:'Jun 25', method:'Card', status:'posted'},
+        {id:'EXP-2101', vendor:'Amazon Web Services', cat:'Software', dept:'Engineering', amount:8740.15, date:'Jun 26', method:'ACH', status:'approved', tags:['Prorated'], memo:'June infrastructure — us-east-1.'},
+        {id:'EXP-2098', vendor:'WeWork', cat:'Facilities', dept:'Operations', amount:3100, date:'Jun 26', method:'ACH', status:'review', memo:'Shared floor — 12 desks.'},
+        {id:'EXP-2094', vendor:'Google Ads', cat:'Marketing', dept:'Marketing', amount:5200, date:'Jun 27', method:'ACH', status:'review', tags:['Priority'], memo:'Q2 demand-gen push.'},
+        {id:'EXP-2091', vendor:'Delta Air Lines', cat:'Travel', dept:'Sales', amount:862.40, date:'Jun 27', method:'Card', status:'approved', tags:['Reimbursable']},
+        {id:'EXP-2087', vendor:'Figma', cat:'Software', dept:'Engineering', amount:1440, date:'Jun 28', method:'Card', status:'posted', tags:['Recurring'], memo:'Org seats — annual.'},
+      ],
+      budgets:[
+        {dept:'Engineering', budget:24000, spent:0},
+        {dept:'Sales', budget:14000, spent:0},
+        {dept:'Marketing', budget:20000, spent:0},
+        {dept:'Operations', budget:12000, spent:0},
+        {dept:'People', budget:9000, spent:0},
+        {dept:'Finance', budget:6000, spent:0},
+      ],
+
+      get initials(){ return this.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); },
+      get reviewQueue(){ return this.records.filter(r=>r.status==='review'); },
+      get reviewCount(){ return this.reviewQueue.length; },
+      get reviewTotal(){ return this.reviewQueue.reduce((a,r)=>a+r.amount,0); },
+      get splitTotal(){ return this.splits.reduce((a,s)=>a+(Number(s.amount)||0),0); },
+      get filteredRecords(){ const q=this.search.trim().toLowerCase();
+        return this.records.filter(r=>(this.filter==='All'||r.status===this.filter) && (!q || (r.vendor+r.cat+r.dept+r.id).toLowerCase().includes(q))); },
+      get filteredTotal(){ return this.filteredRecords.reduce((a,r)=>a+r.amount,0); },
+      get topVendors(){
+        const m={}; this.records.forEach(r=>{ if(!m[r.vendor]) m[r.vendor]={name:r.vendor, cat:r.cat, sum:0, n:0}; m[r.vendor].sum+=r.amount; m[r.vendor].n++; });
+        const tot=this.records.reduce((a,r)=>a+r.amount,0);
+        return Object.values(m).sort((a,b)=>b.sum-a.sum).slice(0,6).map(v=>({...v, share:Math.round(v.sum/tot*100)}));
+      },
+
+      money(n){ return '$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2}); },
+      chipStyle(s){ const v=this.statusMeta[s].v; return `color:var(${v}); background:color-mix(in srgb, var(${v}) 13%, transparent)`; },
+      toggleTag(t){ const i=this.entry.tags.indexOf(t); i>=0 ? this.entry.tags.splice(i,1) : this.entry.tags.push(t); },
+
+      computeSpent(){ this.budgets.forEach(b=>{ b.spent = this.records.filter(r=>r.dept===b.dept).reduce((a,r)=>a+r.amount,0); }); },
+      boot(){ this.computeSpent(); this.$nextTick(()=>{ this.icons(); this.renderCharts(); }); window.addEventListener('resize', ()=>{ clearTimeout(this._r); this._r=setTimeout(()=>this.renderCharts(), 200); }); },
+      icons(){ try{ if(window.lucide) lucide.createIcons(); }catch(e){} },
+      go(p){ this.page=p; this.navOpen=false; this.$nextTick(()=>{ this.icons(); if(p==='overview'||p==='analytics') this.renderCharts(); }); },
+      openEdit(r){ this.drawer=r; this.$nextTick(()=>this.icons()); },
+      openNew(){ this.modal=true; this.nw={vendor:'', cat:'Software', dept:'Engineering', amount:null}; this.$nextTick(()=>this.icons()); },
+      createQuick(){ this._n++; const id='EXP-'+(2123+this._n);
+        this.records.unshift({id, vendor:this.nw.vendor||'New vendor', cat:this.nw.cat, dept:this.nw.dept, amount:Number(this.nw.amount)||0, date:'Jun 30', method:'Card', status:'draft', tags:[]});
+        this.modal=false; this.go('records'); this.ping('Created '+id,'check'); },
+      submitEntry(mode){
+        this._n++; const id='EXP-'+(2123+this._n);
+        this.records.unshift({ id, vendor:this.entry.vendor||'New vendor', cat:this.entry.cat, dept:this.entry.dept, amount:Number(this.entry.amount)||0, date:'Jun 30', method:this.entry.method, status:mode, tags:[...this.entry.tags], memo:this.entry.memo });
+        this.entry={ vendor:'', cat:'Software', dept:'Engineering', date:'Jun 30, 2026', method:'Card', amount:0, memo:'', billable:false, reimb:false, account:this.entry.account, tags:['Recurring'] };
+        this.splits=[{cat:'Software', amount:0}];
+        this.ping(mode==='review'?('Submitted '+id+' for review'):('Saved '+id+' as draft'), mode==='review'?'send-horizontal':'save');
+        this.go(mode==='review'?'review':'records');
+      },
+      decide(r, status){ r.status=status; this.ping((status==='approved'?'Approved ':'Flagged ')+r.vendor, status==='approved'?'check':'flag'); this.$nextTick(()=>this.icons()); },
+      ping(msg, icon){ this.toastMsg=msg; this.toastIcon=icon||'check'; this.toast=true; this.$nextTick(()=>this.icons()); clearTimeout(this._t); this._t=setTimeout(()=>this.toast=false, 2800); },
+
+      renderCharts(){
+        if(!window.Chart){ if((this._cw=(this._cw||0)+1)<40) setTimeout(()=>this.renderCharts(), 120); return; }
+        const css=getComputedStyle(document.documentElement); const g=v=>css.getPropertyValue(v).trim();
+        const ink3=g('--ink-3'), line=g('--line'), accent=g('--accent'), surface=g('--surface');
+        Chart.defaults.font.family="'JetBrains Mono', monospace"; Chart.defaults.font.size=10;
+        if(!window._c) window._c={};
+        const draw=(id,cfg)=>{ try{ const el=document.getElementById(id); if(!el||el.offsetParent===null) return; if(window._c[id]) window._c[id].destroy(); window._c[id]=new Chart(el.getContext('2d'), cfg); }catch(err){ window.__chartErr=(window.__chartErr||'')+' ['+id+'] '+(err&&err.message||err); } };
+        const money=v=>'$'+Number(v).toLocaleString('en-US');
+        const axes=(fmtMoney)=>({ x:{grid:{display:false}, border:{color:line}, ticks:{color:ink3}}, y:{grid:{color:line}, border:{display:false}, ticks:{color:ink3, callback:v=> fmtMoney? (v>=1000? '$'+(v/1000)+'k':'$'+v) : v}} });
+        const tip={ backgroundColor:g('--ink'), padding:10, cornerRadius:8, titleFont:{family:"'Hanken Grotesk'", weight:'700'}, bodyFont:{family:"'JetBrains Mono'"}, displayColors:false };
+
+        // ---- OVERVIEW ----
+        const wk=['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12'];
+        const spendEl=document.getElementById('cSpend'); let grad=null;
+        if(spendEl){ const gg=spendEl.getContext('2d').createLinearGradient(0,0,0,240); gg.addColorStop(0, accent+'2E'); gg.addColorStop(1, accent+'00'); grad=gg; }
+        draw('cSpend',{ type:'line', data:{labels:wk, datasets:[{data:[9800,11200,10400,12600,11800,13900,12800,15100,13600,16800,15200,17400], borderColor:accent, borderWidth:2.5, backgroundColor:grad, fill:true, tension:.4, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:accent, pointHoverBorderColor:surface, pointHoverBorderWidth:2}]},
+          options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{...tip, callbacks:{label:c=>' '+money(c.parsed.y)}}}, scales:axes(true) } });
+
+        const catMap={}; this.records.forEach(r=>catMap[r.cat]=(catMap[r.cat]||0)+r.amount);
+        const catE=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+        draw('cCat',{ type:'bar', data:{labels:catE.map(e=>e[0]), datasets:[{data:catE.map(e=>e[1]), backgroundColor:accent, borderRadius:6, barThickness:16, maxBarThickness:20}]},
+          options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{...tip, callbacks:{label:c=>' '+money(c.parsed.x)}}},
+            scales:{ x:{grid:{color:line}, border:{display:false}, ticks:{color:ink3, callback:v=>'$'+(v/1000)+'k'}}, y:{grid:{display:false}, border:{color:line}, ticks:{color:g('--ink-2'), font:{family:"'Hanken Grotesk'", size:11, weight:'600'}}} } } });
+
+        const sc=this.statusOrder.map(s=>this.records.filter(r=>r.status===s).length);
+        const scol=this.statusOrder.map(s=>g(this.statusMeta[s].v));
+        draw('cStatus',{ type:'doughnut', data:{labels:this.statusOrder.map(s=>this.statusMeta[s].label), datasets:[{data:sc, backgroundColor:scol, borderColor:surface, borderWidth:3, hoverOffset:6}]},
+          options:{ responsive:true, maintainAspectRatio:false, cutout:'68%', plugins:{legend:{display:false}, tooltip:{...tip, callbacks:{label:c=>' '+c.label+': '+c.parsed}}} } });
+
+        // ---- ANALYTICS ----
+        const mo=['Jan','Feb','Mar','Apr','May','Jun'];
+        draw('cBva',{ type:'line', data:{labels:mo, datasets:[
+            {label:'Budget', data:[16000,16000,16000,16000,16000,16000], borderColor:ink3, borderWidth:1.5, borderDash:[5,4], pointRadius:0, tension:0, fill:false},
+            {label:'Actual', data:[12400,13800,14600,15200,15600,17400], borderColor:accent, borderWidth:2.5, backgroundColor:'transparent', pointRadius:3, pointBackgroundColor:accent, tension:.35, fill:false} ]},
+          options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:true, position:'bottom', labels:{color:g('--ink-2'), boxWidth:10, boxHeight:10, usePointStyle:true, font:{family:"'Hanken Grotesk'", size:12}}}, tooltip:{...tip, callbacks:{label:c=>' '+c.dataset.label+': '+money(c.parsed.y)}}}, scales:axes(true) } });
+
+        const deptMap={}; this.records.forEach(r=>deptMap[r.dept]=(deptMap[r.dept]||0)+r.amount);
+        const deptE=Object.entries(deptMap).sort((a,b)=>b[1]-a[1]);
+        draw('cDept',{ type:'bar', data:{labels:deptE.map(e=>e[0]), datasets:[{data:deptE.map(e=>e[1]), backgroundColor:accent, borderRadius:6, barThickness:26, maxBarThickness:34}]},
+          options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{...tip, callbacks:{label:c=>' '+money(c.parsed.y)}}}, scales:axes(true) } });
+
+        const methMap={}; this.records.forEach(r=>methMap[r.method]=(methMap[r.method]||0)+r.amount);
+        const methE=Object.entries(methMap);
+        const methCols=[accent, g('--s-review'), g('--pos'), g('--warn')];
+        draw('cMethod',{ type:'doughnut', data:{labels:methE.map(e=>e[0]), datasets:[{data:methE.map(e=>e[1]), backgroundColor:methCols, borderColor:surface, borderWidth:3, hoverOffset:6}]},
+          options:{ responsive:true, maintainAspectRatio:false, cutout:'62%', plugins:{legend:{display:true, position:'right', labels:{color:g('--ink-2'), boxWidth:10, boxHeight:10, usePointStyle:true, font:{family:"'Hanken Grotesk'", size:12}}}, tooltip:{...tip, callbacks:{label:c=>' '+c.label+': '+money(c.parsed)}}} } });
+
+        // budget utilization spent column (derived)
+        this.budgets.forEach(b=>{ b.spent = this.records.filter(r=>r.dept===b.dept).reduce((a,r)=>a+r.amount,0); });
+      },
+    };
+  }
+</script>
+</body>
+</html>
