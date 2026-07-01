@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#FFFFFF" />
+<title>Prism — Campaign spectrum</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23DB2777'/%3E%3Cstop offset='.35' stop-color='%237C3AED'/%3E%3Cstop offset='.6' stop-color='%232563EB'/%3E%3Cstop offset='.8' stop-color='%230891B2'/%3E%3Cstop offset='1' stop-color='%23F59E0B'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3C/svg%3E" />
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Fragment+Mono:ital@0;1&display=swap" rel="stylesheet" />
+
+<!-- Tailwind Play -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
+          mono: ['"Fragment Mono"', 'ui-monospace', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+
+<!-- Alpine, Lucide, Chart.js -->
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+  /* ===================== TOKENS — LIGHT (Daylight edition) ===================== */
+  :root {
+    color-scheme: light;
+    --canvas: #FBFAFC;
+    --surface: #FFFFFF;
+    --surface-2: #F7F5FA;
+    --line: #ECE8F0;      /* card hairline */
+    --line-2: #DAD3E2;    /* structural separator — chrome edges */
+    --ink: #1B1524;
+    --ink-2: #5B5268;
+    --ink-3: #948BA3;
+    --accent: #DB2777;        /* magenta — brand + primary */
+    --accent-ink: #BE1B63;    /* darker magenta for text on light */
+    --accent-soft: #FBE3F0;   /* magenta tint for active surfaces */
+
+    /* The five-hue spectrum — CHANNEL identity (signature) */
+    --sp-1: #DB2777;   /* Search   — magenta */
+    --sp-2: #7C3AED;   /* Display  — violet */
+    --sp-3: #2563EB;   /* Video    — blue */
+    --sp-4: #0891B2;   /* Paid Social — cyan */
+    --sp-5: #E08600;   /* Email    — amber (darkened for AA as graphic) */
+
+    /* Semantic figures */
+    --pos: #16A34A;
+    --warn: #B45309;
+    --neg: #E11D48;
+
+    --radius: 14px;
+    --radius-sm: 10px;
+    --radius-xs: 8px;
+
+    --shadow-sm: 0 1px 2px rgba(27,21,36,0.04), 0 1px 3px rgba(27,21,36,0.06);
+    --shadow-md: 0 4px 16px rgba(27,21,36,0.06), 0 2px 6px rgba(27,21,36,0.05);
+    --shadow-lg: 0 18px 48px rgba(27,21,36,0.16);
+
+    --accent-glow: rgba(219,39,119,0.30);
+  }
+
+  /* ===================== TOKENS — DARK (Nightshift edition) ===================== */
+  html.dark {
+    color-scheme: dark;
+    --canvas: #120E18;        /* deep plum-ink, not pure black */
+    --surface: #1B1526;
+    --surface-2: #241C32;
+    --line: #2E2740;
+    --line-2: #3E3452;
+    --ink: #F2ECF8;
+    --ink-2: #B7ABC7;
+    --ink-3: #857A96;
+    --accent: #F0559E;        /* brighter magenta for dark */
+    --accent-ink: #F98AC1;    /* magenta text on dark */
+    --accent-soft: #37172A;   /* magenta tint surface */
+
+    --sp-1: #F472B6;   /* Search   */
+    --sp-2: #A78BFA;   /* Display  */
+    --sp-3: #60A5FA;   /* Video    */
+    --sp-4: #22C3DD;   /* Paid Social */
+    --sp-5: #F5B547;   /* Email    */
+
+    --pos: #4ADE80;
+    --warn: #FBBF24;
+    --neg: #FB7185;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.30), 0 1px 3px rgba(0,0,0,0.35);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.36), 0 2px 6px rgba(0,0,0,0.30);
+    --shadow-lg: 0 20px 52px rgba(0,0,0,0.55);
+
+    --accent-glow: rgba(240,85,158,0.34);
+  }
+
+  * { -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--canvas); color: var(--ink); }
+  body { font-family: '"Bricolage Grotesque"', system-ui, sans-serif; }
+
+  [x-cloak] { display: none !important; }
+
+  .tnum { font-feature-settings: "tnum" 1; font-variant-numeric: tabular-nums; }
+  .mono { font-family: '"Fragment Mono"', ui-monospace, monospace; }
+
+  ::-webkit-scrollbar { height: 10px; width: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 999px; border: 2px solid var(--surface); }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  button:focus:not(:focus-visible), a:focus:not(:focus-visible),
+  select:focus:not(:focus-visible), input:focus:not(:focus-visible) { outline: none; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* ---- top-nav masthead ---- */
+  .topnav { display: flex; align-items: center; gap: 2px; }
+  .topnav a {
+    position: relative; display: inline-flex; align-items: center;
+    padding: 9px 14px; border-radius: var(--radius-sm);
+    font-size: 14px; font-weight: 600; color: var(--ink-2);
+    transition: color .15s ease, background .15s ease; min-height: 40px;
+  }
+  .topnav a:hover { color: var(--ink); background: var(--surface-2); }
+  .topnav a.active { color: var(--accent-ink); }
+  .topnav a.active::after {
+    content: ""; position: absolute; left: 14px; right: 14px; bottom: -1px;
+    height: 3px; border-radius: 3px 3px 0 0; background: var(--accent);
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: var(--radius-sm);
+    color: var(--ink-2); font-weight: 500; font-size: 14px;
+    transition: background .15s ease, color .15s ease;
+    min-height: 44px;
+  }
+  .nav-item:hover { background: var(--surface-2); color: var(--ink); }
+  .nav-item.active { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+  .nav-item.active svg { color: var(--accent); }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; line-height: 1;
+    border: 1px solid var(--line-2); color: var(--ink-2);
+    background: var(--surface); cursor: pointer; min-height: 36px;
+    transition: all .15s ease;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent-ink); }
+  .chip.on {
+    background: var(--accent); border-color: var(--accent);
+    color: #fff; box-shadow: 0 2px 8px var(--accent-glow);
+  }
+
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .seg button {
+    padding: 7px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    color: var(--ink-2); transition: all .15s ease; min-height: 38px;
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button.on { background: var(--surface); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
+
+  .stat-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  }
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 700;
+    line-height: 1; white-space: nowrap;
+  }
+  .status-badge .dot { width: 7px; height: 7px; border-radius: 999px; }
+
+  table.grid th, table.grid td { padding: 14px 16px; }
+  table.grid thead th {
+    font-family: '"Fragment Mono"', monospace; font-weight: 400;
+    font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ink-3); text-align: left; border-bottom: 1px solid var(--line-2);
+    white-space: nowrap;
+  }
+  table.grid thead th.sortable { cursor: pointer; user-select: none; }
+  table.grid thead th.sortable:hover { color: var(--accent-ink); }
+  table.grid tbody tr { border-bottom: 1px solid var(--line); transition: background .12s ease; }
+  table.grid tbody tr:nth-child(even) { background: var(--surface-2); }
+  table.grid tbody tr:hover { background: var(--accent-soft); }
+  table.grid tbody tr:last-child { border-bottom: none; }
+
+  .status-sel {
+    appearance: none; -webkit-appearance: none;
+    border: 1px solid transparent; border-radius: 999px;
+    padding: 6px 28px 6px 12px; font-size: 12px; font-weight: 700;
+    cursor: pointer; min-height: 34px;
+    background-repeat: no-repeat; background-position: right 9px center;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23948BA3' stroke-width='2.5' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    transition: filter .15s ease;
+  }
+  .status-sel:hover { filter: brightness(0.97); }
+
+  .field {
+    width: 100%; background: var(--surface-2);
+    border: 1px solid var(--line-2); border-radius: var(--radius-sm);
+    padding: 10px 12px; font-size: 14px; color: var(--ink);
+    min-height: 44px; transition: border-color .15s ease, background .15s ease;
+  }
+  .field::placeholder { color: var(--ink-3); }
+  .field:focus { background: var(--surface); border-color: var(--accent); outline: none; }
+  select.field { appearance: none; -webkit-appearance: none;
+    background-repeat: no-repeat; background-position: right 12px center;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23948BA3' stroke-width='2.5' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    padding-right: 36px; }
+  textarea.field { min-height: 84px; resize: vertical; }
+
+  .lbl { font-size: 12px; font-weight: 600; color: var(--ink-2); letter-spacing: .01em; }
+
+  /* toggle switch */
+  .toggle {
+    position: relative; width: 46px; height: 28px; flex: none;
+    border-radius: 999px; background: var(--line-2); cursor: pointer;
+    transition: background .18s ease; border: none;
+  }
+  .toggle b {
+    position: absolute; top: 3px; left: 3px; width: 22px; height: 22px;
+    border-radius: 999px; background: #fff; box-shadow: var(--shadow-sm);
+    transition: transform .18s cubic-bezier(.4,0,.2,1);
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle.on b { transform: translateX(18px); }
+
+  /* stepper */
+  .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line-2); border-radius: 999px; background: var(--surface-2); }
+  .stepper button {
+    width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center;
+    color: var(--ink-2); transition: color .15s ease, background .15s ease; border-radius: 999px;
+  }
+  .stepper button:hover { color: var(--accent-ink); background: var(--accent-soft); }
+  .stepper .val { min-width: 56px; text-align: center; font-weight: 700; }
+
+  .drawer-panel { transition: transform .25s cubic-bezier(.4,0,.2,1); }
+
+  .toast-enter { animation: toastIn .22s cubic-bezier(.2,.8,.2,1); }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+
+  .btn-primary {
+    background: var(--accent); color: #fff; font-weight: 600; font-size: 14px;
+    padding: 10px 18px; border-radius: var(--radius-sm); min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 2px 10px var(--accent-glow);
+    transition: transform .12s ease, box-shadow .15s ease, filter .15s ease;
+  }
+  .btn-primary:hover { filter: brightness(1.05); box-shadow: 0 4px 16px var(--accent-glow); }
+  .btn-primary:active { transform: translateY(1px); }
+
+  .btn-outline {
+    background: var(--surface); color: var(--ink); font-weight: 600; font-size: 14px;
+    padding: 10px 18px; border-radius: var(--radius-sm); min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border: 1px solid var(--line-2); transition: background .15s ease, border-color .15s ease;
+  }
+  .btn-outline:hover { background: var(--surface-2); border-color: var(--ink-3); }
+
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: var(--radius-sm);
+    color: var(--ink-2); transition: background .15s ease, color .15s ease;
+  }
+  .icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+
+  .ie {
+    border: 1px solid transparent; border-radius: 8px;
+    padding: 2px 6px; margin: -2px -6px; cursor: text; transition: background .12s ease;
+  }
+  .ie:hover { background: var(--surface-2); }
+
+  .brand-dot {
+    width: 34px; height: 34px; border-radius: 10px; flex: none;
+    background: conic-gradient(from 210deg, #DB2777, #7C3AED, #2563EB, #0891B2, #F59E0B, #DB2777);
+    box-shadow: 0 3px 10px rgba(124,58,237,.28);
+  }
+
+  .spectrum-rule {
+    height: 4px; width: 100%;
+    background: linear-gradient(90deg, var(--sp-1), var(--sp-2), var(--sp-3), var(--sp-4), var(--sp-5));
+  }
+
+  .hero-num {
+    font-weight: 800; letter-spacing: -0.03em; line-height: 0.92;
+    font-size: clamp(52px, 7.5vw, 88px);
+  }
+  .stat-block { border-left: 3px solid var(--line-2); padding-left: 14px; }
+
+  .kpi-figure { font-weight: 800; letter-spacing: -0.02em; font-size: 34px; line-height: 1; }
+  .bar-track { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+</style>
+</head>
+
+<body x-data="prism()" x-init="boot()" x-cloak class="min-h-screen">
+
+  <!-- ===== Mobile nav drawer ===== -->
+  <div x-show="mobileNav" class="fixed inset-0 z-50 lg:hidden" x-cloak>
+    <div class="absolute inset-0 bg-black/40" @click="mobileNav=false" x-show="mobileNav" x-transition.opacity></div>
+    <aside class="drawer-panel absolute left-0 top-0 h-full w-[280px] max-w-[85%] bg-[var(--surface)] flex flex-col"
+           style="border-right:1px solid var(--line-2)"
+           :class="mobileNav ? 'translate-x-0' : '-translate-x-full'">
+      <div class="flex items-center gap-3 px-5 h-16" style="border-bottom:1px solid var(--line-2)">
+        <div class="brand-dot"></div>
+        <span class="text-lg font-extrabold tracking-tight">Prism</span>
+        <button class="icon-btn ml-auto" @click="mobileNav=false" aria-label="Close menu"><i data-lucide="x"></i></button>
+      </div>
+      <nav class="p-3 flex-1 overflow-y-auto space-y-1" aria-label="Mobile">
+        <template x-for="item in nav" :key="item.id">
+          <a href="#" @click.prevent="go(item.id)" class="nav-item" :class="page===item.id && 'active'">
+            <i :data-lucide="item.icon" class="w-[18px] h-[18px]"></i><span x-text="item.label"></span>
+          </a>
+        </template>
+      </nav>
+      <div class="p-3" style="border-top:1px solid var(--line)">
+        <button class="nav-item w-full" @click="toggleEdition()">
+          <i :data-lucide="dark ? 'sun' : 'moon'" class="w-[18px] h-[18px]"></i>
+          <span x-text="dark ? 'Daylight edition' : 'Nightshift edition'"></span>
+        </button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ===== Top-nav masthead ===== -->
+  <header class="sticky top-0 z-30 backdrop-blur" style="background:color-mix(in srgb, var(--surface) 90%, transparent); border-bottom:1px solid var(--line-2)">
+    <div class="spectrum-rule"></div>
+    <div class="max-w-[1400px] mx-auto flex items-center gap-3 px-4 sm:px-6 h-16">
+      <button class="icon-btn lg:hidden -ml-2" @click="mobileNav=true" aria-label="Open menu"><i data-lucide="menu"></i></button>
+
+      <a href="#" @click.prevent="go('overview')" class="flex items-center gap-3 shrink-0" aria-label="Prism home">
+        <div class="brand-dot"></div>
+        <div class="leading-tight">
+          <div class="text-xl font-extrabold tracking-tight">Prism</div>
+          <div class="text-[10px] mono text-[var(--ink-3)] -mt-0.5 hidden sm:block">campaign spectrum</div>
+        </div>
+      </a>
+
+      <nav class="topnav hidden lg:flex mx-auto" aria-label="Primary">
+        <template x-for="item in nav" :key="item.id">
+          <a href="#" @click.prevent="go(item.id)" :class="page===item.id && 'active'" x-text="item.label"></a>
+        </template>
+      </nav>
+
+      <div class="ml-auto lg:ml-0 flex items-center gap-1.5 sm:gap-2">
+        <label class="relative hidden md:block">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-3)]"></i>
+          <input type="search" x-model="query" @focus="go('campaigns')" placeholder="Search campaigns…" aria-label="Search campaigns"
+                 class="w-44 xl:w-56 pl-9 pr-3 h-11 rounded-[10px] bg-[var(--surface-2)] border border-[var(--line)] text-sm placeholder:text-[var(--ink-3)] focus:bg-[var(--surface)] focus:border-[var(--accent)] transition" />
+        </label>
+        <button class="icon-btn" @click="toggleEdition()" :aria-label="dark ? 'Switch to Daylight edition' : 'Switch to Nightshift edition'">
+          <i :data-lucide="dark ? 'sun' : 'moon'"></i>
+        </button>
+        <button class="icon-btn relative" aria-label="Notifications" @click="toast('You have 3 new alerts','bell')">
+          <i data-lucide="bell"></i>
+          <span class="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-[var(--accent)] ring-2 ring-[var(--surface)]"></span>
+        </button>
+        <button class="btn-primary hidden sm:inline-flex" @click="openNew()">
+          <i data-lucide="plus" class="w-4 h-4"></i>New campaign
+        </button>
+        <img class="w-9 h-9 rounded-full ring-2 ring-[var(--accent-soft)]" src="https://i.pravatar.cc/72?img=47" alt="Nadia Okonkwo" />
+      </div>
+    </div>
+  </header>
+
+  <main class="px-4 sm:px-6 py-6 sm:py-8 max-w-[1400px] mx-auto">
+
+    <!-- ============================================================= -->
+    <!-- PAGE: OVERVIEW                                                 -->
+    <!-- ============================================================= -->
+    <div x-show="page==='overview'" class="space-y-6">
+
+      <!-- Spectrum hero -->
+      <section class="card overflow-hidden">
+        <div class="spectrum-rule"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-5">
+          <div class="lg:col-span-2 p-6 sm:p-8 lg:p-10 border-b lg:border-b-0 lg:border-r border-[var(--line)] flex flex-col justify-between gap-8">
+            <div>
+              <div class="flex items-center gap-2 mono text-[11px] uppercase tracking-[0.08em] text-[var(--ink-3)]">
+                <i data-lucide="eye" class="w-3.5 h-3.5 text-[var(--sp-2)]"></i>
+                Total impressions · last 30 days
+              </div>
+              <div class="hero-num tnum mt-4">12.4M</div>
+              <div class="mt-5 flex flex-wrap items-center gap-3">
+                <span class="stat-chip" style="background:var(--accent-soft); color:var(--accent-ink)">
+                  <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>+8.1%
+                </span>
+                <span class="text-[13px] text-[var(--ink-2)]">vs previous period</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-5">
+              <div class="stat-block" style="border-color:var(--sp-1)">
+                <div class="text-[11px] mono uppercase tracking-[0.06em] text-[var(--ink-3)]">Conversions</div>
+                <div class="text-3xl font-extrabold tnum tracking-tight mt-1">8,240</div>
+                <div class="text-[12px] text-[var(--pos)] font-semibold mt-1">+12.6%</div>
+              </div>
+              <div class="stat-block" style="border-color:var(--sp-4)">
+                <div class="text-[11px] mono uppercase tracking-[0.06em] text-[var(--ink-3)]">ROAS</div>
+                <div class="text-3xl font-extrabold tnum tracking-tight mt-1">3.6x</div>
+                <div class="text-[12px] text-[var(--neg)] font-semibold mt-1">−0.2x</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-3 p-6 sm:p-8">
+            <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+              <div>
+                <h2 class="text-lg font-bold tracking-tight">Conversions vs spend</h2>
+                <p class="text-[12px] text-[var(--ink-3)] mt-0.5">Daily performance across the spectrum</p>
+              </div>
+              <div class="seg" role="tablist" aria-label="Date range">
+                <template x-for="r in ranges" :key="r">
+                  <button role="tab" :aria-selected="range===r" :class="range===r && 'on'" @click="setRange(r)" x-text="r"></button>
+                </template>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 text-[12px] mb-3">
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background:var(--sp-1)"></span>Conversions</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background:var(--sp-3)"></span>Spend ($k)</span>
+            </div>
+            <div style="height:300px"><canvas id="trendChart"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- KPI tiles -->
+      <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <template x-for="k in kpis" :key="k.label">
+          <div class="card p-5">
+            <div class="flex items-center justify-between">
+              <div class="w-9 h-9 rounded-[10px] flex items-center justify-center" :style="`background:${k.tint}`">
+                <i :data-lucide="k.icon" class="w-4 h-4" :style="`color:${k.color}`"></i>
+              </div>
+              <span class="stat-chip text-[11px]" :style="k.up ? 'background:var(--accent-soft);color:var(--accent-ink)' : 'color:var(--neg)'">
+                <i :data-lucide="k.up ? 'arrow-up-right' : 'arrow-down-right'" class="w-3 h-3"></i><span x-text="k.delta"></span>
+              </span>
+            </div>
+            <div class="kpi-figure tnum mt-4" x-text="k.value"></div>
+            <div class="text-[12px] text-[var(--ink-3)] mt-1" x-text="k.label"></div>
+          </div>
+        </template>
+      </section>
+
+      <!-- Charts row -->
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="card p-5 sm:p-6 lg:col-span-2">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="font-bold tracking-tight">Spend by channel</h2>
+              <p class="text-[12px] text-[var(--ink-3)] mt-0.5">This period · $ thousands</p>
+            </div>
+            <div class="flex items-center gap-1.5 text-[13px] text-[var(--ink-2)]">
+              <i data-lucide="radio" class="w-4 h-4 text-[var(--pos)]"></i>
+              <span class="font-bold text-[var(--ink)] tnum">6</span> live
+            </div>
+          </div>
+          <div style="height:280px" class="mt-4"><canvas id="channelChart"></canvas></div>
+        </div>
+
+        <div class="card p-5 sm:p-6 lg:col-span-1">
+          <h2 class="font-bold tracking-tight">Traffic by channel</h2>
+          <p class="text-[12px] text-[var(--ink-3)] mt-0.5 mb-4">Sessions share</p>
+          <div style="height:280px"><canvas id="sourceChart"></canvas></div>
+        </div>
+      </section>
+
+      <!-- Recent campaigns (mini table) -->
+      <div class="card overflow-hidden">
+        <div class="p-5 sm:p-6 pb-4 flex items-center gap-3 border-b border-[var(--line)]">
+          <div class="mr-auto">
+            <h2 class="text-lg font-bold tracking-tight">Recent campaigns</h2>
+            <p class="text-[12px] text-[var(--ink-3)] mt-0.5">Top movers this week</p>
+          </div>
+          <button class="btn-outline" @click="go('campaigns')">
+            View all<i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="grid w-full text-sm min-w-[640px]">
+            <thead>
+              <tr><th>Campaign</th><th>Channel</th><th class="text-right">Spent</th><th class="text-right">CTR</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <template x-for="row in rows.slice(0,5)" :key="row.id">
+                <tr>
+                  <td class="font-semibold whitespace-nowrap" x-text="row.name"></td>
+                  <td class="whitespace-nowrap">
+                    <span class="inline-flex items-center gap-2 text-[var(--ink-2)]">
+                      <span class="w-2.5 h-2.5 rounded-full" :style="`background:var(${row.hue})`"></span>
+                      <span x-text="row.channel"></span>
+                    </span>
+                  </td>
+                  <td class="text-right mono tnum whitespace-nowrap" x-text="'$'+row.spent.toLocaleString()"></td>
+                  <td class="text-right mono tnum whitespace-nowrap" x-text="row.ctr.toFixed(1)+'%'"></td>
+                  <td><span class="status-badge" :style="badgeStyle(row.status)"><span class="dot" :style="`background:${statusMeta[row.status].c}`"></span><span x-text="statusMeta[row.status].label"></span></span></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- PAGE: CAMPAIGNS                                                -->
+    <!-- ============================================================= -->
+    <div x-show="page==='campaigns'" x-cloak class="space-y-6">
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="mr-auto">
+          <h1 class="text-2xl font-extrabold tracking-tight">Campaigns</h1>
+          <p class="text-[13px] text-[var(--ink-3)] mt-1">Plan, launch and tune every campaign in the spectrum.</p>
+        </div>
+        <button class="btn-outline" @click="toast('Export queued — we\'ll email the CSV','download')"><i data-lucide="download" class="w-4 h-4"></i>Export</button>
+        <button class="btn-primary" @click="openNew()"><i data-lucide="plus" class="w-4 h-4"></i>New campaign</button>
+      </div>
+
+      <div class="card overflow-hidden">
+        <div class="p-5 sm:p-6 pb-4 flex flex-wrap items-center gap-3 border-b border-[var(--line)]">
+          <div class="mr-auto">
+            <h2 class="text-lg font-bold tracking-tight">All campaigns</h2>
+            <p class="text-[12px] text-[var(--ink-3)] mt-0.5"><span class="tnum" x-text="filtered.length"></span> of <span class="tnum" x-text="rows.length"></span> shown</p>
+          </div>
+          <label class="relative w-full sm:w-64">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-3)]"></i>
+            <input type="search" x-model="query" placeholder="Search campaigns…" aria-label="Search campaigns"
+                   class="w-full pl-9 pr-3 h-11 rounded-[10px] bg-[var(--surface-2)] border border-[var(--line)] text-sm placeholder:text-[var(--ink-3)] focus:bg-[var(--surface)] focus:border-[var(--accent)] transition" />
+          </label>
+        </div>
+        <div class="px-5 sm:px-6 py-3 flex flex-wrap gap-2 border-b border-[var(--line)]">
+          <span class="text-[11px] mono uppercase tracking-[0.06em] text-[var(--ink-3)] self-center mr-1">Status</span>
+          <template x-for="f in statusOrder" :key="f">
+            <button class="chip" :class="active.includes(f) && 'on'" @click="toggleFilter(f)">
+              <span class="w-2 h-2 rounded-full" :style="`background:${statusMeta[f].c}`"></span>
+              <span x-text="statusMeta[f].label"></span>
+            </button>
+          </template>
+          <button class="chip" @click="active=[]" x-show="active.length"><i data-lucide="x" class="w-3.5 h-3.5"></i>Clear</button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="grid w-full text-sm min-w-[820px]">
+            <thead>
+              <tr>
+                <th class="sortable" @click="sortBy('name')">Campaign <span x-show="sortKey==='name'" x-text="sortDir>0?'▲':'▼'"></span></th>
+                <th class="sortable" @click="sortBy('channel')">Channel <span x-show="sortKey==='channel'" x-text="sortDir>0?'▲':'▼'"></span></th>
+                <th class="text-right sortable" @click="sortBy('budget')">Budget <span x-show="sortKey==='budget'" x-text="sortDir>0?'▲':'▼'"></span></th>
+                <th class="text-right sortable" @click="sortBy('spent')">Spent <span x-show="sortKey==='spent'" x-text="sortDir>0?'▲':'▼'"></span></th>
+                <th class="text-right sortable" @click="sortBy('ctr')">CTR <span x-show="sortKey==='ctr'" x-text="sortDir>0?'▲':'▼'"></span></th>
+                <th>Status</th>
+                <th class="text-right">Edit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="row in filtered" :key="row.id">
+                <tr>
+                  <td class="font-semibold whitespace-nowrap" x-text="row.name"></td>
+                  <td class="whitespace-nowrap">
+                    <span class="inline-flex items-center gap-2 text-[var(--ink-2)]">
+                      <span class="w-2.5 h-2.5 rounded-full" :style="`background:var(${row.hue})`"></span>
+                      <span x-text="row.channel"></span>
+                    </span>
+                  </td>
+                  <!-- inline-editable budget cell -->
+                  <td class="text-right whitespace-nowrap" @click="startBudget(row)">
+                    <template x-if="editBudgetId!==row.id">
+                      <span class="ie mono tnum text-[var(--ink-2)]" x-text="'$'+row.budget.toLocaleString()"></span>
+                    </template>
+                    <template x-if="editBudgetId===row.id">
+                      <input type="number" min="0" step="1000" class="field mono tnum text-right" style="width:120px; min-height:38px; padding:6px 10px" x-ref="budgetInput"
+                             x-model.number="row.budget" @click.stop
+                             @keydown.enter="commitBudget(row)" @keydown.escape="editBudgetId=null" @blur="commitBudget(row)" />
+                    </template>
+                  </td>
+                  <td class="text-right mono tnum whitespace-nowrap" x-text="'$'+row.spent.toLocaleString()"></td>
+                  <td class="text-right mono tnum whitespace-nowrap" x-text="row.ctr.toFixed(1)+'%'"></td>
+                  <!-- inline-editable status -->
+                  <td @click.stop>
+                    <select class="status-sel" :style="badgeStyle(row.status)" aria-label="Campaign status"
+                            x-model="row.status" @change="toast(row.name+' → '+statusMeta[row.status].label,'refresh-cw')">
+                      <option value="draft">Draft</option>
+                      <option value="scheduled">Scheduled</option>
+                      <option value="live">Live</option>
+                      <option value="paused">Paused</option>
+                      <option value="ended">Ended</option>
+                    </select>
+                  </td>
+                  <td class="text-right">
+                    <button class="icon-btn ml-auto" style="width:38px;height:38px" @click="openEdit(row)" :aria-label="'Edit '+row.name"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <div x-show="filtered.length===0" class="p-12 text-center">
+          <i data-lucide="search-x" class="w-8 h-8 mx-auto text-[var(--ink-3)]"></i>
+          <p class="mt-3 text-sm font-semibold">No campaigns match these filters</p>
+          <p class="text-[13px] text-[var(--ink-3)] mt-1">Try clearing filters or searching a different term.</p>
+          <button class="btn-outline mx-auto mt-4" @click="active=[]; query=''">Reset filters</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- PAGE: CHANNELS                                                 -->
+    <!-- ============================================================= -->
+    <div x-show="page==='channels'" x-cloak class="space-y-6">
+      <div>
+        <h1 class="text-2xl font-extrabold tracking-tight">Channels</h1>
+        <p class="text-[13px] text-[var(--ink-3)] mt-1">Five channels, five fixed hues — the spectrum every chart and chip inherits.</p>
+      </div>
+
+      <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+        <template x-for="c in channels" :key="c.name">
+          <div class="card p-5 overflow-hidden relative">
+            <div style="position:absolute;top:0;left:0;right:0;height:4px" :style="`background:var(${c.hue})`"></div>
+            <div class="flex items-center gap-2.5 mt-1">
+              <span class="w-3 h-3 rounded-full" :style="`background:var(${c.hue})`"></span>
+              <span class="font-bold tracking-tight" x-text="c.name"></span>
+            </div>
+            <div class="mt-4 tnum" style="font-weight:800;font-size:28px;letter-spacing:-.02em" x-text="'$'+c.spend+'k'"></div>
+            <div class="text-[12px] text-[var(--ink-3)]">spend this period</div>
+            <div class="mt-4 space-y-2.5 text-[13px]">
+              <div class="flex justify-between"><span class="text-[var(--ink-3)]">Share</span><span class="mono tnum font-semibold" x-text="c.share+'%'"></span></div>
+              <div class="bar-track"><div class="bar-fill" :style="`width:${c.share}%;background:var(${c.hue})`"></div></div>
+              <div class="flex justify-between"><span class="text-[var(--ink-3)]">CTR</span><span class="mono tnum font-semibold" x-text="c.ctr.toFixed(1)+'%'"></span></div>
+              <div class="flex justify-between"><span class="text-[var(--ink-3)]">ROAS</span><span class="mono tnum font-semibold" x-text="c.roas.toFixed(1)+'x'"></span></div>
+              <div class="flex justify-between"><span class="text-[var(--ink-3)]">Campaigns</span><span class="mono tnum font-semibold" x-text="c.camps"></span></div>
+            </div>
+          </div>
+        </template>
+      </section>
+
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="card p-5 sm:p-6 lg:col-span-1">
+          <h2 class="font-bold tracking-tight">Spend share</h2>
+          <p class="text-[12px] text-[var(--ink-3)] mt-0.5 mb-4">Budget across the spectrum</p>
+          <div style="height:300px"><canvas id="channelMixChart"></canvas></div>
+        </div>
+        <div class="card p-5 sm:p-6 lg:col-span-2">
+          <div class="flex items-center justify-between mb-1">
+            <div>
+              <h2 class="font-bold tracking-tight">Click-through rate</h2>
+              <p class="text-[12px] text-[var(--ink-3)] mt-0.5">8-week trend, one line per channel</p>
+            </div>
+          </div>
+          <div style="height:300px" class="mt-3"><canvas id="channelPerfChart"></canvas></div>
+        </div>
+      </section>
+
+      <div class="card overflow-hidden">
+        <div class="p-5 sm:p-6 pb-4 border-b border-[var(--line)]">
+          <h2 class="text-lg font-bold tracking-tight">Channel performance</h2>
+          <p class="text-[12px] text-[var(--ink-3)] mt-0.5">Pacing against budget</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="grid w-full text-sm min-w-[720px]">
+            <thead><tr><th>Channel</th><th class="text-right">Spend</th><th class="text-right">Share</th><th class="text-right">CTR</th><th class="text-right">ROAS</th><th>Pacing</th></tr></thead>
+            <tbody>
+              <template x-for="c in channels" :key="c.name">
+                <tr>
+                  <td class="font-semibold whitespace-nowrap"><span class="inline-flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" :style="`background:var(${c.hue})`"></span><span x-text="c.name"></span></span></td>
+                  <td class="text-right mono tnum" x-text="'$'+c.spend+'k'"></td>
+                  <td class="text-right mono tnum" x-text="c.share+'%'"></td>
+                  <td class="text-right mono tnum" x-text="c.ctr.toFixed(1)+'%'"></td>
+                  <td class="text-right mono tnum font-semibold" x-text="c.roas.toFixed(1)+'x'"></td>
+                  <td style="min-width:160px">
+                    <div class="flex items-center gap-2">
+                      <div class="bar-track flex-1"><div class="bar-fill" :style="`width:${c.pacing}%;background:var(${c.hue})`"></div></div>
+                      <span class="mono tnum text-[12px] text-[var(--ink-2)]" x-text="c.pacing+'%'"></span>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- PAGE: AUDIENCES                                               -->
+    <!-- ============================================================= -->
+    <div x-show="page==='audiences'" x-cloak class="space-y-6">
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="mr-auto">
+          <h1 class="text-2xl font-extrabold tracking-tight">Audiences</h1>
+          <p class="text-[13px] text-[var(--ink-3)] mt-1">Segments you can target across every channel.</p>
+        </div>
+        <button class="btn-primary" @click="toast('New segment builder opened','users')"><i data-lucide="plus" class="w-4 h-4"></i>New segment</button>
+      </div>
+
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="card p-5 sm:p-6 lg:col-span-2">
+          <h2 class="font-bold tracking-tight">Reach by segment</h2>
+          <p class="text-[12px] text-[var(--ink-3)] mt-0.5 mb-4">Addressable reach, millions</p>
+          <div style="height:300px"><canvas id="audienceChart"></canvas></div>
+        </div>
+        <div class="card p-5 sm:p-6 lg:col-span-1 flex flex-col">
+          <h2 class="font-bold tracking-tight">Segment health</h2>
+          <p class="text-[12px] text-[var(--ink-3)] mt-0.5 mb-4">Freshness & match rate</p>
+          <div class="space-y-4 flex-1">
+            <template x-for="a in audiences.slice(0,4)" :key="a.name">
+              <div>
+                <div class="flex justify-between text-[13px] mb-1"><span class="font-semibold" x-text="a.name"></span><span class="mono tnum text-[var(--ink-2)]" x-text="a.reach+'%'"></span></div>
+                <div class="bar-track"><div class="bar-fill" :style="`width:${a.reach}%;background:var(${a.hue})`"></div></div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </section>
+
+      <div class="card overflow-hidden">
+        <div class="p-5 sm:p-6 pb-4 border-b border-[var(--line)]">
+          <h2 class="text-lg font-bold tracking-tight">All segments</h2>
+          <p class="text-[12px] text-[var(--ink-3)] mt-0.5"><span class="tnum" x-text="audiences.length"></span> active segments</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="grid w-full text-sm min-w-[760px]">
+            <thead><tr><th>Segment</th><th class="text-right">Size</th><th class="text-right">Match rate</th><th class="text-right">30d growth</th><th>Top channel</th></tr></thead>
+            <tbody>
+              <template x-for="a in audiences" :key="a.name">
+                <tr>
+                  <td class="font-semibold whitespace-nowrap" x-text="a.name"></td>
+                  <td class="text-right mono tnum" x-text="a.size"></td>
+                  <td class="text-right mono tnum" x-text="a.reach+'%'"></td>
+                  <td class="text-right mono tnum font-semibold" style="color:var(--pos)" x-text="'+'+a.growth+'%'"></td>
+                  <td class="whitespace-nowrap"><span class="inline-flex items-center gap-2 text-[var(--ink-2)]"><span class="w-2.5 h-2.5 rounded-full" :style="`background:var(${a.hue})`"></span><span x-text="a.channel"></span></span></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- PAGE: REPORTS                                                 -->
+    <!-- ============================================================= -->
+    <div x-show="page==='reports'" x-cloak class="space-y-6">
+      <div>
+        <h1 class="text-2xl font-extrabold tracking-tight">Reports</h1>
+        <p class="text-[13px] text-[var(--ink-3)] mt-1">Build a view, then save or schedule it.</p>
+      </div>
+
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Report builder -->
+        <div class="card p-5 sm:p-6 lg:col-span-1 space-y-5">
+          <h2 class="font-bold tracking-tight">Report builder</h2>
+          <div>
+            <div class="lbl mb-2">Metric</div>
+            <div class="seg w-full" style="display:flex" role="tablist" aria-label="Metric">
+              <template x-for="m in ['Spend','Reach','ROAS']" :key="m">
+                <button style="flex:1" role="tab" :aria-selected="report.metric===m" :class="report.metric===m && 'on'" @click="report.metric=m" x-text="m"></button>
+              </template>
+            </div>
+          </div>
+          <div>
+            <label class="lbl" for="rpt-range">Date range</label>
+            <select id="rpt-range" class="field mt-1.5" x-model="report.range">
+              <option>Last 7 days</option><option>Last 30 days</option><option>This quarter</option><option>Year to date</option>
+            </select>
+          </div>
+          <div>
+            <label class="lbl" for="rpt-group">Group by</label>
+            <select id="rpt-group" class="field mt-1.5" x-model="report.group">
+              <option>Channel</option><option>Campaign</option><option>Audience</option>
+            </select>
+          </div>
+          <div>
+            <div class="lbl mb-2">Include channels</div>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="c in channels" :key="c.name">
+                <button class="chip" :class="report.channels.includes(c.name) && 'on'" @click="toggleReportChannel(c.name)">
+                  <span class="w-2 h-2 rounded-full" :style="`background:var(${c.hue})`"></span><span x-text="c.name"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+          <div class="flex items-center justify-between">
+            <div><div class="text-sm font-semibold">Attach charts</div><div class="text-[12px] text-[var(--ink-3)]">Embed spectrum visuals in the PDF</div></div>
+            <button class="toggle" :class="report.charts && 'on'" @click="report.charts=!report.charts" role="switch" :aria-checked="report.charts" aria-label="Attach charts"><b></b></button>
+          </div>
+          <div>
+            <label class="lbl" for="rpt-notes">Notes</label>
+            <textarea id="rpt-notes" class="field mt-1.5" x-model="report.notes" placeholder="Context for whoever receives this report…"></textarea>
+          </div>
+          <div class="flex gap-3">
+            <button class="btn-outline" style="flex:1" @click="toast('Preview generated','eye')">Preview</button>
+            <button class="btn-primary" style="flex:1.4" @click="toast(report.metric+' report generated','file-text')"><i data-lucide="sparkles" class="w-4 h-4"></i>Generate</button>
+          </div>
+        </div>
+
+        <!-- Saved reports -->
+        <div class="card overflow-hidden lg:col-span-2">
+          <div class="p-5 sm:p-6 pb-4 border-b border-[var(--line)] flex items-center gap-3">
+            <div class="mr-auto"><h2 class="text-lg font-bold tracking-tight">Saved & scheduled</h2><p class="text-[12px] text-[var(--ink-3)] mt-0.5">Reports on autopilot</p></div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="grid w-full text-sm min-w-[640px]">
+              <thead><tr><th>Report</th><th>Cadence</th><th>Format</th><th class="text-right">Last run</th><th class="text-right">Run</th></tr></thead>
+              <tbody>
+                <template x-for="r in reports" :key="r.name">
+                  <tr>
+                    <td class="font-semibold whitespace-nowrap"><span class="inline-flex items-center gap-2.5"><i :data-lucide="r.icon" class="w-4 h-4 text-[var(--accent)]"></i><span x-text="r.name"></span></span></td>
+                    <td class="whitespace-nowrap text-[var(--ink-2)]" x-text="r.cadence"></td>
+                    <td><span class="status-badge" style="background:var(--surface-2);color:var(--ink-2)" x-text="r.format"></span></td>
+                    <td class="text-right mono tnum text-[var(--ink-2)] whitespace-nowrap" x-text="r.last"></td>
+                    <td class="text-right"><button class="icon-btn ml-auto" style="width:38px;height:38px" @click="toast(r.name+' is running…','play')" :aria-label="'Run '+r.name"><i data-lucide="play" class="w-4 h-4"></i></button></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- PAGE: SETTINGS                                                -->
+    <!-- ============================================================= -->
+    <div x-show="page==='settings'" x-cloak class="space-y-6">
+      <div>
+        <h1 class="text-2xl font-extrabold tracking-tight">Settings</h1>
+        <p class="text-[13px] text-[var(--ink-3)] mt-1">Workspace, appearance and campaign defaults.</p>
+      </div>
+
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Profile + appearance -->
+        <div class="card p-5 sm:p-6 space-y-6">
+          <div class="flex items-center gap-4">
+            <img class="w-14 h-14 rounded-full ring-2 ring-[var(--accent-soft)]" src="https://i.pravatar.cc/96?img=47" alt="" />
+            <div>
+              <div class="lbl mb-1">Display name</div>
+              <!-- click-to-edit inline field -->
+              <template x-if="!editName">
+                <div class="ie flex items-center gap-2" style="font-size:18px;font-weight:700" @click="editName=true; $nextTick(()=>$refs.nm.focus())">
+                  <span x-text="name"></span><i data-lucide="pencil" class="w-3.5 h-3.5 text-[var(--ink-3)]"></i>
+                </div>
+              </template>
+              <template x-if="editName">
+                <div class="flex items-center gap-2">
+                  <input x-ref="nm" class="field" style="width:200px;min-height:40px" x-model="name" @keydown.enter="editName=false; toast('Name updated','check')" @keydown.escape="editName=false" />
+                  <button class="btn-primary" style="min-height:40px;padding:8px 14px" @click="editName=false; toast('Name updated','check')">Save</button>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <div class="h-px" style="background:var(--line)"></div>
+
+          <div>
+            <div class="lbl mb-2">Edition</div>
+            <div class="seg" role="tablist" aria-label="Edition">
+              <button role="tab" :aria-selected="!dark" :class="!dark && 'on'" @click="if(dark)toggleEdition()">☀ Daylight</button>
+              <button role="tab" :aria-selected="dark" :class="dark && 'on'" @click="if(!dark)toggleEdition()">☾ Nightshift</button>
+            </div>
+            <p class="text-[12px] text-[var(--ink-3)] mt-2">The spectrum stays AA-legible in both editions.</p>
+          </div>
+
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div><div class="text-sm font-semibold">Email digests</div><div class="text-[12px] text-[var(--ink-3)]">Weekly performance summary</div></div>
+              <button class="toggle" :class="prefs.digest && 'on'" @click="prefs.digest=!prefs.digest; toast('Digests '+(prefs.digest?'on':'off'),'mail')" role="switch" :aria-checked="prefs.digest" aria-label="Email digests"><b></b></button>
+            </div>
+            <div class="flex items-center justify-between">
+              <div><div class="text-sm font-semibold">Anomaly alerts</div><div class="text-[12px] text-[var(--ink-3)]">Ping me on sudden CTR drops</div></div>
+              <button class="toggle" :class="prefs.alerts && 'on'" @click="prefs.alerts=!prefs.alerts" role="switch" :aria-checked="prefs.alerts" aria-label="Anomaly alerts"><b></b></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Campaign defaults -->
+        <div class="card p-5 sm:p-6 space-y-6">
+          <h2 class="font-bold tracking-tight">Campaign defaults</h2>
+          <div>
+            <label class="lbl" for="set-tz">Timezone</label>
+            <select id="set-tz" class="field mt-1.5" x-model="prefs.tz">
+              <option>UTC−08:00 · Pacific</option><option>UTC−05:00 · Eastern</option><option>UTC+00:00 · London</option><option>UTC+05:30 · Kolkata</option>
+            </select>
+          </div>
+          <div>
+            <div class="lbl mb-2">Default daily budget</div>
+            <div class="flex items-center gap-3">
+              <div class="stepper">
+                <button @click="prefs.budget=Math.max(0,prefs.budget-500)" aria-label="Decrease budget"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                <span class="val mono tnum" x-text="'$'+prefs.budget.toLocaleString()"></span>
+                <button @click="prefs.budget+=500" aria-label="Increase budget"><i data-lucide="plus" class="w-4 h-4"></i></button>
+              </div>
+              <span class="text-[12px] text-[var(--ink-3)]">applied to new campaigns</span>
+            </div>
+          </div>
+          <div>
+            <div class="lbl mb-2">Table density</div>
+            <div class="seg" role="tablist" aria-label="Density">
+              <template x-for="d in ['Compact','Cozy','Roomy']" :key="d">
+                <button role="tab" :aria-selected="prefs.density===d" :class="prefs.density===d && 'on'" @click="prefs.density=d" x-text="d"></button>
+              </template>
+            </div>
+          </div>
+          <div>
+            <label class="lbl" for="set-sig">Report footer</label>
+            <textarea id="set-sig" class="field mt-1.5" x-model="prefs.footer" placeholder="Appended to exported reports…"></textarea>
+          </div>
+          <div class="flex justify-end gap-3 pt-1">
+            <button class="btn-outline" @click="toast('Changes discarded','undo-2')">Discard</button>
+            <button class="btn-primary" @click="toast('Settings saved','check')"><i data-lucide="check" class="w-4 h-4"></i>Save changes</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer class="pt-8 pb-4 text-center text-[11px] mono text-[var(--ink-3)]">
+      Prism campaign spectrum · demo data · <span x-text="dark ? 'Nightshift edition' : 'Daylight edition'"></span>
+    </footer>
+  </main>
+
+  <!-- ===== Edit drawer (right) ===== -->
+  <template x-if="editRow">
+    <div class="fixed inset-0 z-50">
+      <div class="absolute inset-0 bg-black/40" @click="closeEdit()" x-transition.opacity></div>
+      <aside class="drawer-panel absolute right-0 top-0 h-full w-[420px] max-w-[92%] bg-[var(--surface)] flex flex-col"
+             style="border-left:1px solid var(--line-2); box-shadow:var(--shadow-lg)"
+             x-transition:enter="transition duration-250" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+             @keydown.escape.window="closeEdit()">
+        <div class="flex items-center gap-3 h-16 flex-none px-5" style="border-bottom:1px solid var(--line)">
+          <div>
+            <div class="text-[11px] mono uppercase tracking-[0.06em] text-[var(--ink-3)]">Campaign</div>
+            <div class="text-lg font-bold tracking-tight">Edit campaign</div>
+          </div>
+          <button class="icon-btn ml-auto" @click="closeEdit()" aria-label="Close drawer"><i data-lucide="x"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-5 space-y-4">
+          <div>
+            <label class="lbl" for="ed-name">Campaign name</label>
+            <input id="ed-name" class="field mt-1.5" x-model="editForm.name" />
+          </div>
+          <div>
+            <label class="lbl" for="ed-chan">Channel</label>
+            <select id="ed-chan" class="field mt-1.5" x-model="editForm.channel" @change="editForm.hue=channelHue[editForm.channel]">
+              <template x-for="c in channels" :key="c.name"><option x-text="c.name"></option></template>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="lbl" for="ed-budget">Budget ($)</label>
+              <input id="ed-budget" type="number" min="0" step="1000" class="field mt-1.5 mono tnum" x-model.number="editForm.budget" />
+            </div>
+            <div>
+              <label class="lbl" for="ed-ctr">CTR (%)</label>
+              <input id="ed-ctr" type="number" min="0" step="0.1" class="field mt-1.5 mono tnum" x-model.number="editForm.ctr" />
+            </div>
+          </div>
+          <div>
+            <div class="lbl mb-2">Status</div>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="s in statusOrder" :key="s">
+                <button class="chip" :class="editForm.status===s && 'on'" @click="editForm.status=s">
+                  <span class="w-2 h-2 rounded-full" :style="`background:${statusMeta[s].c}`"></span><span x-text="statusMeta[s].label"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+          <div>
+            <label class="lbl" for="ed-notes">Notes</label>
+            <textarea id="ed-notes" class="field mt-1.5" x-model="editForm.notes" placeholder="Creative direction, offers, guardrails…"></textarea>
+          </div>
+        </div>
+        <div class="flex-none p-4 flex gap-3" style="border-top:1px solid var(--line)">
+          <button class="btn-outline" style="flex:1" @click="closeEdit()">Cancel</button>
+          <button class="btn-primary" style="flex:1.6" @click="saveEdit()"><i data-lucide="check" class="w-4 h-4"></i>Save changes</button>
+        </div>
+      </aside>
+    </div>
+  </template>
+
+  <!-- ===== Modal (new campaign) ===== -->
+  <template x-if="modal">
+    <div class="fixed inset-0 z-[55] flex items-end sm:items-center justify-center p-0 sm:p-4" @keydown.escape.window="modal=false">
+      <div class="absolute inset-0 bg-black/45" @click="modal=false" x-transition.opacity></div>
+      <div class="relative w-full sm:max-w-[520px] bg-[var(--surface)] rounded-t-[18px] sm:rounded-[18px] overflow-hidden"
+           style="box-shadow:var(--shadow-lg)"
+           x-transition:enter="transition duration-200" x-transition:enter-start="opacity-0 translate-y-6 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
+        <div class="spectrum-rule"></div>
+        <div class="flex items-center gap-3 p-5 pb-3">
+          <div><div class="text-[11px] mono uppercase tracking-[0.06em] text-[var(--ink-3)]">Draft</div><div class="text-xl font-extrabold tracking-tight">New campaign</div></div>
+          <button class="icon-btn ml-auto" @click="modal=false" aria-label="Close"><i data-lucide="x"></i></button>
+        </div>
+        <div class="px-5 pb-2 space-y-4 max-h-[62vh] overflow-y-auto">
+          <div>
+            <label class="lbl" for="nw-name">Campaign name</label>
+            <input id="nw-name" class="field mt-1.5" x-model="nw.name" placeholder="e.g. Autumn Launch — Search" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="lbl" for="nw-chan">Channel</label>
+              <select id="nw-chan" class="field mt-1.5" x-model="nw.channel">
+                <template x-for="c in channels" :key="c.name"><option x-text="c.name"></option></template>
+              </select>
+            </div>
+            <div>
+              <label class="lbl" for="nw-budget">Budget ($)</label>
+              <input id="nw-budget" type="number" min="0" step="1000" class="field mt-1.5 mono tnum" x-model.number="nw.budget" />
+            </div>
+          </div>
+          <div>
+            <label class="lbl" for="nw-obj">Objective</label>
+            <select id="nw-obj" class="field mt-1.5" x-model="nw.objective">
+              <option>Conversions</option><option>Traffic</option><option>Awareness</option><option>Lead generation</option>
+            </select>
+          </div>
+          <div>
+            <div class="lbl mb-2">Launch state</div>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="s in ['draft','scheduled','live']" :key="s">
+                <button class="chip" :class="nw.status===s && 'on'" @click="nw.status=s">
+                  <span class="w-2 h-2 rounded-full" :style="`background:${statusMeta[s].c}`"></span><span x-text="statusMeta[s].label"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-3 p-5 pt-3">
+          <button class="btn-outline" style="flex:1" @click="modal=false">Cancel</button>
+          <button class="btn-primary" style="flex:1.6" @click="createCampaign()"><i data-lucide="plus" class="w-4 h-4"></i>Create campaign</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ===== Toasts ===== -->
+  <div class="fixed bottom-5 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-[70] space-y-2 w-[calc(100%-2rem)] sm:w-auto" aria-live="polite">
+    <template x-for="t in toasts" :key="t.id">
+      <div class="toast-enter flex items-center gap-3 px-4 py-3 rounded-[12px] sm:min-w-[280px]"
+           style="background:var(--ink); color:var(--surface); box-shadow:var(--shadow-lg)">
+        <i :data-lucide="t.icon" class="w-4 h-4 shrink-0" style="color:var(--accent)"></i>
+        <span class="text-sm font-medium" x-text="t.msg"></span>
+      </div>
+    </template>
+  </div>
+
+<script>
+  function prism() {
+    return {
+      page: 'overview',
+      dark: false,
+      mobileNav: false,
+      range: '30d',
+      ranges: ['7d', '30d', 'Quarter'],
+      query: '',
+      toasts: [],
+      _tid: 0,
+      _charts: {},
+
+      modal: false,
+      editRow: null,
+      editForm: {},
+      editName: false,
+      editBudgetId: null,
+      name: 'Nadia Okonkwo',
+
+      nav: [
+        { id: 'overview',  label: 'Overview',  icon: 'layout-dashboard' },
+        { id: 'campaigns', label: 'Campaigns', icon: 'megaphone' },
+        { id: 'channels',  label: 'Channels',  icon: 'git-branch' },
+        { id: 'audiences', label: 'Audiences', icon: 'users' },
+        { id: 'reports',   label: 'Reports',   icon: 'file-bar-chart' },
+        { id: 'settings',  label: 'Settings',  icon: 'settings' },
+      ],
+
+      // ---- semantic status system (distinct from the channel spectrum) ----
+      statusOrder: ['draft', 'scheduled', 'live', 'paused', 'ended'],
+      statusMeta: {
+        draft:     { label: 'Draft',     c: '#8B8398' },
+        scheduled: { label: 'Scheduled', c: '#4F46E5' },
+        live:      { label: 'Live',      c: '#16A34A' },
+        paused:    { label: 'Paused',    c: '#C2740B' },
+        ended:     { label: 'Ended',     c: '#9A93A6' },
+      },
+      // tinted chip pairs per edition — reactive on this.dark
+      badgeStyle(s) {
+        const light = {
+          draft:     ['#F0EDF3', '#5B5368'],
+          scheduled: ['#E9EAFE', '#3730A3'],
+          live:      ['#E4F6EC', '#15803D'],
+          paused:    ['#FBEEDA', '#9A5A08'],
+          ended:     ['#F1EEF4', '#6B6478'],
+        };
+        const dark = {
+          draft:     ['rgba(139,131,152,.20)', '#C4BAD2'],
+          scheduled: ['rgba(129,140,248,.22)', '#B4BEFC'],
+          live:      ['rgba(34,197,94,.20)',   '#5CE08A'],
+          paused:    ['rgba(245,181,71,.20)',  '#F5C670'],
+          ended:     ['rgba(148,139,163,.16)', '#A79DB6'],
+        };
+        const [bg, fg] = (this.dark ? dark : light)[s] || (this.dark ? dark : light).ended;
+        return `background:${bg}; color:${fg}; border-color:${bg}`;
+      },
+
+      channelHue: { 'Search': '--sp-1', 'Display': '--sp-2', 'Video': '--sp-3', 'Paid Social': '--sp-4', 'Email': '--sp-5' },
+
+      kpis: [
+        { label: 'Impressions', value: '12.4M', delta: '8.1%',  up: true,  icon: 'eye',                  color: '#7C3AED', tint: '#F1EAFE' },
+        { label: 'Avg CTR',     value: '2.8%',  delta: '0.4pt', up: true,  icon: 'mouse-pointer-click',  color: '#DB2777', tint: '#FBE3F0' },
+        { label: 'Conversions', value: '8,240', delta: '12.6%', up: true,  icon: 'target',               color: '#2563EB', tint: '#E6EEFE' },
+        { label: 'ROAS',        value: '3.6x',  delta: '0.2x',  up: false, icon: 'trending-up',          color: '#0891B2', tint: '#E1F3F7' },
+      ],
+
+      channels: [
+        { name: 'Search',      hue: '--sp-1', spend: 92,  share: 30, ctr: 4.0, roas: 4.2, camps: 3, pacing: 74 },
+        { name: 'Display',     hue: '--sp-2', spend: 33,  share: 11, ctr: 1.6, roas: 2.4, camps: 2, pacing: 58 },
+        { name: 'Video',       hue: '--sp-3', spend: 105, share: 33, ctr: 2.3, roas: 3.6, camps: 2, pacing: 66 },
+        { name: 'Paid Social', hue: '--sp-4', spend: 60,  share: 20, ctr: 2.6, roas: 3.1, camps: 3, pacing: 83 },
+        { name: 'Email',       hue: '--sp-5', spend: 20,  share: 6,  ctr: 5.3, roas: 6.8, camps: 2, pacing: 91 },
+      ],
+
+      audiences: [
+        { name: 'Cart abandoners',   size: '48K',   reach: 82, growth: 6.2,  channel: 'Email',       hue: '--sp-5' },
+        { name: 'Lookalike 1%',      size: '1.2M',  reach: 44, growth: 12.4, channel: 'Paid Social', hue: '--sp-4' },
+        { name: 'High-LTV loyalists', size: '22K',  reach: 91, growth: 2.1,  channel: 'Email',       hue: '--sp-5' },
+        { name: 'Site visitors 30d', size: '310K',  reach: 63, growth: 8.8,  channel: 'Display',     hue: '--sp-2' },
+        { name: 'Video engagers',    size: '540K',  reach: 51, growth: 15.3, channel: 'Video',       hue: '--sp-3' },
+        { name: 'Newsletter subs',   size: '96K',   reach: 88, growth: 3.4,  channel: 'Search',      hue: '--sp-1' },
+      ],
+
+      reports: [
+        { name: 'Weekly performance',  cadence: 'Mon · 9:00',  format: 'PDF', last: 'Jun 30', icon: 'calendar-days' },
+        { name: 'Channel ROAS deep-dive', cadence: 'Monthly',  format: 'CSV', last: 'Jun 24', icon: 'git-branch' },
+        { name: 'Creative fatigue',    cadence: 'Bi-weekly',    format: 'PDF', last: 'Jun 28', icon: 'image' },
+        { name: 'Audience overlap',    cadence: 'On demand',    format: 'XLS', last: 'Jun 12', icon: 'users' },
+        { name: 'Budget pacing',       cadence: 'Daily · 7:00', format: 'PDF', last: 'Jul 01', icon: 'gauge' },
+      ],
+
+      report: { metric: 'Spend', range: 'Last 30 days', group: 'Channel', channels: ['Search', 'Video', 'Paid Social'], charts: true, notes: '' },
+      prefs: { digest: true, alerts: true, tz: 'UTC−05:00 · Eastern', budget: 2500, density: 'Cozy', footer: 'Prepared by the Prism growth team.' },
+
+      nw: { name: '', channel: 'Search', budget: 20000, objective: 'Conversions', status: 'draft' },
+
+      rows: [
+        { id: 1,  name: 'Summer Splash — Search',    channel: 'Search',      hue: '--sp-1', budget: 42000, spent: 31240, ctr: 4.2, status: 'live',      notes: '' },
+        { id: 2,  name: 'Retarget Warm Cart',        channel: 'Display',     hue: '--sp-2', budget: 18000, spent: 12880, ctr: 1.6, status: 'live',      notes: '' },
+        { id: 3,  name: 'Q3 Brand Lift',             channel: 'Video',       hue: '--sp-3', budget: 60000, spent: 47100, ctr: 2.1, status: 'live',      notes: '' },
+        { id: 4,  name: 'Creator Collab Reels',      channel: 'Paid Social', hue: '--sp-4', budget: 26000, spent: 9400,  ctr: 3.4, status: 'scheduled', notes: '' },
+        { id: 5,  name: 'Newsletter Nurture',        channel: 'Email',       hue: '--sp-5', budget: 8000,  spent: 6120,  ctr: 5.9, status: 'live',      notes: '' },
+        { id: 6,  name: 'Prospecting — Lookalikes',  channel: 'Paid Social', hue: '--sp-4', budget: 34000, spent: 33800, ctr: 1.9, status: 'paused',    notes: '' },
+        { id: 7,  name: 'Holiday Teaser Display',    channel: 'Display',     hue: '--sp-2', budget: 15000, spent: 0,     ctr: 0.0, status: 'draft',     notes: '' },
+        { id: 8,  name: 'Loyalty Winback',           channel: 'Email',       hue: '--sp-5', budget: 12000, spent: 11640, ctr: 4.7, status: 'ended',     notes: '' },
+        { id: 9,  name: 'Back-to-School Search',     channel: 'Search',      hue: '--sp-1', budget: 28000, spent: 4200,  ctr: 3.8, status: 'scheduled', notes: '' },
+        { id: 10, name: 'Always-On Brand Video',     channel: 'Video',       hue: '--sp-3', budget: 45000, spent: 22300, ctr: 2.6, status: 'live',      notes: '' },
+      ],
+
+      sortKey: 'spent', sortDir: -1,
+
+      // ---------- computed ----------
+      get filtered() {
+        const q = this.query.trim().toLowerCase();
+        let out = this.rows.filter(r => {
+          const okStatus = this.active.length === 0 || this.active.includes(r.status);
+          const okQuery = q === '' || r.name.toLowerCase().includes(q) || r.channel.toLowerCase().includes(q);
+          return okStatus && okQuery;
+        });
+        const k = this.sortKey, d = this.sortDir;
+        out = [...out].sort((a, b) => {
+          let av = a[k], bv = b[k];
+          if (typeof av === 'string') return av.localeCompare(bv) * d;
+          return (av - bv) * d;
+        });
+        return out;
+      },
+      active: [],
+
+      // ---------- navigation ----------
+      go(id) {
+        this.page = id;
+        this.mobileNav = false;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        this.$nextTick(() => { this.icons(); this.renderCharts(); });
+      },
+
+      // ---------- filters / sort ----------
+      toggleFilter(key) {
+        const i = this.active.indexOf(key);
+        if (i === -1) this.active.push(key); else this.active.splice(i, 1);
+      },
+      toggleReportChannel(name) {
+        const i = this.report.channels.indexOf(name);
+        if (i === -1) this.report.channels.push(name); else this.report.channels.splice(i, 1);
+      },
+      sortBy(k) {
+        if (this.sortKey === k) this.sortDir *= -1; else { this.sortKey = k; this.sortDir = 1; }
+      },
+
+      // ---------- inline edits ----------
+      startBudget(row) {
+        this.editBudgetId = row.id;
+        this.$nextTick(() => this.$refs.budgetInput && this.$refs.budgetInput.focus());
+      },
+      commitBudget(row) {
+        if (this.editBudgetId === null) return;
+        this.editBudgetId = null;
+        this.toast(row.name + ' budget → $' + row.budget.toLocaleString(), 'wallet');
+      },
+
+      // ---------- edit drawer ----------
+      openEdit(row) {
+        this.editRow = row;
+        this.editForm = { ...row };
+        this.$nextTick(() => this.icons());
+      },
+      closeEdit() { this.editRow = null; },
+      saveEdit() {
+        this.editForm.hue = this.channelHue[this.editForm.channel];
+        Object.assign(this.editRow, this.editForm);
+        this.toast(this.editRow.name + ' saved', 'check');
+        this.editRow = null;
+      },
+
+      // ---------- modal ----------
+      openNew() {
+        this.nw = { name: '', channel: 'Search', budget: this.prefs.budget * 8, objective: 'Conversions', status: 'draft' };
+        this.modal = true;
+        this.$nextTick(() => this.icons());
+      },
+      createCampaign() {
+        const name = this.nw.name.trim() || 'Untitled campaign';
+        const id = Math.max(...this.rows.map(r => r.id)) + 1;
+        this.rows.unshift({
+          id, name, channel: this.nw.channel, hue: this.channelHue[this.nw.channel],
+          budget: this.nw.budget, spent: 0, ctr: 0.0, status: this.nw.status, notes: '',
+        });
+        this.modal = false;
+        this.toast('“' + name + '” created', 'sparkles');
+        if (this.page !== 'campaigns') this.go('campaigns');
+      },
+
+      // ---------- edition ----------
+      toggleEdition() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        const m = document.querySelector('meta[name=theme-color]');
+        if (m) m.setAttribute('content', this.dark ? '#1B1526' : '#FFFFFF');
+        // charts re-render via the MutationObserver in boot()
+      },
+
+      // ---------- charts ----------
+      setRange(r) {
+        this.range = r;
+        this.toast('Range set to ' + r, 'calendar');
+        this.$nextTick(() => this.renderCharts());
+      },
+
+      _hexToRgba(hex, a) {
+        hex = hex.replace('#', '');
+        if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+        const n = parseInt(hex, 16);
+        return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+      },
+
+      trendData(range) {
+        const days = range === '7d' ? 7 : range === 'Quarter' ? 90 : 30;
+        const step = range === 'Quarter' ? 3 : 1;
+        const conv = [], spend = [], labels = [];
+        let c = 210, s = 5.2;
+        for (let i = 0; i < days; i += step) {
+          c += (Math.sin(i / 4) * 18) + (i * 1.4) + (Math.random() * 22 - 11);
+          s += (Math.cos(i / 5) * 0.4) + 0.03 + (Math.random() * 0.4 - 0.2);
+          labels.push('D' + (i + 1));
+          conv.push(Math.max(60, Math.round(c)));
+          spend.push(Math.max(2, +s.toFixed(1)));
+        }
+        return { labels, conv, spend };
+      },
+
+      renderCharts() {
+        if (!window.Chart) return;
+        const css = getComputedStyle(document.documentElement);
+        const v = n => css.getPropertyValue(n).trim();
+        const SP = [v('--sp-1'), v('--sp-2'), v('--sp-3'), v('--sp-4'), v('--sp-5')];
+        const ink = v('--ink'), ink2 = v('--ink-2'), ink3 = v('--ink-3'), line = v('--line'), surface = v('--surface');
+
+        Chart.defaults.font.family = 'Bricolage Grotesque, sans-serif';
+        Chart.defaults.font.size = 12;
+        Chart.defaults.color = ink2;
+        // Charts are (re)built on every edition swap / tab change; disabling the
+        // entrance animation avoids a Chart.js race where a queued frame draws to
+        // a just-destroyed canvas — and keeps the spectrum steady for reduced-motion.
+        Chart.defaults.animation = false;
+
+        const tip = {
+          backgroundColor: ink, padding: 10, cornerRadius: 10,
+          titleColor: surface, bodyColor: surface, boxPadding: 5,
+          titleFont: { weight: '700' }, bodyFont: { family: 'Fragment Mono, monospace' },
+        };
+
+        const draw = (id, cfg) => {
+          const el = document.getElementById(id);
+          if (!el || el.offsetParent === null) return;   // skip hidden canvases
+          if (this._charts[id]) this._charts[id].destroy();
+          this._charts[id] = new Chart(el.getContext('2d'), cfg);
+        };
+
+        const gridAxes = (extra = {}) => ({
+          x: { grid: { display: false }, border: { color: line }, ticks: { color: ink3, maxTicksLimit: 8 } },
+          y: { grid: { color: line }, border: { display: false }, ticks: { color: ink3, maxTicksLimit: 5 }, ...extra },
+        });
+
+        // ---- Overview: trend (area + dashed line) ----
+        const el1 = document.getElementById('trendChart');
+        if (el1 && el1.offsetParent !== null) {
+          const td = this.trendData(this.range);
+          const g = el1.getContext('2d').createLinearGradient(0, 0, 0, 280);
+          g.addColorStop(0, this._hexToRgba(SP[0], 0.26));
+          g.addColorStop(1, this._hexToRgba(SP[0], 0.0));
+          draw('trendChart', {
+            type: 'line',
+            data: { labels: td.labels, datasets: [
+              { label: 'Conversions', data: td.conv, borderColor: SP[0], backgroundColor: g, fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: SP[0], pointHoverBorderColor: surface, pointHoverBorderWidth: 2, yAxisID: 'y' },
+              { label: 'Spend ($k)', data: td.spend, borderColor: SP[2], fill: false, tension: 0.4, borderWidth: 2.5, borderDash: [5, 4], pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: SP[2], pointHoverBorderColor: surface, pointHoverBorderWidth: 2, yAxisID: 'y1' },
+            ] },
+            options: {
+              responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+              plugins: { legend: { display: false }, tooltip: tip },
+              scales: {
+                x: { grid: { display: false }, border: { color: line }, ticks: { color: ink3, maxTicksLimit: 8 } },
+                y: { position: 'left', grid: { color: line }, border: { display: false }, ticks: { color: ink3, maxTicksLimit: 5 } },
+                y1: { position: 'right', grid: { display: false }, border: { display: false }, ticks: { color: ink3, maxTicksLimit: 5, callback: x => '$' + x + 'k' } },
+              },
+            },
+          });
+        }
+
+        // ---- Overview: spend by channel (bar) ----
+        draw('channelChart', {
+          type: 'bar',
+          data: { labels: ['Search', 'Display', 'Video', 'Paid Social', 'Email'], datasets: [{ data: [92, 33, 105, 60, 20], backgroundColor: SP, borderRadius: 8, borderSkipped: false, maxBarThickness: 46 }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: c => '$' + c.raw + 'k' } } }, scales: gridAxes({ ticks: { color: ink3, callback: x => '$' + x + 'k', maxTicksLimit: 5 } }) },
+        });
+
+        // ---- Overview: traffic by channel (doughnut) ----
+        draw('sourceChart', {
+          type: 'doughnut',
+          data: { labels: ['Search', 'Display', 'Video', 'Paid Social', 'Email'], datasets: [{ data: [34, 12, 19, 26, 9], backgroundColor: SP, borderColor: surface, borderWidth: 3, hoverOffset: 6 }] },
+          options: { responsive: true, maintainAspectRatio: false, cutout: '64%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 9, boxHeight: 9, usePointStyle: true, pointStyle: 'circle', padding: 13, color: ink2, font: { size: 12 } } }, tooltip: { ...tip, callbacks: { label: c => ' ' + c.label + ': ' + c.raw + '%' } } } },
+        });
+
+        // ---- Channels: spend share (doughnut) ----
+        draw('channelMixChart', {
+          type: 'doughnut',
+          data: { labels: this.channels.map(c => c.name), datasets: [{ data: this.channels.map(c => c.share), backgroundColor: SP, borderColor: surface, borderWidth: 3, hoverOffset: 6 }] },
+          options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 9, boxHeight: 9, usePointStyle: true, pointStyle: 'circle', padding: 13, color: ink2, font: { size: 12 } } }, tooltip: { ...tip, callbacks: { label: c => ' ' + c.label + ': ' + c.raw + '%' } } } },
+        });
+
+        // ---- Channels: CTR trend (multi-line spectrum) ----
+        const weeks = ['W1','W2','W3','W4','W5','W6','W7','W8'];
+        const ctrSeries = [
+          [3.4,3.6,3.9,4.0,4.1,4.0,4.2,4.0],
+          [1.4,1.5,1.5,1.6,1.7,1.6,1.6,1.6],
+          [1.9,2.0,2.1,2.2,2.2,2.3,2.3,2.3],
+          [2.2,2.4,2.5,2.5,2.6,2.7,2.6,2.6],
+          [4.9,5.0,5.1,5.2,5.3,5.4,5.3,5.3],
+        ];
+        draw('channelPerfChart', {
+          type: 'line',
+          data: { labels: weeks, datasets: this.channels.map((c, i) => ({ label: c.name, data: ctrSeries[i], borderColor: SP[i], backgroundColor: SP[i], tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 4 })) },
+          options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 9, boxHeight: 9, usePointStyle: true, pointStyle: 'circle', padding: 13, color: ink2, font: { size: 12 } } }, tooltip: { ...tip, callbacks: { label: c => ' ' + c.dataset.label + ': ' + c.raw + '%' } } }, scales: gridAxes({ ticks: { color: ink3, callback: x => x + '%', maxTicksLimit: 5 } }) },
+        });
+
+        // ---- Audiences: reach (horizontal bar) ----
+        draw('audienceChart', {
+          type: 'bar',
+          data: { labels: this.audiences.map(a => a.name), datasets: [{ data: [3.1, 12.0, 1.4, 6.3, 8.9, 2.0], backgroundColor: this.audiences.map(a => v(a.hue)), borderRadius: 7, borderSkipped: false, maxBarThickness: 22 }] },
+          options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: c => c.raw + 'M reachable' } } }, scales: { x: { grid: { color: line }, border: { display: false }, ticks: { color: ink3, callback: x => x + 'M' } }, y: { grid: { display: false }, border: { color: line }, ticks: { color: ink2, font: { size: 12 } } } } },
+        });
+      },
+
+      // ---------- toast / icons / boot ----------
+      toast(msg, icon = 'check-circle') {
+        const id = ++this._tid;
+        this.toasts.push({ id, msg, icon });
+        this.$nextTick(() => this.icons());
+        setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 2600);
+      },
+      icons() { if (window.lucide) lucide.createIcons(); },
+
+      boot() {
+        this.$nextTick(() => { this.icons(); this.renderCharts(); });
+        // re-render charts + icons whenever the edition (html.dark) flips
+        new MutationObserver(() => {
+          this.$nextTick(() => { this.icons(); this.renderCharts(); });
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        // re-render icons injected by templates after first paint
+        setTimeout(() => this.icons(), 80);
+        window.addEventListener('resize', () => { /* Chart.js handles responsive resize */ });
+      },
+    };
+  }
+</script>
+</body>
+</html>

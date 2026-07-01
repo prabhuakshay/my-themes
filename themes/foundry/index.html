@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#E9EEF2" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230F1B2A'/%3E%3Cpath d='M12 5l6 3.5v7L12 19l-6-3.5v-7z' fill='none' stroke='%23F97316' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<title>Foundry — Pipeline orchestration console</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;700;900&family=Sometype+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Chivo', 'system-ui', 'sans-serif'],
+          mono: ['"Sometype Mono"', 'ui-monospace', 'monospace'],
+        },
+        fontWeight: { 400: '400', 500: '500', 700: '700', 900: '900' },
+        colors: {
+          canvas: 'var(--canvas)',
+          surface: 'var(--surface)',
+          'surface-2': 'var(--surface-2)',
+          line: 'var(--line)',
+          'line-2': 'var(--line-2)',
+          ink: 'var(--ink)',
+          'ink-2': 'var(--ink-2)',
+          'ink-3': 'var(--ink-3)',
+          accent: 'var(--accent)',
+          'accent-soft': 'var(--accent-soft)',
+          steel: 'var(--steel)',
+          ok: 'var(--ok)',
+          warn: 'var(--warn)',
+          crit: 'var(--crit)',
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* ============================================================
+     FOUNDRY — token system
+     Blueprint (light) under :root · Control Room (dark) under html.dark
+     ============================================================ */
+  :root {
+    color-scheme: light;
+    --canvas: #E9EEF2;
+    --surface: #FFFFFF;
+    --surface-2: #F1F5F8;
+    --line: #DCE3EA;
+    --line-2: #C2CDD8;      /* structural separator — chrome */
+    --ink: #0F1B2A;
+    --ink-2: #46586B;
+    --ink-3: #78899A;
+    --accent: #F97316;      /* molten amber */
+    --accent-soft: #FDEAD9;
+    --accent-ink: #C2410C;
+    --steel: #2563EB;
+    --ok: #059669;
+    --warn: #B45309;
+    --crit: #DC2626;
+
+    /* run-state system */
+    --r-queued: #64748B;
+    --r-running: #2563EB;
+    --r-success: #059669;
+    --r-failed: #DC2626;
+    --r-retrying: #B45309;
+    --r-skipped: #94A3B8;
+
+    --radius: 6px;
+    --radius-sm: 4px;
+    --shadow-card: 0 1px 2px rgba(15, 27, 42, 0.05), 0 1px 3px rgba(15, 27, 42, 0.04);
+    --shadow-pop: 0 12px 34px rgba(15, 27, 42, 0.18);
+  }
+
+  html.dark {
+    color-scheme: dark;
+    --canvas: #0A111E;
+    --surface: #111C2E;
+    --surface-2: #17253A;
+    --line: #22334D;
+    --line-2: #35496B;      /* structural separator — chrome */
+    --ink: #E7EEF7;
+    --ink-2: #99ABC4;
+    --ink-3: #6E829B;
+    --accent: #FB8A3C;
+    --accent-soft: #37271A;
+    --accent-ink: #FBBF88;
+    --steel: #4C8DF6;
+    --ok: #10B981;
+    --warn: #F59E0B;
+    --crit: #F87171;
+
+    --r-queued: #8296AE;
+    --r-running: #4C8DF6;
+    --r-success: #10B981;
+    --r-failed: #F87171;
+    --r-retrying: #F59E0B;
+    --r-skipped: #64788F;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-pop: 0 14px 40px rgba(0, 0, 0, 0.55);
+  }
+
+  * { -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--canvas); }
+  body { font-family: 'Chivo', system-ui, sans-serif; color: var(--ink); }
+  [x-cloak] { display: none !important; }
+  .mono { font-family: 'Sometype Mono', ui-monospace, monospace; }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* Blueprint grid on the canvas (subtle, behind content) */
+  .blueprint {
+    background-color: var(--canvas);
+    background-image:
+      repeating-linear-gradient(0deg, var(--line) 0, var(--line) 1px, transparent 1px, transparent 28px),
+      repeating-linear-gradient(90deg, var(--line) 0, var(--line) 1px, transparent 1px, transparent 28px);
+    background-position: -1px -1px;
+  }
+  .blueprint-panel {
+    background-color: var(--surface);
+    background-image:
+      repeating-linear-gradient(0deg, var(--line) 0, var(--line) 1px, transparent 1px, transparent 24px),
+      repeating-linear-gradient(90deg, var(--line) 0, var(--line) 1px, transparent 1px, transparent 24px);
+    background-position: -1px -1px;
+  }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+  .scroll-x::-webkit-scrollbar, .scroll-y::-webkit-scrollbar { height: 8px; width: 8px; }
+  .scroll-x::-webkit-scrollbar-thumb, .scroll-y::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 4px; }
+  .scroll-x::-webkit-scrollbar-track, .scroll-y::-webkit-scrollbar-track { background: transparent; }
+
+  /* ---------- component classes (token-driven) ---------- */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-card); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: var(--radius); font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; border: 1px solid transparent; transition: filter .12s ease, background .12s ease, border-color .12s ease; }
+  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 1px 2px rgba(249,115,22,.4); }
+  .btn-primary:hover { filter: brightness(1.05); }
+  .btn-primary:active { filter: brightness(.94); }
+  .btn-outline { background: var(--surface); color: var(--ink); border-color: var(--line-2); }
+  .btn-outline:hover { background: var(--surface-2); }
+  .btn-ghost { background: transparent; color: var(--ink-2); }
+  .btn-ghost:hover { background: var(--surface-2); color: var(--ink); }
+  .btn-danger { background: transparent; color: var(--crit); border-color: color-mix(in srgb, var(--crit) 40%, transparent); }
+  .btn-danger:hover { background: color-mix(in srgb, var(--crit) 10%, transparent); }
+  .btn-sm { height: 36px; padding: 0 12px; font-size: 12px; }
+
+  .iconbtn { display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--radius); color: var(--ink-2); cursor: pointer; transition: background .12s ease, color .12s ease; }
+  .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
+
+  .field { width: 100%; height: 40px; padding: 0 12px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); font-size: 13px; transition: background .12s ease, border-color .12s ease; }
+  .field:focus { background: var(--surface); border-color: var(--line-2); outline: none; }
+  .field::placeholder { color: var(--ink-3); }
+  textarea.field { height: auto; padding: 10px 12px; line-height: 1.5; resize: vertical; }
+
+  .sel, .status-select {
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2378899A' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; padding-right: 26px; cursor: pointer;
+  }
+  .sel { width: 100%; height: 40px; padding-left: 12px; border-radius: var(--radius); background-color: var(--surface-2); border: 1px solid var(--line); color: var(--ink); font-size: 13px; }
+  .sel:focus { background-color: var(--surface); border-color: var(--line-2); outline: none; }
+
+  .lbl { font-family: 'Sometype Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-3); font-weight: 500; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-family: 'Sometype Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; font-weight: 500; padding: 0 8px; height: 24px; border-radius: 5px; white-space: nowrap; }
+
+  .nav-item { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: var(--radius); color: var(--ink-2); font-size: 14px; font-weight: 500; cursor: pointer; transition: background .12s ease, color .12s ease; }
+  .nav-item:hover { background: var(--surface-2); color: var(--ink); }
+  .nav-item.on { background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--ink); font-weight: 600; }
+  .nav-item.on i { color: var(--accent); }
+
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 2px; }
+  .seg button { height: 36px; padding: 0 14px; border-radius: var(--radius-sm); font-family: 'Sometype Mono', monospace; font-size: 12px; font-weight: 500; color: var(--ink-3); cursor: pointer; transition: color .12s ease; }
+  .seg button:hover { color: var(--ink-2); }
+  .seg button.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(15,27,42,.10); }
+
+  .tg { width: 44px; height: 24px; border-radius: 999px; background: var(--line-2); position: relative; cursor: pointer; transition: background .15s ease; flex: none; }
+  .tg b { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 999px; background: #fff; transition: left .15s ease; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+  .tg.on { background: var(--accent); }
+  .tg.on b { left: 22px; }
+
+  .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface-2); }
+  .stepper button { width: 40px; height: 40px; display: grid; place-items: center; color: var(--ink-2); cursor: pointer; transition: background .12s ease, color .12s ease; }
+  .stepper button:hover { background: var(--surface); color: var(--ink); }
+  .stepper .val { min-width: 56px; text-align: center; font-family: 'Sometype Mono', monospace; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  .ie { cursor: text; border-radius: var(--radius-sm); transition: background .12s ease; }
+  .ie:hover { background: var(--surface-2); }
+
+  /* ---------- DAG lane ---------- */
+  .dag-node { position: relative; transition: box-shadow .15s ease, transform .15s ease; }
+  .dag-node:hover { transform: translateY(-1px); box-shadow: var(--shadow-pop); }
+  @keyframes nodepulse { 0%,100% { box-shadow: 0 0 0 0 rgba(37,99,235,.30); } 50% { box-shadow: 0 0 0 7px rgba(37,99,235,0); } }
+  .node-running { animation: nodepulse 2s ease-in-out infinite; }
+  .dag-edge { position: relative; height: 2px; background: var(--line-2); flex: 1; min-width: 40px; }
+  @keyframes flowdot { 0% { left: 0%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+  .flow-dot { position: absolute; top: 50%; width: 6px; height: 6px; margin-top: -3px; margin-left: -3px; border-radius: 9999px; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); animation: flowdot 2.4s linear infinite; }
+
+  /* ---------- run log console ---------- */
+  .console { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius); }
+  html.dark .console { background: #0C1524; }
+  .logrow { display: grid; grid-template-columns: 78px 60px 1fr; gap: 12px; padding: 3px 14px; font-family: 'Sometype Mono', monospace; font-size: 12px; line-height: 1.55; }
+  .logrow:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+
+  @keyframes toastin { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .toast-item { animation: toastin .18s ease both; }
+
+  .kpi-spark { display: block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  }
+</style>
+</head>
+
+<body class="blueprint antialiased text-ink">
+
+<div
+  x-data="foundry()" x-init="boot()" x-cloak
+  class="min-h-screen flex flex-col"
+  @keydown.escape.window="modal=false; editDrawer=null; navOpen=false; envOpen=false"
+>
+
+  <!-- ===================== TOP TOOLBAR ===================== -->
+  <header class="sticky top-0 z-40 h-16 bg-surface/95 backdrop-blur border-b border-line-2 flex items-center gap-2 sm:gap-3 px-3 sm:px-5">
+    <button @click="navOpen = true; $nextTick(() => icons())" class="lg:hidden iconbtn -ml-1" aria-label="Open navigation">
+      <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
+
+    <!-- Product mark -->
+    <div class="flex items-center gap-2.5 shrink-0">
+      <div class="grid place-items-center w-8 h-8 rounded-[6px] bg-ink text-accent">
+        <i data-lucide="hexagon" class="w-[18px] h-[18px]"></i>
+      </div>
+      <div class="leading-tight hidden sm:block">
+        <div class="font-black text-[15px] tracking-tight">Foundry</div>
+        <div class="mono text-[10px] text-ink-3 tracking-wide uppercase">orchestration</div>
+      </div>
+    </div>
+
+    <!-- Environment switcher -->
+    <div class="relative ml-1 sm:ml-3" @click.outside="envOpen = false">
+      <button
+        @click="envOpen = !envOpen"
+        class="flex items-center gap-2 h-10 pl-2.5 pr-2 rounded-[6px] bg-surface-2 border border-line hover:border-line-2"
+        :aria-expanded="envOpen" aria-label="Switch environment"
+      >
+        <span class="w-2 h-2 rounded-full shrink-0" :style="`background:${envDot}`"></span>
+        <span class="mono text-[12px] font-medium" x-text="env"></span>
+        <span class="mono text-[11px] text-ink-3 hidden sm:inline" x-text="region"></span>
+        <i data-lucide="chevron-down" class="w-4 h-4 text-ink-3" :class="envOpen ? 'rotate-180' : ''"></i>
+      </button>
+      <div x-show="envOpen" x-transition.origin.top.left
+        class="absolute left-0 mt-1.5 w-56 bg-surface border border-line-2 rounded-[6px] shadow-[var(--shadow-pop)] p-1 z-50">
+        <div class="lbl px-2.5 py-1.5">Deploy target</div>
+        <template x-for="e in envs" :key="e.name">
+          <button @click="setEnv(e)" class="w-full flex items-center gap-2.5 px-2.5 h-10 rounded-[4px] text-left hover:bg-surface-2">
+            <span class="w-2 h-2 rounded-full shrink-0" :style="`background:${e.color}`"></span>
+            <span class="mono text-[13px] font-medium" :class="env === e.name ? 'text-ink' : 'text-ink-2'" x-text="e.name"></span>
+            <span class="ml-auto mono text-[11px] text-ink-3" x-text="e.region"></span>
+            <i x-show="env === e.name" data-lucide="check" class="w-4 h-4 text-accent"></i>
+          </button>
+        </template>
+      </div>
+    </div>
+
+    <!-- Global search -->
+    <div class="relative ml-auto lg:ml-3 lg:mr-auto hidden md:block w-52 lg:w-80">
+      <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-3"></i>
+      <input type="search" x-model="query" @focus="page='pipelines'"
+        placeholder="Search pipelines, datasets, runs…"
+        class="w-full h-10 pl-9 pr-3 rounded-[6px] bg-surface-2 border border-line text-[13px] mono placeholder:text-ink-3 focus:bg-surface focus:border-line-2"
+        aria-label="Search" />
+    </div>
+
+    <!-- Edition toggle -->
+    <button @click="toggleEdition()" class="iconbtn" :aria-label="dark ? 'Switch to Blueprint (light)' : 'Switch to Control Room (dark)'">
+      <i :data-lucide="dark ? 'sun' : 'moon'" class="w-[18px] h-[18px]"></i>
+    </button>
+
+    <button @click="refresh()" class="iconbtn border border-line bg-surface-2 hover:border-line-2" aria-label="Refresh">
+      <i data-lucide="refresh-cw" class="w-[18px] h-[18px]"></i>
+    </button>
+
+    <button @click="runAll()" class="btn btn-primary px-3 sm:px-4">
+      <i data-lucide="play" class="w-4 h-4"></i>
+      <span class="hidden sm:inline">Run all</span>
+    </button>
+
+    <button class="iconbtn relative shrink-0" aria-label="Alerts">
+      <i data-lucide="bell" class="w-[18px] h-[18px]"></i>
+      <span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-crit ring-2 ring-surface"></span>
+    </button>
+
+    <button class="grid place-items-center w-9 h-9 rounded-full font-bold text-[13px] shrink-0"
+      style="background: color-mix(in srgb, var(--steel) 14%, transparent); color: var(--steel);" aria-label="Account">DR</button>
+  </header>
+
+  <!-- ===================== SHELL: NAV + MAIN ===================== -->
+  <div class="flex flex-1 min-h-0">
+
+    <!-- ===================== DESKTOP NAV SIDEBAR ===================== -->
+    <aside class="hidden lg:flex sticky top-16 h-[calc(100vh-4rem)] w-[248px] shrink-0 flex-col bg-surface border-r border-line-2" aria-label="Primary">
+      <nav class="flex-1 overflow-y-auto scroll-y p-3">
+        <div class="lbl px-2 mb-2">Console</div>
+        <div class="flex flex-col gap-1">
+          <template x-for="n in nav" :key="n.id">
+            <button class="nav-item" :class="page === n.id && 'on'" @click="go(n.id)" :aria-current="page === n.id ? 'page' : 'false'">
+              <i :data-lucide="n.icon" class="w-5 h-5 shrink-0"></i>
+              <span x-text="n.label"></span>
+              <span x-show="n.badge" class="ml-auto chip" :style="chipStyle(n.badgeState)" x-text="n.badge"></span>
+            </button>
+          </template>
+        </div>
+
+        <div class="lbl px-2 mt-5 mb-2">Datasets</div>
+        <div class="flex flex-col gap-0.5">
+          <template x-for="d in datasets" :key="d.name">
+            <button class="nav-item h-9 text-[13px]" @click="go('pipelines')">
+              <i data-lucide="table-2" class="w-4 h-4 shrink-0 text-ink-3"></i>
+              <span class="mono truncate" x-text="d.name"></span>
+              <span class="ml-auto mono text-[10px] tnum text-ink-3" x-text="d.rows"></span>
+            </button>
+          </template>
+        </div>
+      </nav>
+
+      <!-- Scheduler status footer -->
+      <div class="border-t border-line p-3 shrink-0">
+        <div class="rounded-[6px] border border-line bg-surface-2 p-2.5">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full" :class="pauseSched ? 'bg-warn' : 'bg-ok'"></span>
+            <span class="text-[12px] font-medium">scheduler</span>
+            <span class="ml-auto mono text-[10px] uppercase" :class="pauseSched ? 'text-warn' : 'text-ok'" x-text="pauseSched ? 'paused' : 'online'"></span>
+          </div>
+          <div class="mono text-[10px] text-ink-3 mt-1.5 tnum">cursor · <span x-text="clock"></span>Z</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===================== MAIN ===================== -->
+    <main class="flex-1 min-w-0 px-4 lg:px-7 py-5 lg:py-7">
+      <div class="max-w-[1500px] w-full mx-auto space-y-5">
+
+        <!-- Context line -->
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <i data-lucide="git-branch" class="w-4 h-4 text-ink-3"></i>
+          <span class="mono text-[12px] text-ink-2" x-text="env"></span>
+          <span class="mono text-[12px] text-ink-3">/</span>
+          <span class="mono text-[12px] text-ink font-medium" x-text="meta[page].crumb"></span>
+          <span class="ml-auto mono text-[12px] text-ink-3">last sync <span class="tnum text-ink-2" x-text="clock"></span> UTC</span>
+        </div>
+
+        <!-- Page title -->
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <div class="lbl" x-text="meta[page].kicker"></div>
+            <h1 class="text-[22px] sm:text-[26px] font-black tracking-tight mt-0.5" x-text="meta[page].title"></h1>
+          </div>
+          <div class="flex items-center gap-2">
+            <button x-show="page==='pipelines' || page==='dashboard'" @click="openNew()" class="btn btn-primary btn-sm">
+              <i data-lucide="plus" class="w-4 h-4"></i> New pipeline
+            </button>
+            <button x-show="page==='runs'" @click="rerunSelected()" class="btn btn-outline btn-sm">
+              <i data-lucide="rotate-cw" class="w-4 h-4"></i> Re-run
+            </button>
+            <button x-show="page==='connections'" @click="testAll()" class="btn btn-outline btn-sm">
+              <i data-lucide="activity" class="w-4 h-4"></i> Test all
+            </button>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             PAGE: DASHBOARD
+             ============================================================ -->
+        <div x-show="page==='dashboard'" class="space-y-5">
+
+          <!-- KPI strip -->
+          <section class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+            <template x-for="k in kpis" :key="k.l">
+              <div class="card p-4">
+                <div class="flex items-center justify-between">
+                  <span class="lbl" x-text="k.l"></span>
+                  <i :data-lucide="k.i" class="w-4 h-4" :style="`color:var(${k.c})`"></i>
+                </div>
+                <div class="flex items-end justify-between mt-1.5">
+                  <div>
+                    <div class="mono text-[26px] font-700 tnum leading-none" :class="k.critical && 'text-crit'" x-html="k.v"></div>
+                    <div class="mono text-[10px] mt-1.5" :style="`color:var(${k.deltaC})`" x-text="k.d"></div>
+                  </div>
+                  <svg viewBox="0 0 60 24" class="kpi-spark w-16 h-7" fill="none" preserveAspectRatio="none" aria-hidden="true">
+                    <polyline :points="k.spark" :stroke="`var(${k.c})`" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+              </div>
+            </template>
+          </section>
+
+          <!-- DAG lane hero -->
+          <section class="blueprint-panel card overflow-hidden">
+            <div class="flex flex-wrap items-center gap-3 px-4 sm:px-5 py-3 border-b border-line bg-surface/70">
+              <div>
+                <h2 class="text-[15px] font-bold tracking-tight">clickstream_etl · execution graph</h2>
+                <p class="mono text-[11px] text-ink-3 mt-0.5">4 stages · <span class="text-ok">flowing</span> · triggered @15min</p>
+              </div>
+              <div class="ml-auto hidden sm:flex items-center gap-3 mono text-[10px] uppercase tracking-wide text-ink-3">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:var(--r-success)"></span>healthy</span>
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:var(--r-running)"></span>running</span>
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:var(--r-failed)"></span>failed</span>
+              </div>
+            </div>
+            <div class="scroll-x overflow-x-auto px-4 sm:px-8 py-8">
+              <div class="min-w-[720px] flex items-center">
+                <template x-for="(node, i) in dag" :key="node.label">
+                  <div class="contents">
+                    <div class="dag-node bg-surface border-[1.5px] rounded-[6px] shadow-[var(--shadow-card)] px-3 py-2.5 w-[160px] shrink-0"
+                      :class="node.state==='running' && 'node-running'" :style="`border-color:var(${stateMeta[node.state].v})`">
+                      <div class="flex items-center gap-2.5">
+                        <span class="grid place-items-center w-9 h-9 rounded-[6px] shrink-0"
+                          :style="`background:color-mix(in srgb, var(${stateMeta[node.state].v}) 14%, transparent); color:var(${stateMeta[node.state].v})`">
+                          <i :data-lucide="node.icon" class="w-[18px] h-[18px]"></i>
+                        </span>
+                        <div class="min-w-0">
+                          <div class="lbl" x-text="node.label"></div>
+                          <div class="mono text-[13px] font-700 truncate" x-text="node.name"></div>
+                        </div>
+                      </div>
+                      <div class="flex items-center justify-between mono text-[10px] text-ink-3 mt-2">
+                        <span x-text="node.meta"></span>
+                        <span :style="`color:var(${stateMeta[node.state].v})`" x-text="stateMeta[node.state].label"></span>
+                      </div>
+                    </div>
+                    <div x-show="i < dag.length - 1" class="dag-edge mx-1">
+                      <span class="flow-dot" :style="`animation-delay:${i*0.5}s`"></span>
+                      <span class="flow-dot" :style="`animation-delay:${i*0.5+0.8}s`"></span>
+                      <i data-lucide="chevron-right" class="w-4 h-4 text-line-2 absolute -right-1 top-1/2 -translate-y-1/2"></i>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </section>
+
+          <!-- Charts -->
+          <section class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div class="xl:col-span-2 card p-4 sm:p-5">
+              <div class="flex items-start justify-between mb-3">
+                <div>
+                  <h2 class="text-[14px] font-bold">Throughput</h2>
+                  <p class="mono text-[11px] text-ink-3 mt-0.5">rows / hour · last 24h</p>
+                </div>
+                <div class="text-right">
+                  <div class="mono text-[16px] font-700 tnum leading-none">1.31M</div>
+                  <div class="mono text-[10px] text-ink-3 mt-1">peak · 09:00</div>
+                </div>
+              </div>
+              <div class="relative" style="height: 240px;"><canvas id="chartThroughput"></canvas></div>
+            </div>
+
+            <div class="card p-4 sm:p-5">
+              <div class="mb-3">
+                <h2 class="text-[14px] font-bold">Runs by state</h2>
+                <p class="mono text-[11px] text-ink-3 mt-0.5">last 24h · 312 runs</p>
+              </div>
+              <div class="relative" style="height: 240px;"><canvas id="chartStatus"></canvas></div>
+            </div>
+          </section>
+
+          <section class="card p-4 sm:p-5">
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <h2 class="text-[14px] font-bold">Run duration by pipeline</h2>
+                <p class="mono text-[11px] text-ink-3 mt-0.5">median seconds · top 8</p>
+              </div>
+              <span class="mono text-[10px] uppercase tracking-wide text-ink-3 hidden sm:flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-[2px] bg-steel"></span>duration
+              </span>
+            </div>
+            <div class="relative" style="height: 240px;"><canvas id="chartDuration"></canvas></div>
+          </section>
+
+          <!-- Recent runs table (read-only) -->
+          <section class="card overflow-hidden">
+            <div class="flex items-center justify-between p-4 border-b border-line">
+              <div>
+                <h2 class="text-[14px] font-bold">Recent runs</h2>
+                <p class="mono text-[11px] text-ink-3 mt-0.5">latest 6 dispatches</p>
+              </div>
+              <button @click="go('runs')" class="btn btn-ghost btn-sm">View all <i data-lucide="arrow-right" class="w-4 h-4"></i></button>
+            </div>
+            <div class="scroll-x overflow-x-auto">
+              <table class="w-full min-w-[680px] border-collapse">
+                <thead>
+                  <tr class="border-b border-line bg-surface-2">
+                    <th class="text-left lbl px-4 py-2.5">Run</th>
+                    <th class="text-left lbl px-4 py-2.5">Pipeline</th>
+                    <th class="text-left lbl px-4 py-2.5">Started</th>
+                    <th class="text-right lbl px-4 py-2.5">Duration</th>
+                    <th class="text-left lbl px-4 py-2.5 w-[130px]">State</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(r, i) in runs.slice(0,6)" :key="r.id">
+                    <tr class="border-b border-line last:border-0 hover:bg-surface-2/70 cursor-pointer" :class="i % 2 === 1 && 'bg-surface-2/35'" @click="go('runs'); selectRun(r)">
+                      <td class="px-4 py-3 mono text-[12px] text-ink" x-text="r.id"></td>
+                      <td class="px-4 py-3 mono text-[12px] text-ink-2" x-text="r.pl"></td>
+                      <td class="px-4 py-3 mono text-[12px] tnum text-ink-2" x-text="r.started"></td>
+                      <td class="px-4 py-3 mono text-[12px] tnum text-right" x-text="r.dur"></td>
+                      <td class="px-4 py-3"><span class="chip" :style="chipStyle(r.state)"><i :data-lucide="stateMeta[r.state].icon" class="w-3 h-3"></i><span x-text="stateMeta[r.state].label"></span></span></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- ============================================================
+             PAGE: PIPELINES
+             ============================================================ -->
+        <div x-show="page==='pipelines'" x-cloak class="space-y-5">
+          <section class="card overflow-hidden">
+            <div class="p-4 border-b border-line space-y-3">
+              <div class="flex flex-wrap items-center gap-3">
+                <div>
+                  <h2 class="text-[14px] font-bold">Pipelines</h2>
+                  <p class="mono text-[11px] text-ink-3 mt-0.5"><span class="tnum" x-text="filteredRows.length"></span> of <span class="tnum" x-text="rows.length"></span> shown</p>
+                </div>
+                <div class="ml-auto flex items-center gap-2.5">
+                  <div class="seg" role="tablist" aria-label="Time range">
+                    <template x-for="r in ranges" :key="r">
+                      <button @click="setRange(r)" role="tab" :aria-selected="range === r" :class="range === r && 'on'" x-text="r"></button>
+                    </template>
+                  </div>
+                  <div class="relative w-40 sm:w-56">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3"></i>
+                    <input type="search" x-model="query" placeholder="Filter rows…"
+                      class="w-full h-9 pl-8 pr-3 rounded-[6px] bg-surface-2 border border-line text-[12px] mono placeholder:text-ink-3 focus:bg-surface focus:border-line-2"
+                      aria-label="Filter pipelines" />
+                  </div>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by state">
+                <template x-for="f in filters" :key="f.key">
+                  <button @click="filter = f.key"
+                    class="chip px-2.5 h-8 border font-medium cursor-pointer transition-colors"
+                    :class="filter === f.key ? 'bg-ink text-white border-ink' : 'bg-surface text-ink-2 border-line hover:border-line-2 hover:text-ink'"
+                    x-text="f.label"></button>
+                </template>
+              </div>
+            </div>
+
+            <div class="scroll-x overflow-x-auto">
+              <table class="w-full min-w-[920px] border-collapse">
+                <thead>
+                  <tr class="border-b border-line bg-surface-2">
+                    <template x-for="col in cols" :key="col.key">
+                      <th class="lbl px-4 py-2.5 select-none" :class="col.right ? 'text-right' : 'text-left'">
+                        <button @click="sortBy(col.key)" class="inline-flex items-center gap-1 hover:text-ink-2" :class="col.right && 'flex-row-reverse'">
+                          <span x-text="col.label"></span>
+                          <i data-lucide="chevrons-up-down" class="w-3 h-3" :class="sortKey === col.key ? 'text-accent' : 'text-ink-3 opacity-50'"
+                            x-show="col.sortable"></i>
+                        </button>
+                      </th>
+                    </template>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(row, i) in filteredRows" :key="row.id">
+                    <tr class="border-b border-line last:border-0 hover:bg-surface-2/70" :class="i % 2 === 1 && 'bg-surface-2/35'">
+                      <td class="px-4 py-3 align-middle">
+                        <button @click="openEdit(row)" class="flex items-center gap-2.5 text-left group">
+                          <span class="w-1.5 h-1.5 rounded-full shrink-0" :style="`background:var(${stateMeta[row.status].v})`"></span>
+                          <span class="leading-tight">
+                            <span class="block mono text-[13px] font-500 text-ink group-hover:text-accent" x-text="row.name"></span>
+                            <span class="block mono text-[10px] text-ink-3" x-text="row.id"></span>
+                          </span>
+                        </button>
+                      </td>
+                      <td class="px-4 py-3 align-middle">
+                        <div class="flex items-center gap-2 mono text-[12px] text-ink-2">
+                          <span x-text="row.src"></span>
+                          <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-ink-3 shrink-0"></i>
+                          <span x-text="row.dst"></span>
+                        </div>
+                      </td>
+                      <!-- inline-editable SCHEDULE cell -->
+                      <td class="px-4 py-3 align-middle">
+                        <select class="sel status-select mono text-[11px] h-9 w-[116px]" x-model="row.sched" @change="onScheduleChange(row)" :aria-label="`Schedule for ${row.name}`">
+                          <option value="@15min">@15min</option><option value="@hourly">@hourly</option><option value="@daily">@daily</option><option value="@weekly">@weekly</option><option value="manual">manual</option>
+                        </select>
+                      </td>
+                      <td class="px-4 py-3 align-middle">
+                        <div class="mono text-[12px] tnum text-ink" x-text="row.ts"></div>
+                        <div class="mono text-[10px] text-ink-3" x-text="row.rel"></div>
+                      </td>
+                      <td class="px-4 py-3 align-middle text-right">
+                        <span class="mono text-[13px] tnum" :class="row.status === 'running' ? 'text-steel' : 'text-ink'" x-text="row.dur"></span>
+                      </td>
+                      <!-- inline-editable STATUS cell -->
+                      <td class="px-4 py-3 align-middle">
+                        <select class="sel status-select mono text-[11px] uppercase tracking-wide font-medium h-9 w-full"
+                          :style="chipStyle(row.status)" x-model="row.status" @change="onStatusChange(row)" :aria-label="`State for ${row.name}`">
+                          <option value="queued">Queued</option><option value="running">Running</option><option value="success">Success</option><option value="failed">Failed</option><option value="retrying">Retrying</option>
+                        </select>
+                      </td>
+                      <td class="px-4 py-3 align-middle text-right">
+                        <button @click="openEdit(row)" class="iconbtn w-9 h-9 ml-auto" :aria-label="`Edit ${row.name}`"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+
+            <div x-show="filteredRows.length === 0" class="py-12 text-center">
+              <i data-lucide="filter-x" class="w-7 h-7 text-ink-3 mx-auto"></i>
+              <p class="mono text-[12px] text-ink-3 mt-2">No pipelines match this filter.</p>
+              <button @click="filter='all'; query=''" class="btn btn-outline btn-sm mt-3 mx-auto">Clear filters</button>
+            </div>
+
+            <div class="flex items-center justify-between px-4 py-3 border-t border-line mono text-[11px] text-ink-3">
+              <span>scheduler cursor · <span class="tnum" x-text="clock"></span>Z</span>
+              <span class="hidden sm:inline">refresh every 30s</span>
+            </div>
+          </section>
+        </div>
+
+        <!-- ============================================================
+             PAGE: RUNS (with monospace run logs)
+             ============================================================ -->
+        <div x-show="page==='runs'" x-cloak class="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4">
+          <!-- run list -->
+          <section class="card overflow-hidden self-start">
+            <div class="p-3 border-b border-line space-y-3">
+              <div class="seg w-full" role="tablist" aria-label="Filter runs">
+                <template x-for="f in runFilters" :key="f.key">
+                  <button class="flex-1" role="tab" :aria-selected="runFilter===f.key" :class="runFilter===f.key && 'on'" @click="runFilter=f.key" x-text="f.label"></button>
+                </template>
+              </div>
+            </div>
+            <div class="max-h-[560px] overflow-y-auto scroll-y">
+              <template x-for="r in filteredRuns" :key="r.id">
+                <button @click="selectRun(r)" class="w-full text-left px-4 py-3 border-b border-line last:border-0 hover:bg-surface-2/70 flex items-center gap-3"
+                  :class="selectedRunId === r.id && 'bg-surface-2'">
+                  <span class="w-1.5 h-8 rounded-full shrink-0" :style="`background:var(${stateMeta[r.state].v})`"></span>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                      <span class="mono text-[12px] font-500 text-ink truncate" x-text="r.pl"></span>
+                    </div>
+                    <div class="mono text-[10px] text-ink-3 mt-0.5"><span x-text="r.id"></span> · <span x-text="r.trigger"></span></div>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <span class="chip" :style="chipStyle(r.state)" x-text="stateMeta[r.state].label"></span>
+                    <div class="mono text-[10px] text-ink-3 mt-1 tnum" x-text="r.dur"></div>
+                  </div>
+                </button>
+              </template>
+              <div x-show="filteredRuns.length === 0" class="py-10 text-center">
+                <i data-lucide="inbox" class="w-6 h-6 text-ink-3 mx-auto"></i>
+                <p class="mono text-[12px] text-ink-3 mt-2">No runs in this view.</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- selected run detail + log console -->
+          <section class="card overflow-hidden" x-show="selectedRun">
+            <div class="flex flex-wrap items-center gap-3 p-4 border-b border-line">
+              <span class="grid place-items-center w-10 h-10 rounded-[6px] shrink-0" :style="`background:color-mix(in srgb, var(${stateMeta[selectedRun.state].v}) 14%, transparent); color:var(${stateMeta[selectedRun.state].v})`">
+                <i :data-lucide="stateMeta[selectedRun.state].icon" class="w-5 h-5"></i>
+              </span>
+              <div class="min-w-0">
+                <h2 class="text-[15px] font-bold tracking-tight" x-text="selectedRun.pl"></h2>
+                <p class="mono text-[11px] text-ink-3 mt-0.5"><span x-text="selectedRun.id"></span> · <span x-text="selectedRun.env"></span> · started <span class="tnum" x-text="selectedRun.started"></span></p>
+              </div>
+              <div class="ml-auto flex items-center gap-2">
+                <button @click="rerunSelected()" class="btn btn-outline btn-sm"><i data-lucide="rotate-cw" class="w-4 h-4"></i> Re-run</button>
+                <button @click="ping('Run cancelled', 'error', 'x-circle')" class="btn btn-danger btn-sm"><i data-lucide="square" class="w-4 h-4"></i> Cancel</button>
+              </div>
+            </div>
+            <!-- run stat strip -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 border-b border-line divide-x divide-line">
+              <div class="p-3"><div class="lbl">Duration</div><div class="mono text-[15px] font-700 tnum mt-0.5" x-text="selectedRun.dur"></div></div>
+              <div class="p-3"><div class="lbl">Rows</div><div class="mono text-[15px] font-700 tnum mt-0.5" x-text="selectedRun.rows"></div></div>
+              <div class="p-3"><div class="lbl">Trigger</div><div class="mono text-[15px] font-700 mt-0.5" x-text="selectedRun.trigger"></div></div>
+              <div class="p-3"><div class="lbl">State</div><div class="mt-1"><span class="chip" :style="chipStyle(selectedRun.state)" x-text="stateMeta[selectedRun.state].label"></span></div></div>
+            </div>
+            <!-- log console -->
+            <div class="p-4">
+              <div class="flex items-center justify-between mb-2">
+                <span class="lbl">Run log · stdout</span>
+                <button @click="ping('Log copied to clipboard', 'info', 'clipboard')" class="btn btn-ghost btn-sm"><i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy</button>
+              </div>
+              <div class="console overflow-hidden">
+                <div class="max-h-[360px] overflow-y-auto scroll-y py-2">
+                  <template x-for="(l, i) in runLog" :key="i">
+                    <div class="logrow">
+                      <span class="text-ink-3 tnum" x-text="l.ts"></span>
+                      <span class="font-500" :style="`color:var(${logColor(l.lvl)})`" x-text="l.lvl"></span>
+                      <span class="text-ink-2 break-words" x-text="l.msg"></span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ============================================================
+             PAGE: CONNECTIONS
+             ============================================================ -->
+        <div x-show="page==='connections'" x-cloak class="space-y-4">
+          <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <template x-for="cn in connections" :key="cn.id">
+              <div class="card p-4 flex flex-col">
+                <div class="flex items-start gap-3">
+                  <span class="grid place-items-center w-10 h-10 rounded-[6px] shrink-0 bg-surface-2 border border-line" :style="`color:var(${cn.up ? '--ok' : '--crit'})`">
+                    <i :data-lucide="cn.icon" class="w-5 h-5"></i>
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <!-- inline edit: connection name (click-to-edit) -->
+                    <template x-if="editConnId !== cn.id">
+                      <button class="ie px-1 -mx-1 mono text-[14px] font-700 text-ink text-left block w-full truncate"
+                        @click="editConnId = cn.id; $nextTick(() => $refs.connInput && $refs.connInput.focus())" x-text="cn.name"></button>
+                    </template>
+                    <template x-if="editConnId === cn.id">
+                      <input x-ref="connInput" class="field h-8 mono text-[13px]" x-model="cn.name"
+                        @keydown.enter="editConnId = null; ping('Connection renamed', 'info', 'link-2')"
+                        @keydown.escape="editConnId = null" @blur="editConnId = null" />
+                    </template>
+                    <div class="mono text-[11px] text-ink-3 mt-0.5" x-text="cn.type"></div>
+                  </div>
+                  <div class="tg" :class="cn.enabled && 'on'" @click="cn.enabled = !cn.enabled; ping(cn.name + (cn.enabled ? ' enabled' : ' disabled'), 'info', 'plug')" role="switch" :aria-checked="cn.enabled" :aria-label="`Enable ${cn.name}`" tabindex="0" @keydown.enter="cn.enabled=!cn.enabled"><b></b></div>
+                </div>
+                <div class="mono text-[11px] text-ink-2 mt-3 truncate" x-text="cn.host"></div>
+                <div class="flex items-center justify-between mt-3 pt-3 border-t border-line">
+                  <span class="chip" :style="`color:var(${cn.up ? '--ok' : '--crit'}); background:color-mix(in srgb, var(${cn.up ? '--ok' : '--crit'}) 14%, transparent)`">
+                    <span class="w-1.5 h-1.5 rounded-full" :style="`background:var(${cn.up ? '--ok' : '--crit'})`"></span>
+                    <span x-text="cn.up ? 'connected' : 'unreachable'"></span>
+                  </span>
+                  <span class="mono text-[10px] text-ink-3 tnum" x-text="cn.latency"></span>
+                </div>
+                <div class="flex items-center gap-2 mt-3">
+                  <button @click="testConnection(cn)" class="btn btn-outline btn-sm flex-1"><i data-lucide="activity" class="w-3.5 h-3.5"></i> Test</button>
+                  <button @click="ping('Opened logs for ' + cn.name, 'info', 'scroll-text')" class="iconbtn w-9 h-9 border border-line" aria-label="View logs"><i data-lucide="scroll-text" class="w-4 h-4"></i></button>
+                </div>
+              </div>
+            </template>
+          </section>
+        </div>
+
+        <!-- ============================================================
+             PAGE: SETTINGS
+             ============================================================ -->
+        <div x-show="page==='settings'" x-cloak class="space-y-4" style="max-width:720px">
+          <!-- account + inline-edit name -->
+          <section class="card p-5">
+            <div class="lbl mb-3">Account</div>
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-full grid place-items-center flex-none font-bold text-[20px]" style="background:var(--accent); color:#fff">DR</div>
+              <div class="min-w-0">
+                <template x-if="!editName">
+                  <button class="ie px-1 -mx-1 text-[20px] font-700 block text-left" @click="editName = true; $nextTick(() => $refs.nm.focus())" x-text="name"></button>
+                </template>
+                <template x-if="editName">
+                  <div class="flex items-center gap-2">
+                    <input x-ref="nm" class="field w-[220px]" x-model="name" @keydown.enter="editName=false; ping('Name updated', 'info', 'check')" @keydown.escape="editName=false" />
+                    <button class="btn btn-primary btn-sm" @click="editName=false; ping('Name updated', 'info', 'check')">Save</button>
+                  </div>
+                </template>
+                <div class="mono text-[12px] text-ink-2 mt-0.5">Data engineer · Platform team · ID 2048</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- edition + toggles -->
+          <section class="card divide-y" style="border-color:var(--line)">
+            <div class="flex items-center justify-between gap-4 p-4" style="border-color:var(--line)">
+              <div><div class="font-600 text-[14px]">Edition</div><div class="text-[13px] text-ink-2">Blueprint for daylight, Control Room for the night desk.</div></div>
+              <div class="seg shrink-0"><button :class="!dark && 'on'" @click="dark && toggleEdition()">Blueprint</button><button :class="dark && 'on'" @click="!dark && toggleEdition()">Control Room</button></div>
+            </div>
+            <div class="flex items-center justify-between gap-4 p-4" style="border-color:var(--line)">
+              <div><div class="font-600 text-[14px]">Auto-retry failed runs</div><div class="text-[13px] text-ink-2">Retry with backoff before paging on-call.</div></div>
+              <div class="tg" :class="autoRetry && 'on'" @click="autoRetry = !autoRetry" role="switch" :aria-checked="autoRetry" aria-label="Auto-retry failed runs" tabindex="0" @keydown.enter="autoRetry=!autoRetry"><b></b></div>
+            </div>
+            <div class="flex items-center justify-between gap-4 p-4" style="border-color:var(--line)">
+              <div><div class="font-600 text-[14px]">Email alerts</div><div class="text-[13px] text-ink-2">Notify the channel when a pipeline fails.</div></div>
+              <div class="tg" :class="emailAlerts && 'on'" @click="emailAlerts = !emailAlerts" role="switch" :aria-checked="emailAlerts" aria-label="Email alerts" tabindex="0" @keydown.enter="emailAlerts=!emailAlerts"><b></b></div>
+            </div>
+            <div class="flex items-center justify-between gap-4 p-4">
+              <div><div class="font-600 text-[14px]">Pause scheduler</div><div class="text-[13px] text-ink-2">Hold all dispatches; running jobs finish.</div></div>
+              <div class="tg" :class="pauseSched && 'on'" @click="pauseSched = !pauseSched; ping(pauseSched ? 'Scheduler paused' : 'Scheduler resumed', pauseSched ? 'error' : 'info', pauseSched ? 'pause' : 'play')" role="switch" :aria-checked="pauseSched" aria-label="Pause scheduler" tabindex="0" @keydown.enter="pauseSched=!pauseSched"><b></b></div>
+            </div>
+          </section>
+
+          <!-- numeric steppers + select -->
+          <section class="card p-5 space-y-5">
+            <div class="lbl">Execution limits</div>
+            <div class="flex items-center justify-between gap-4">
+              <div><label class="font-600 text-[14px] block" id="lbl-conc">Max concurrency</label><div class="text-[13px] text-ink-2">Parallel workers per environment.</div></div>
+              <div class="stepper" role="group" aria-labelledby="lbl-conc">
+                <button @click="concurrency = Math.max(1, concurrency-1)" aria-label="Decrease concurrency"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                <span class="val tnum" x-text="concurrency"></span>
+                <button @click="concurrency = Math.min(32, concurrency+1)" aria-label="Increase concurrency"><i data-lucide="plus" class="w-4 h-4"></i></button>
+              </div>
+            </div>
+            <div class="flex items-center justify-between gap-4">
+              <div><label class="font-600 text-[14px] block" id="lbl-retry">Retry attempts</label><div class="text-[13px] text-ink-2">Before a run is marked failed.</div></div>
+              <div class="stepper" role="group" aria-labelledby="lbl-retry">
+                <button @click="retries = Math.max(0, retries-1)" aria-label="Decrease retries"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                <span class="val tnum" x-text="retries"></span>
+                <button @click="retries = Math.min(10, retries+1)" aria-label="Increase retries"><i data-lucide="plus" class="w-4 h-4"></i></button>
+              </div>
+            </div>
+            <div>
+              <label class="lbl block mb-1.5" for="tz">Default timezone</label>
+              <select id="tz" class="sel" x-model="timezone">
+                <option>UTC</option><option>America/New_York</option><option>America/Los_Angeles</option><option>Europe/London</option><option>Asia/Kolkata</option>
+              </select>
+            </div>
+            <div>
+              <label class="lbl block mb-1.5" for="wh">Alert note (sent with every page)</label>
+              <textarea id="wh" class="field mono text-[12px]" rows="3" x-model="webhook" placeholder="Runbook link, escalation policy, on-call notes…"></textarea>
+            </div>
+            <div class="flex items-center gap-2 pt-1">
+              <button class="btn btn-primary" @click="ping('Settings saved', 'info', 'check')"><i data-lucide="check" class="w-4 h-4"></i> Save changes</button>
+              <button class="btn btn-outline" @click="openNew()">Open modal</button>
+            </div>
+          </section>
+        </div>
+
+        <footer class="mono text-[10px] text-ink-3 text-center pt-1 pb-2">
+          Foundry · orchestration console · build <span class="tnum">2026.07.01</span>
+        </footer>
+      </div>
+    </main>
+  </div>
+
+  <!-- ===================== MOBILE NAV DRAWER (left) ===================== -->
+  <template x-if="navOpen">
+    <div>
+      <div @click="navOpen=false" x-transition.opacity class="fixed inset-0 z-[60] bg-ink/50 lg:hidden" aria-hidden="true"></div>
+      <div class="fixed top-0 left-0 z-[70] h-full w-[280px] bg-surface border-r border-line-2 shadow-[var(--shadow-pop)] flex flex-col lg:hidden"
+        x-transition:enter="transition duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0">
+        <div class="flex items-center gap-2.5 h-16 flex-none px-4 border-b border-line-2">
+          <div class="grid place-items-center w-8 h-8 rounded-[6px] bg-ink text-accent"><i data-lucide="hexagon" class="w-[18px] h-[18px]"></i></div>
+          <div class="font-black text-[15px] tracking-tight">Foundry</div>
+          <button class="iconbtn ml-auto" @click="navOpen=false" aria-label="Close navigation"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <nav class="flex-1 overflow-y-auto p-3">
+          <div class="lbl px-2 mb-2">Console</div>
+          <div class="flex flex-col gap-1">
+            <template x-for="n in nav" :key="'m'+n.id">
+              <button class="nav-item" :class="page===n.id && 'on'" @click="go(n.id); navOpen=false">
+                <i :data-lucide="n.icon" class="w-5 h-5 shrink-0"></i><span x-text="n.label"></span>
+                <span x-show="n.badge" class="ml-auto chip" :style="chipStyle(n.badgeState)" x-text="n.badge"></span>
+              </button>
+            </template>
+          </div>
+        </nav>
+        <div class="p-3 flex items-center gap-3 border-t border-line">
+          <div class="w-9 h-9 rounded-full grid place-items-center font-bold text-[13px]" style="background:var(--accent); color:#fff">DR</div>
+          <div><div class="font-600 text-[13px]" x-text="name"></div><div class="mono text-[11px] text-ink-2">Platform team</div></div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ===================== EDIT DRAWER (right) ===================== -->
+  <template x-if="editDrawer">
+    <div>
+      <div @click="editDrawer=null" x-transition.opacity class="fixed inset-0 z-[60] bg-ink/50" aria-hidden="true"></div>
+      <div class="fixed top-0 right-0 z-[70] h-full w-[min(440px,100%)] bg-surface border-l border-line-2 shadow-[var(--shadow-pop)] flex flex-col"
+        x-transition:enter="transition duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+        role="dialog" aria-modal="true" aria-label="Edit pipeline">
+        <div class="flex items-center gap-3 h-16 flex-none px-5 border-b border-line">
+          <div><div class="lbl" x-text="editDrawer.id"></div><div class="text-[17px] font-700">Edit pipeline</div></div>
+          <button class="iconbtn ml-auto" @click="editDrawer=null" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-5 space-y-4">
+          <div><label class="lbl block mb-1.5">Name</label><input class="field mono" x-model="editDrawer.name" /></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="lbl block mb-1.5">Source</label><input class="field mono" x-model="editDrawer.src" /></div>
+            <div><label class="lbl block mb-1.5">Destination</label><input class="field mono" x-model="editDrawer.dst" /></div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="lbl block mb-1.5">Schedule</label>
+              <select class="sel mono" x-model="editDrawer.sched"><option value="@15min">@15min</option><option value="@hourly">@hourly</option><option value="@daily">@daily</option><option value="@weekly">@weekly</option><option value="manual">manual</option></select></div>
+            <div><label class="lbl block mb-1.5">State</label>
+              <select class="sel mono" x-model="editDrawer.status"><option value="queued">Queued</option><option value="running">Running</option><option value="success">Success</option><option value="failed">Failed</option><option value="retrying">Retrying</option></select></div>
+          </div>
+          <div>
+            <label class="lbl block mb-1.5">Concurrency</label>
+            <div class="stepper">
+              <button @click="editDrawer.conc = Math.max(1, (editDrawer.conc||4)-1)" aria-label="Decrease"><i data-lucide="minus" class="w-4 h-4"></i></button>
+              <span class="val tnum" x-text="editDrawer.conc || 4"></span>
+              <button @click="editDrawer.conc = Math.min(16, (editDrawer.conc||4)+1)" aria-label="Increase"><i data-lucide="plus" class="w-4 h-4"></i></button>
+            </div>
+          </div>
+          <div><label class="lbl block mb-1.5">Description</label><textarea class="field" rows="3" x-model="editDrawer.desc" placeholder="What this pipeline does…"></textarea></div>
+          <div class="rounded-[6px] border border-line bg-surface-2 p-3 flex items-center justify-between">
+            <div><div class="font-600 text-[13px]">Enabled</div><div class="text-[12px] text-ink-2">Pipeline runs on its schedule.</div></div>
+            <div class="tg" :class="(editDrawer.enabled ?? true) && 'on'" @click="editDrawer.enabled = !(editDrawer.enabled ?? true)" role="switch" aria-label="Enabled"><b></b></div>
+          </div>
+        </div>
+        <div class="flex-none p-4 flex gap-3 border-t border-line">
+          <button class="btn btn-outline flex-1" @click="editDrawer=null">Cancel</button>
+          <button class="btn btn-primary" style="flex:2" @click="saveEdit()"><i data-lucide="check" class="w-4 h-4"></i> Save changes</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ===================== MODAL (new pipeline) ===================== -->
+  <template x-if="modal">
+    <div>
+      <div @click="modal=false" x-transition.opacity class="fixed inset-0 z-[60] bg-ink/50" aria-hidden="true"></div>
+      <div class="fixed inset-0 z-[70] grid place-items-center p-4">
+        <div class="w-full max-w-md card shadow-[var(--shadow-pop)] flex flex-col max-h-[90vh]" role="dialog" aria-modal="true" aria-label="New pipeline"
+          x-transition:enter="transition duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+          <div class="flex items-center gap-3 p-5 pb-3">
+            <div class="text-[18px] font-700">New pipeline</div>
+            <button class="iconbtn ml-auto" @click="modal=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+          </div>
+          <div class="px-5 pb-2 overflow-y-auto space-y-3">
+            <div><label class="lbl block mb-1.5">Name</label><input class="field mono" x-model="nw.name" placeholder="e.g. events_rollup" /></div>
+            <div class="grid grid-cols-2 gap-3">
+              <div><label class="lbl block mb-1.5">Source</label>
+                <select class="sel mono" x-model="nw.src"><option>Postgres</option><option>Kafka</option><option>MySQL</option><option>MongoDB</option><option>S3</option><option>Oracle</option><option>REST API</option></select></div>
+              <div><label class="lbl block mb-1.5">Destination</label>
+                <select class="sel mono" x-model="nw.dst"><option>Snowflake</option><option>BigQuery</option><option>Redshift</option><option>Databricks</option></select></div>
+            </div>
+            <div><label class="lbl block mb-1.5">Schedule</label>
+              <select class="sel mono" x-model="nw.sched"><option value="@15min">@15min</option><option value="@hourly">@hourly</option><option value="@daily">@daily</option><option value="@weekly">@weekly</option><option value="manual">manual</option></select></div>
+            <div><label class="lbl block mb-1.5">Description</label><textarea class="field" rows="2" x-model="nw.desc" placeholder="What this pipeline does…"></textarea></div>
+          </div>
+          <div class="flex gap-3 p-5 pt-3">
+            <button class="btn btn-outline flex-1" @click="modal=false">Cancel</button>
+            <button class="btn btn-primary" style="flex:2" @click="createPipe()"><i data-lucide="plus" class="w-4 h-4"></i> Create pipeline</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ===================== TOASTS ===================== -->
+  <div class="fixed bottom-4 right-4 left-4 sm:left-auto z-[80] flex flex-col gap-2 items-stretch sm:items-end pointer-events-none" aria-live="polite">
+    <template x-for="t in toasts" :key="t.id">
+      <div class="toast-item pointer-events-auto flex items-start gap-3 bg-surface border rounded-[6px] shadow-[var(--shadow-pop)] px-3.5 py-3 max-w-sm w-full sm:w-auto"
+        :style="`border-color:${toastColor(t.kind)}`">
+        <span class="grid place-items-center w-6 h-6 rounded-[4px] shrink-0 mt-0.5" :style="`background:${toastColor(t.kind)}1f;color:${toastColor(t.kind)}`">
+          <i :data-lucide="t.icon" class="w-4 h-4"></i>
+        </span>
+        <div class="min-w-0 flex-1">
+          <div class="text-[13px] font-medium leading-snug" x-text="t.title"></div>
+          <div class="mono text-[11px] text-ink-3 mt-0.5" x-text="t.msg" x-show="t.msg"></div>
+        </div>
+        <button @click="dismiss(t.id)" class="text-ink-3 hover:text-ink shrink-0" aria-label="Dismiss"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script>
+  const MONO = "'Sometype Mono', monospace";
+
+  function foundry() {
+    return {
+      // ---------- shell state ----------
+      page: 'dashboard',
+      dark: false,
+      navOpen: false,
+      modal: false,
+      editDrawer: null,
+      envOpen: false,
+      toasts: [], _tid: 0,
+      _n: 0,
+      clock: '14:32:07',
+
+      // ---------- filters ----------
+      query: '',
+      range: '24h', ranges: ['1h', '24h', '7d'],
+      filter: 'all',
+      filters: [
+        { key: 'all', label: 'All' }, { key: 'running', label: 'Running' }, { key: 'success', label: 'Success' },
+        { key: 'failed', label: 'Failed' }, { key: 'queued', label: 'Queued' }, { key: 'retrying', label: 'Retrying' },
+      ],
+      sortKey: '', sortDir: 1,
+
+      // ---------- settings ----------
+      name: 'Devin Rao',
+      editName: false,
+      autoRetry: true, emailAlerts: true, pauseSched: false,
+      concurrency: 8, retries: 3,
+      timezone: 'UTC',
+      webhook: 'Runbook: wiki/foundry/oncall — page #data-platform on 2 consecutive failures.',
+      editConnId: null,
+
+      // ---------- environment ----------
+      env: 'production', envs: [
+        { name: 'production', region: 'us-east-1', color: 'var(--ok)' },
+        { name: 'staging', region: 'us-west-2', color: 'var(--warn)' },
+        { name: 'dev', region: 'local', color: 'var(--steel)' },
+      ],
+
+      // ---------- nav ----------
+      nav: [
+        { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
+        { id: 'pipelines', label: 'Pipelines', icon: 'git-fork', badge: '45', badgeState: 'queued' },
+        { id: 'runs', label: 'Runs', icon: 'terminal', badge: '3', badgeState: 'failed' },
+        { id: 'connections', label: 'Connections', icon: 'plug' },
+        { id: 'settings', label: 'Settings', icon: 'settings' },
+      ],
+      meta: {
+        dashboard: { kicker: 'production · us-east-1', title: 'Pipeline health', crumb: 'dashboard' },
+        pipelines: { kicker: 'live queue', title: 'Pipelines', crumb: 'pipelines' },
+        runs: { kicker: 'execution history', title: 'Runs', crumb: 'runs' },
+        connections: { kicker: 'sources & sinks', title: 'Connections', crumb: 'connections' },
+        settings: { kicker: 'Devin Rao', title: 'Settings', crumb: 'settings' },
+      },
+
+      // ---------- run-state system ----------
+      statusOrder: ['queued', 'running', 'success', 'failed', 'retrying'],
+      stateMeta: {
+        queued: { label: 'Queued', v: '--r-queued', icon: 'clock' },
+        running: { label: 'Running', v: '--r-running', icon: 'loader' },
+        success: { label: 'Success', v: '--r-success', icon: 'check-circle-2' },
+        failed: { label: 'Failed', v: '--r-failed', icon: 'x-circle' },
+        retrying: { label: 'Retrying', v: '--r-retrying', icon: 'rotate-cw' },
+        skipped: { label: 'Skipped', v: '--r-skipped', icon: 'minus-circle' },
+      },
+
+      // ---------- reference lists ----------
+      schedules: ['@15min', '@hourly', '@daily', '@weekly', 'manual'],
+      sources: ['Postgres', 'Kafka', 'MySQL', 'MongoDB', 'S3', 'Oracle', 'REST API'],
+      dests: ['Snowflake', 'BigQuery', 'Redshift', 'Databricks'],
+
+      datasets: [
+        { name: 'orders', rows: '4.2M' }, { name: 'clickstream', rows: '9.1M' },
+        { name: 'billing', rows: '2.0M' }, { name: 'inventory', rows: '860K' },
+        { name: 'marketing', rows: '1.3M' }, { name: 'ledger', rows: '540K' },
+      ],
+
+      cols: [
+        { key: 'name', label: 'Pipeline', sortable: true },
+        { key: 'route', label: 'Source → Destination', sortable: false },
+        { key: 'sched', label: 'Schedule', sortable: true },
+        { key: 'ts', label: 'Last run', sortable: true },
+        { key: 'dur', label: 'Duration', sortable: true, right: true },
+        { key: 'status', label: 'State', sortable: true },
+        { key: 'act', label: '', sortable: false, right: true },
+      ],
+
+      rows: [
+        { id: 'pl_a1f0', name: 'orders_sync', src: 'Postgres', dst: 'Snowflake', sched: '@hourly', ts: '14:31:52', rel: '15s ago', dur: '3m 41s', status: 'success', conc: 8, desc: 'Incremental sync of orders and line items via CDC.', enabled: true },
+        { id: 'pl_c93e', name: 'clickstream_etl', src: 'Kafka', dst: 'BigQuery', sched: '@15min', ts: '14:32:04', rel: 'running', dur: '1m 08s', status: 'running', conc: 12, desc: 'Sessionize and aggregate raw clickstream events.', enabled: true },
+        { id: 'pl_7b22', name: 'billing_rollup', src: 'MySQL', dst: 'Redshift', sched: '@daily', ts: '14:28:10', rel: '4m ago', dur: '6m 22s', status: 'success', conc: 4, desc: 'Daily invoice and revenue rollups.', enabled: true },
+        { id: 'pl_4d81', name: 'inventory_cdc', src: 'MongoDB', dst: 'Snowflake', sched: '@15min', ts: '14:19:47', rel: '12m ago', dur: '2m 55s', status: 'failed', conc: 6, desc: 'Change-data-capture stream for warehouse stock.', enabled: true },
+        { id: 'pl_2e6a', name: 'marketing_attr', src: 'S3', dst: 'BigQuery', sched: '@hourly', ts: '14:30:33', rel: '2m ago', dur: '4m 12s', status: 'running', conc: 8, desc: 'Multi-touch marketing attribution model.', enabled: true },
+        { id: 'pl_9f45', name: 'ledger_reconcile', src: 'Oracle', dst: 'Snowflake', sched: '@daily', ts: '—', rel: 'queued', dur: '—', status: 'queued', conc: 4, desc: 'Nightly GL reconciliation and FX conversion.', enabled: true },
+        { id: 'pl_60bc', name: 'user_dim_build', src: 'Postgres', dst: 'Databricks', sched: '@daily', ts: '14:11:02', rel: '21m ago', dur: '5m 47s', status: 'success', conc: 8, desc: 'Rebuild the user dimension with SCD2 history.', enabled: true },
+        { id: 'pl_18df', name: 'fx_rates_ingest', src: 'REST API', dst: 'Redshift', sched: '@hourly', ts: '14:09:18', rel: '23m ago', dur: '0m 52s', status: 'retrying', conc: 2, desc: 'Pull hourly FX rates from the rates provider.', enabled: true },
+      ],
+
+      // ---------- runs ----------
+      runFilter: 'all',
+      runFilters: [{ key: 'all', label: 'All' }, { key: 'failed', label: 'Failed' }, { key: 'running', label: 'Active' }],
+      selectedRunId: 'run_8f21a',
+      runs: [
+        { id: 'run_8f21a', pl: 'clickstream_etl', env: 'production', state: 'running', started: '14:32:04', dur: '1m 08s', rows: '2.4M', trigger: 'schedule' },
+        { id: 'run_8f209', pl: 'orders_sync', env: 'production', state: 'success', started: '14:31:52', dur: '3m 41s', rows: '840K', trigger: 'schedule' },
+        { id: 'run_8f1f7', pl: 'inventory_cdc', env: 'production', state: 'failed', started: '14:19:47', dur: '2m 55s', rows: '—', trigger: 'manual' },
+        { id: 'run_8f1e2', pl: 'billing_rollup', env: 'staging', state: 'success', started: '14:28:10', dur: '6m 22s', rows: '1.2M', trigger: 'schedule' },
+        { id: 'run_8f1d0', pl: 'fx_rates_ingest', env: 'production', state: 'retrying', started: '14:09:18', dur: '0m 52s', rows: '48K', trigger: 'schedule' },
+        { id: 'run_8f1c4', pl: 'ledger_reconcile', env: 'production', state: 'queued', started: '—', dur: '—', rows: '—', trigger: 'schedule' },
+        { id: 'run_8f1b0', pl: 'user_dim_build', env: 'production', state: 'success', started: '14:11:02', dur: '5m 47s', rows: '312K', trigger: 'backfill' },
+      ],
+
+      // ---------- connections ----------
+      connections: [
+        { id: 'cn_pg', name: 'Postgres · prod', type: 'PostgreSQL 15', icon: 'database', host: 'db-prod.internal:5432/core', up: true, latency: '12ms', enabled: true },
+        { id: 'cn_kf', name: 'Kafka · events', type: 'Kafka 3.6', icon: 'radio', host: 'kafka-events.internal:9092', up: true, latency: '8ms', enabled: true },
+        { id: 'cn_sf', name: 'Snowflake · wh', type: 'Snowflake', icon: 'snowflake', host: 'acct.us-east-1.snowflakecomputing.com', up: true, latency: '41ms', enabled: true },
+        { id: 'cn_s3', name: 'S3 · lake', type: 'AWS S3', icon: 'hard-drive', host: 's3://foundry-lake/raw', up: true, latency: '22ms', enabled: true },
+        { id: 'cn_bq', name: 'BigQuery · analytics', type: 'BigQuery', icon: 'bar-chart-3', host: 'bq://foundry-analytics', up: false, latency: '—', enabled: false },
+        { id: 'cn_or', name: 'Oracle · ledger', type: 'Oracle 19c', icon: 'database', host: 'ora-ledger.internal:1521/LGR', up: true, latency: '55ms', enabled: true },
+      ],
+
+      // ---------- DAG hero ----------
+      dag: [
+        { label: 'Source', name: 'Postgres', icon: 'database', state: 'success', meta: '8 tables · CDC' },
+        { label: 'Extract', name: 'Normalize', icon: 'download', state: 'success', meta: 'batch · 5 min' },
+        { label: 'Transform', name: 'Aggregate', icon: 'git-merge', state: 'running', meta: '42 models' },
+        { label: 'Load', name: 'Snowflake', icon: 'snowflake', state: 'success', meta: 'warehouse' },
+      ],
+
+      // ---------- KPIs ----------
+      kpis: [
+        { l: 'Pipelines healthy', v: '42<span class="text-ink-3 text-[15px]">/45</span>', d: '93.3% uptime', i: 'activity', c: '--ok', deltaC: '--ok', spark: '0,18 9,15 18,16 27,10 36,12 45,7 54,9 60,6' },
+        { l: 'Rows · today', v: '18.4<span class="text-ink-3 text-[15px]">M</span>', d: '+12.4% vs avg', i: 'database', c: '--steel', deltaC: '--ok', spark: '0,19 9,16 18,17 27,13 36,8 45,10 54,4 60,3' },
+        { l: 'Avg run time', v: '4m 12s', d: '+8s vs 7d', i: 'timer', c: '--warn', deltaC: '--crit', spark: '0,10 9,12 18,9 27,13 36,10 45,15 54,13 60,16' },
+        { l: 'Failed · 24h', v: '3', d: '2 auto-retried', i: 'alert-triangle', c: '--crit', deltaC: '--ink-2', critical: true, spark: '0,6 9,8 18,4 27,8 36,15 45,12 54,17 60,18' },
+      ],
+
+      // ================= getters =================
+      get region() { const e = this.envs.find(x => x.name === this.env); return e ? e.region : ''; },
+      get envDot() { const e = this.envs.find(x => x.name === this.env); return e ? e.color : 'var(--ink-3)'; },
+
+      get filteredRows() {
+        let out = this.rows.slice();
+        if (this.filter !== 'all') out = out.filter(r => r.status === this.filter);
+        const q = this.query.trim().toLowerCase();
+        if (q) out = out.filter(r => (r.name + r.id + r.src + r.dst).toLowerCase().includes(q));
+        if (this.sortKey) {
+          const parseDur = d => { if (!d || d === '—') return -1; const m = d.match(/(\d+)m\s*(\d+)s/); return m ? +m[1] * 60 + +m[2] : 0; };
+          out.sort((a, b) => {
+            let av = a[this.sortKey], bv = b[this.sortKey];
+            if (this.sortKey === 'dur') { av = parseDur(av); bv = parseDur(bv); }
+            if (av < bv) return -1 * this.sortDir; if (av > bv) return 1 * this.sortDir; return 0;
+          });
+        }
+        return out;
+      },
+      get filteredRuns() {
+        if (this.runFilter === 'all') return this.runs;
+        if (this.runFilter === 'failed') return this.runs.filter(r => r.state === 'failed' || r.state === 'retrying');
+        return this.runs.filter(r => r.state === 'running' || r.state === 'queued');
+      },
+      get selectedRun() { return this.runs.find(r => r.id === this.selectedRunId) || this.runs[0]; },
+      get runLog() { return this.genLog(this.selectedRun); },
+
+      // ================= visual helpers =================
+      cssv(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); },
+      chipStyle(s) { const m = this.stateMeta[s]; if (!m) return ''; return `color:var(${m.v}); background:color-mix(in srgb, var(${m.v}) 14%, transparent)`; },
+      logColor(lvl) { return { INFO: '--r-running', OK: '--r-success', WARN: '--r-retrying', ERROR: '--r-failed', DEBUG: '--ink-3' }[lvl] || '--ink-2'; },
+      toastColor(k) { return { success: this.cssv('--ok'), error: this.cssv('--crit'), info: this.cssv('--steel'), accent: this.cssv('--accent') }[k] || this.cssv('--steel'); },
+
+      // ================= toasts =================
+      ping(title, kind = 'info', icon = 'info', msg = '') {
+        const id = ++this._tid;
+        this.toasts.push({ id, title, msg, kind, icon });
+        this.$nextTick(() => window.lucide && lucide.createIcons());
+        setTimeout(() => this.dismiss(id), 2600);
+      },
+      dismiss(id) { this.toasts = this.toasts.filter(t => t.id !== id); },
+
+      // ================= actions =================
+      go(p) { this.page = p; this.query = ''; this.$nextTick(() => { this.icons(); if (p === 'dashboard') this.renderCharts(); }); },
+      icons() { if (window.lucide) lucide.createIcons(); },
+      sortBy(k) {
+        const col = this.cols.find(c => c.key === k); if (!col || !col.sortable) return;
+        if (this.sortKey === k) this.sortDir *= -1; else { this.sortKey = k; this.sortDir = 1; }
+      },
+      onStatusChange(row) {
+        const kind = { success: 'success', failed: 'error', running: 'info', queued: 'accent', retrying: 'accent' }[row.status];
+        if (row.status === 'running') { row.rel = 'running'; row.ts = this.clock; }
+        this.ping(`${row.name} → ${this.stateMeta[row.status].label}`, kind, this.stateMeta[row.status].icon, row.id);
+      },
+      onScheduleChange(row) { this.ping(`${row.name} rescheduled`, 'info', 'calendar-clock', `now runs ${row.sched}`); },
+      setRange(r) { this.range = r; this.ping('Range updated', 'accent', 'clock', `throughput window · ${r}`); },
+      runAll() { this.ping('Run queued', 'accent', 'play', '45 pipelines dispatched to scheduler'); },
+      refresh() { this.clock = new Date().toISOString().substr(11, 8); this.ping('Refreshed', 'info', 'refresh-cw', 'scheduler cursor advanced'); },
+      setEnv(e) { this.env = e.name; this.envOpen = false; this.ping('Environment switched', 'accent', 'git-branch', `${e.name} · ${e.region}`); this.$nextTick(() => this.icons()); },
+      openEdit(row) { this.editDrawer = { ...row }; this.$nextTick(() => this.icons()); },
+      saveEdit() {
+        const i = this.rows.findIndex(r => r.id === this.editDrawer.id);
+        if (i > -1) this.rows[i] = { ...this.rows[i], ...this.editDrawer };
+        this.ping(`${this.editDrawer.name} saved`, 'info', 'check', this.editDrawer.id);
+        this.editDrawer = null;
+      },
+      openNew() { this.modal = true; this.nw = { name: '', src: 'Postgres', dst: 'Snowflake', sched: '@hourly', desc: '' }; this.$nextTick(() => this.icons()); },
+      nw: { name: '', src: 'Postgres', dst: 'Snowflake', sched: '@hourly', desc: '' },
+      createPipe() {
+        this._n++;
+        const id = 'pl_' + (Math.random().toString(16).slice(2, 6));
+        this.rows.unshift({ id, name: this.nw.name || 'new_pipeline', src: this.nw.src, dst: this.nw.dst, sched: this.nw.sched, ts: '—', rel: 'queued', dur: '—', status: 'queued', conc: 4, desc: this.nw.desc, enabled: true });
+        this.modal = false; this.page = 'pipelines';
+        this.ping(`Created ${this.nw.name || 'new_pipeline'}`, 'success', 'check-circle-2', id);
+        this.$nextTick(() => this.icons());
+      },
+      selectRun(r) { this.selectedRunId = r.id; this.$nextTick(() => this.icons()); },
+      rerunSelected() { this.ping(`Re-running ${this.selectedRun.pl}`, 'accent', 'rotate-cw', this.selectedRun.id); },
+      testConnection(cn) {
+        cn.up = true; cn.latency = (8 + Math.floor(Math.random() * 50)) + 'ms';
+        this.ping(`${cn.name} · connected`, 'success', 'check-circle-2', `round-trip ${cn.latency}`);
+        this.$nextTick(() => this.icons());
+      },
+      testAll() { this.ping('Testing all connections', 'info', 'activity', '6 endpoints probed'); },
+      toggleEdition() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        const m = document.querySelector('meta[name=theme-color]');
+        if (m) m.setAttribute('content', this.dark ? '#0A111E' : '#E9EEF2');
+      },
+
+      // ================= run log generator =================
+      genLog(run) {
+        if (!run) return [];
+        const base = run.started !== '—' ? run.started : '14:00:00';
+        const t = (s) => { const [h, m, sec] = base.split(':').map(Number); const d = sec + s; return `${String(h).padStart(2,'0')}:${String(m + Math.floor(d/60)).padStart(2,'0')}:${String(d%60).padStart(2,'0')}`; };
+        if (run.state === 'queued') return [{ ts: t(0), lvl: 'INFO', msg: `run ${run.id} enqueued · waiting for a worker slot` }, { ts: t(1), lvl: 'DEBUG', msg: `priority=normal · concurrency budget 8/8 in use` }];
+        if (run.state === 'skipped') return [{ ts: t(0), lvl: 'WARN', msg: `upstream dependency not satisfied · run skipped` }];
+        const log = [
+          { ts: t(0), lvl: 'INFO', msg: `run ${run.id} started · pipeline ${run.pl} · trigger=${run.trigger}` },
+          { ts: t(1), lvl: 'DEBUG', msg: `env=${run.env} · worker=w-04 · image foundry/runner:2026.07` },
+          { ts: t(2), lvl: 'INFO', msg: `connecting to source · resolving credentials from vault` },
+          { ts: t(4), lvl: 'OK', msg: `source handshake ok · schema fingerprint 9f21ac unchanged` },
+          { ts: t(6), lvl: 'INFO', msg: `extract · reading changeset since cursor 2026-07-01T14:00:00Z` },
+          { ts: t(11), lvl: 'INFO', msg: `extract · ${run.rows !== '—' ? run.rows : '0'} rows staged to buffer` },
+          { ts: t(14), lvl: 'INFO', msg: `transform · applying 42 models · dbt-style DAG resolved` },
+        ];
+        if (run.state === 'failed') {
+          log.push({ ts: t(18), lvl: 'WARN', msg: `transform · model fct_inventory late by 4s · retrying batch` });
+          log.push({ ts: t(21), lvl: 'ERROR', msg: `transform · relation "stg_inventory" does not exist` });
+          log.push({ ts: t(22), lvl: 'ERROR', msg: `run failed after 3 attempts · exit code 1 · paging on-call` });
+        } else if (run.state === 'retrying') {
+          log.push({ ts: t(17), lvl: 'WARN', msg: `load · connection reset by peer · backing off 8s` });
+          log.push({ ts: t(25), lvl: 'INFO', msg: `retry 2/3 · re-establishing warehouse session` });
+          log.push({ ts: t(28), lvl: 'INFO', msg: `load · resuming from checkpoint · 0 rows lost` });
+        } else if (run.state === 'running') {
+          log.push({ ts: t(18), lvl: 'INFO', msg: `transform · 31/42 models complete · 74% ▸` });
+          log.push({ ts: t(20), lvl: 'DEBUG', msg: `heartbeat ok · rss 512MB · lag 0.4s` });
+        } else {
+          log.push({ ts: t(19), lvl: 'INFO', msg: `load · writing to ${run.pl.includes('bigquery') ? 'BigQuery' : 'warehouse'} · merge strategy=upsert` });
+          log.push({ ts: t(23), lvl: 'OK', msg: `load · ${run.rows} rows committed · 0 rejected` });
+          log.push({ ts: t(24), lvl: 'OK', msg: `run ${run.id} succeeded in ${run.dur} · cursor advanced` });
+        }
+        return log;
+      },
+
+      // ================= charts =================
+      renderCharts() {
+        if (!window.Chart) return;
+        const c = (v) => this.cssv(v);
+        const ink3 = c('--ink-3'), line = c('--line'), accent = c('--accent'), steel = c('--steel'), ink = c('--ink'), surface = c('--surface');
+        Chart.defaults.font.family = MONO; Chart.defaults.font.size = 11; Chart.defaults.color = ink3;
+        if (!window._c) window._c = {};
+        const draw = (id, cfg) => { const el = document.getElementById(id); if (!el || el.offsetParent === null) return; if (window._c[id]) window._c[id].destroy(); window._c[id] = new Chart(el.getContext('2d'), cfg); };
+        const tip = { backgroundColor: ink, titleColor: '#fff', bodyColor: '#cbd5e1', padding: 10, cornerRadius: 6, titleFont: { family: MONO }, bodyFont: { family: MONO } };
+        const scales = () => ({ x: { grid: { display: false }, border: { color: line }, ticks: { color: ink3 } }, y: { grid: { color: line }, border: { display: false }, ticks: { color: ink3 } } });
+
+        // throughput area
+        const ctxA = document.getElementById('chartThroughput');
+        if (ctxA && ctxA.offsetParent !== null) {
+          const g = ctxA.getContext('2d').createLinearGradient(0, 0, 0, 240);
+          g.addColorStop(0, accent + '47'); g.addColorStop(1, accent + '00');
+          const hours = Array.from({ length: 13 }, (_, i) => String((i * 2) % 24).padStart(2, '0') + ':00');
+          draw('chartThroughput', {
+            type: 'line',
+            data: { labels: hours, datasets: [{ data: [420, 510, 680, 590, 940, 1180, 1310, 1120, 980, 860, 720, 640, 700].map(v => v * 1000), borderColor: accent, borderWidth: 2, backgroundColor: g, fill: true, tension: 0.38, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: accent, pointHoverBorderColor: surface, pointHoverBorderWidth: 2 }] },
+            options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: (i) => ' ' + (i.parsed.y / 1e6).toFixed(2) + 'M rows/hr' } } },
+              scales: { x: scales().x, y: { ...scales().y, ticks: { color: ink3, callback: (v) => (v / 1e6).toFixed(1) + 'M' } } } },
+          });
+        }
+
+        // duration bar
+        draw('chartDuration', {
+          type: 'bar',
+          data: { labels: ['orders', 'click', 'billing', 'invtry', 'mktg', 'ledger', 'user_dim', 'fx'], datasets: [{ data: [221, 68, 382, 175, 252, 410, 347, 52], backgroundColor: steel, hoverBackgroundColor: accent, borderRadius: 3, borderSkipped: false, maxBarThickness: 34 }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: (i) => ' ' + i.parsed.y + 's median' } } }, scales: { x: scales().x, y: { ...scales().y, beginAtZero: true, ticks: { color: ink3, callback: (v) => v + 's' } } } },
+        });
+
+        // status doughnut
+        draw('chartStatus', {
+          type: 'doughnut',
+          data: { labels: ['Success', 'Running', 'Failed', 'Queued', 'Retrying'], datasets: [{ data: [262, 18, 9, 15, 8], backgroundColor: [c('--r-success'), c('--r-running'), c('--r-failed'), c('--r-queued'), c('--r-retrying')], borderColor: surface, borderWidth: 3, hoverOffset: 6 }] },
+          options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { color: c('--ink-2'), font: { family: MONO, size: 11 }, boxWidth: 9, boxHeight: 9, usePointStyle: true, pointStyle: 'rectRounded', padding: 12 } }, tooltip: { ...tip, callbacks: { label: (i) => ' ' + i.label + ' · ' + i.parsed + ' runs' } } } },
+        });
+      },
+
+      // ================= boot =================
+      boot() {
+        this.$nextTick(() => { this.icons(); this.renderCharts(); });
+        // re-render charts + icons whenever the edition (html.class) changes
+        new MutationObserver(() => { this.$nextTick(() => { this.icons(); this.renderCharts(); }); })
+          .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+      },
+    };
+  }
+
+  document.addEventListener('alpine:initialized', () => { window.lucide && lucide.createIcons(); });
+</script>
+</body>
+</html>

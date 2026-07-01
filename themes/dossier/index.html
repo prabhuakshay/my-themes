@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Dossier — Contract Lifecycle Design System</title>
+<meta name="description" content="Dossier — a serif-led enterprise design system for contract lifecycle management. The case-file metaphor: porcelain surfaces, hairline rules, burgundy + navy, a five-state contract-lifecycle status system, renewals and obligations. Daylight + Lamplight editions." />
+<meta name="theme-color" content="#7C2D3A" />
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<!-- Tailwind Play -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Spectral', 'Georgia', 'serif'],
+          mono: ['"Roboto Mono"', 'ui-monospace', 'monospace'],
+        },
+        colors: {
+          canvas: 'var(--canvas)',
+          surface: 'var(--surface)',
+          surface2: 'var(--surface-2)',
+          line: 'var(--line)',
+          line2: 'var(--line-2)',
+          ink: 'var(--ink)',
+          ink2: 'var(--ink-2)',
+          ink3: 'var(--ink-3)',
+          accent: 'var(--accent)',
+          accentSoft: 'var(--accent-soft)',
+          navy: 'var(--navy)',
+          pos: 'var(--pos)',
+          warn: 'var(--warn)',
+          neg: 'var(--neg)',
+        },
+      },
+    },
+  };
+</script>
+
+<!-- Libraries -->
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+  /* ============ EDITION TOKENS — DAYLIGHT (light) ============ */
+  :root {
+    color-scheme: light;
+    --canvas: #F2F1EC;
+    --surface: #FFFFFF;
+    --surface-2: #F7F6F1;
+    --line: #E5E2D9;
+    --line-2: #D3CEC1;
+    --ink: #21201C;
+    --ink-2: #57544C;
+    --ink-3: #736D5E;
+    --accent: #7C2D3A;      /* burgundy — brand + primary */
+    --accent-press: #642430;
+    --accent-soft: #F3E1E3;
+    --navy: #26364D;        /* structural secondary accent */
+    --navy-soft: #E4E8EF;
+    --pos: #2F6B4F;
+    --warn: #8F6410;
+    --neg: #A03443;
+
+    /* Contract-lifecycle status colors (single source for chips, cells, charts) */
+    --s-draft:   #736D5E;
+    --s-review:  #26364D;
+    --s-exec:    #2F6B4F;
+    --s-renew:   #8F6410;
+    --s-expired: #A03443;
+
+    --radius: 4px;
+    --radius-lg: 6px;
+    --shadow-sm: 0 1px 2px rgba(33, 32, 28, 0.05);
+    --shadow-md: 0 6px 24px rgba(33, 32, 28, 0.10);
+    --shadow-lg: 0 20px 50px rgba(33, 32, 28, 0.22);
+  }
+
+  /* ============ EDITION TOKENS — LAMPLIGHT (dark) ============ */
+  html.dark {
+    color-scheme: dark;
+    --canvas: #16130E;
+    --surface: #1F1B15;
+    --surface-2: #26221A;
+    --line: #332D23;
+    --line-2: #443C2E;
+    --ink: #F0EBE0;
+    --ink-2: #BBB3A2;
+    --ink-3: #948C7A;
+    --accent: #E29AA4;      /* burgundy lifts to a lamp-lit rose for AA on dark */
+    --accent-press: #EBAEB6;
+    --accent-soft: #3A2226;
+    --navy: #9DB2D6;        /* navy lifts to slate-blue on dark */
+    --navy-soft: #262E3B;
+    --pos: #74C193;
+    --warn: #D8A63F;
+    --neg: #E58A94;
+
+    --s-draft:   #948C7A;
+    --s-review:  #9DB2D6;
+    --s-exec:    #74C193;
+    --s-renew:   #D8A63F;
+    --s-expired: #E58A94;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; background: var(--canvas); color: var(--ink); }
+  body { font-family: 'Spectral', Georgia, serif; font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+
+  [x-cloak] { display: none !important; }
+
+  .mono { font-family: 'Roboto Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .num { font-variant-numeric: tabular-nums; }
+  .kicker { font-family: 'Roboto Mono', monospace; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.18em; color: var(--ink-3); }
+
+  *:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  ::selection { background: var(--accent-soft); color: var(--accent); }
+  html.dark ::selection { color: var(--ink); }
+
+  /* ---- Structural chrome (class-based borders, never clobbered by :style) ---- */
+  .sidebar { background: var(--surface); border-right: 1px solid var(--line-2); }
+  .topbar  { background: color-mix(in srgb, var(--surface) 94%, transparent); border-bottom: 1px solid var(--line-2); backdrop-filter: blur(8px); }
+
+  /* ---- Card / surfaces ---- */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+  .rule { border-color: var(--line); }
+  .rule-2 { border-color: var(--line-2); }
+
+  /* ---- Case index (numbered table of contents / binder rail) ---- */
+  .toc-link {
+    display: flex; align-items: baseline; gap: 0.6rem;
+    padding: 0.55rem 0.5rem 0.55rem 0.65rem;
+    border-left: 2px solid transparent;
+    color: var(--ink-2); cursor: pointer;
+    transition: color .15s ease, background .15s ease, border-color .15s ease;
+  }
+  .toc-link:hover { color: var(--ink); background: var(--surface-2); }
+  .toc-link .toc-leader { border-bottom: 1px dotted var(--line-2); }
+  .toc-active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+  html.dark .toc-active { background: var(--accent-soft); }
+  .toc-active .toc-num, .toc-active .toc-name { color: var(--accent) !important; font-weight: 600; }
+
+  /* ---- Buttons ---- */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    height: 40px; padding: 0 1rem; border-radius: var(--radius); border: 1px solid transparent;
+    font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    transition: background .14s ease, border-color .14s ease, transform .06s ease; }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  html.dark .btn-primary { color: #2A1418; }
+  .btn-primary:hover { background: var(--accent-press); }
+  .btn-outline { background: var(--surface); color: var(--ink); border-color: var(--line-2); }
+  .btn-outline:hover { background: var(--surface-2); }
+  .btn-ghost { background: var(--surface-2); color: var(--ink); }
+  .btn-ghost:hover { background: var(--line); }
+  .btn-sm { height: 34px; padding: 0 0.75rem; font-size: 13px; }
+  .btn-block { width: 100%; }
+  .iconbtn { width: 40px; height: 40px; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; color: var(--ink-2); cursor: pointer; border: 1px solid transparent; }
+  .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
+
+  /* ---- Inputs ---- */
+  .field, .isel { height: 40px; width: 100%; background: var(--surface-2); border: 1px solid var(--line-2);
+    border-radius: var(--radius); padding: 0 0.75rem; font-family: 'Spectral', serif; font-size: 14px; color: var(--ink); }
+  .field:focus, .isel:focus { outline: 2px solid var(--accent); outline-offset: 1px; background: var(--surface); }
+  .field::placeholder { color: var(--ink-3); }
+  textarea.field { height: auto; padding: 0.6rem 0.75rem; resize: vertical; line-height: 1.5; }
+  .isel { appearance: none; padding-right: 2rem; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23736D5E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 0.6rem center; }
+
+  /* ---- Status chip ---- */
+  .chip { display: inline-flex; align-items: center; gap: 0.4rem; height: 24px; padding: 0 0.55rem;
+    border-radius: 999px; font-family: 'Roboto Mono', monospace; font-size: 11px; font-weight: 500;
+    letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; border: 1px solid transparent; }
+  .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+
+  /* ---- Filter chip / segmented control ---- */
+  .fchip { height: 32px; padding: 0 0.85rem; border-radius: 999px; border: 1px solid var(--line-2);
+    background: var(--surface); color: var(--ink-2); cursor: pointer; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; transition: background .14s, color .14s, border-color .14s; }
+  .fchip:hover { background: var(--surface-2); }
+  .fchip.on { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .seg { display: inline-flex; padding: 3px; border-radius: var(--radius); border: 1px solid var(--line-2); background: var(--surface-2); }
+  .seg button { height: 32px; padding: 0 0.85rem; border-radius: 3px; font-family: 'Roboto Mono', monospace;
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); background: transparent; border: none; cursor: pointer; transition: color .14s; }
+  .seg button:hover { color: var(--ink-2); }
+  .seg button.on { background: var(--surface); color: var(--accent); font-weight: 500; box-shadow: var(--shadow-sm); }
+
+  /* ---- Toggle switch ---- */
+  .tg { width: 42px; height: 24px; border-radius: 999px; background: var(--line-2); position: relative; cursor: pointer; transition: background .16s; flex: none; }
+  .tg.on { background: var(--accent); }
+  .tg b { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .16s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .tg.on b { left: 21px; }
+
+  /* ---- Stepper ---- */
+  .step { width: 34px; height: 34px; border-radius: var(--radius); border: 1px solid var(--line-2); background: var(--surface-2);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-2); flex: none; }
+  .step:hover { background: var(--line); color: var(--ink); }
+
+  /* ---- Ledger table ---- */
+  table.dossier { width: 100%; border-collapse: collapse; }
+  table.dossier thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-2);
+    font-family: 'Roboto Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-3); padding: 0.75rem 1rem; white-space: nowrap; user-select: none; }
+  table.dossier thead tr { border-bottom: 3px double var(--line-2); }
+  table.dossier tbody td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  table.dossier tbody tr:last-child td { border-bottom: 0; }
+  .row-hover:hover { background: var(--surface-2); }
+  .sortable { cursor: pointer; } .sortable:hover { color: var(--ink-2); }
+
+  /* ---- Inline click-to-edit ---- */
+  .ie { border: 1px solid transparent; border-radius: var(--radius); padding: 2px 6px; margin: -2px -6px; cursor: text; }
+  .ie:hover { background: var(--surface-2); border-color: var(--line); }
+
+  /* ---- Overlays ---- */
+  .scrim { position: fixed; inset: 0; background: rgba(20, 18, 14, 0.5); z-index: 50; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 94vw); background: var(--surface);
+    z-index: 60; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; border-left: 1px solid var(--line-2); }
+  .ndrawer { position: fixed; top: 0; left: 0; bottom: 0; width: 280px; background: var(--surface);
+    z-index: 60; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; }
+  .modal-wrap { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  .modal-card { width: 100%; max-width: 480px; background: var(--surface); border: 1px solid var(--line-2);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); max-height: 92vh; display: flex; flex-direction: column; }
+
+  .scroll-thin::-webkit-scrollbar { height: 8px; width: 8px; }
+  .scroll-thin::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 8px; }
+  .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+
+  @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .toast-item { animation: toastIn .2s ease-out; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+
+<body x-data="dossier()" x-init="boot()" x-cloak class="min-h-screen">
+
+<div class="flex h-[100dvh] overflow-hidden">
+
+  <!-- ============ SIDEBAR (desktop) — the case binder ============ -->
+  <aside class="sidebar hidden lg:flex flex-col flex-none h-full w-[268px]">
+    <!-- Brand / matter head -->
+    <div class="flex items-center gap-3 px-5 h-[68px] flex-none" style="border-bottom: 1px solid var(--line);">
+      <div class="grid place-items-center h-9 w-9 rounded flex-none" style="background: var(--accent); color: #fff;">
+        <i data-lucide="scale" class="h-5 w-5"></i>
+      </div>
+      <div class="leading-tight">
+        <div class="text-lg font-semibold tracking-tight">Dossier</div>
+        <div class="kicker">Contract Lifecycle</div>
+      </div>
+    </div>
+
+    <!-- Case index (numbered table of contents) -->
+    <nav class="flex-1 min-h-0 overflow-y-auto px-3 py-4 scroll-thin">
+      <div class="flex items-center justify-between px-2 pb-2">
+        <span class="kicker">Case index</span>
+        <span class="kicker">FY26</span>
+      </div>
+      <div class="border-t rule-2 mb-1"></div>
+      <template x-for="(n, idx) in nav" :key="n.id">
+        <div class="toc-link" :class="page===n.id && 'toc-active'" @click="go(n.id)"
+             role="link" tabindex="0" @keydown.enter="go(n.id)"
+             :aria-current="page===n.id ? 'page' : false">
+          <span class="toc-num mono text-[11px] w-5 shrink-0" style="color: var(--ink-3);" x-text="String(idx + 1).padStart(2, '0')"></span>
+          <span class="toc-name text-[15px] shrink-0" x-text="n.label"></span>
+          <span class="toc-leader flex-1 self-center mx-1"></span>
+          <span x-show="n.badge" class="mono text-[11px] shrink-0" style="color: var(--ink-3);" x-text="n.badge"></span>
+        </div>
+      </template>
+      <div class="border-t rule-2 mt-1"></div>
+    </nav>
+
+    <!-- Footer user -->
+    <div class="flex-none px-4 py-3" style="border-top: 1px solid var(--line);">
+      <div class="flex items-center gap-3">
+        <div class="grid place-items-center h-9 w-9 rounded-full mono text-xs font-medium flex-none" style="background: var(--navy); color: #fff;">MC</div>
+        <div class="leading-tight min-w-0">
+          <div class="text-sm font-medium truncate" x-text="name"></div>
+          <div class="text-xs truncate" style="color: var(--ink-3);">Counsel · Commercial</div>
+        </div>
+        <button class="iconbtn ml-auto" @click="go('settings')" aria-label="Settings">
+          <i data-lucide="settings" class="h-4 w-4"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="flex-1 min-w-0 flex flex-col h-full">
+
+    <!-- Top bar -->
+    <header class="topbar sticky top-0 z-30 flex-none">
+      <div class="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 h-[68px]">
+        <button class="iconbtn lg:hidden -ml-2" @click="navOpen=true" aria-label="Open navigation">
+          <i data-lucide="menu" class="h-5 w-5"></i>
+        </button>
+
+        <div class="min-w-0">
+          <div class="kicker hidden sm:block" x-text="meta[page].kicker"></div>
+          <h1 class="text-xl sm:text-2xl font-semibold tracking-tight leading-none truncate" x-text="meta[page].title"></h1>
+        </div>
+
+        <!-- Search -->
+        <div class="ml-auto relative hidden md:block">
+          <i data-lucide="search" class="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" style="color: var(--ink-3);"></i>
+          <input type="search" placeholder="Search contracts, parties…" x-model="search"
+                 class="field" style="width: 260px; padding-left: 2.25rem;" aria-label="Search contracts" />
+        </div>
+
+        <button class="btn btn-primary ml-auto md:ml-0" @click="openNew()">
+          <i data-lucide="plus" class="h-4 w-4"></i><span class="hidden sm:inline">New contract</span>
+        </button>
+
+        <button class="iconbtn" @click="toggleEdition()" :aria-label="dark ? 'Switch to Daylight edition' : 'Switch to Lamplight edition'">
+          <i data-lucide="sun" class="h-5 w-5" x-show="dark" x-cloak></i>
+          <i data-lucide="moon" class="h-5 w-5" x-show="!dark"></i>
+        </button>
+
+        <button class="iconbtn relative" @click="go('renewals')" aria-label="Renewal alerts">
+          <i data-lucide="bell" class="h-5 w-5"></i>
+          <span class="absolute top-2 right-2 h-2 w-2 rounded-full" style="background: var(--accent);"></span>
+        </button>
+
+        <div class="grid place-items-center h-9 w-9 rounded-full mono text-xs font-medium shrink-0 hidden sm:grid" style="background: var(--navy); color: #fff;" aria-hidden="true">MC</div>
+      </div>
+
+      <!-- Mobile search -->
+      <div class="px-4 pb-3 md:hidden">
+        <div class="relative">
+          <i data-lucide="search" class="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" style="color: var(--ink-3);"></i>
+          <input type="search" placeholder="Search contracts, parties…" x-model="search" class="field" style="padding-left: 2.25rem;" aria-label="Search contracts" />
+        </div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="flex-1 min-h-0 overflow-y-auto scroll-thin">
+      <div class="px-4 sm:px-6 py-6 max-w-[1500px] w-full mx-auto">
+
+        <!-- ================= OVERVIEW (BI dashboard) ================= -->
+        <div x-show="page==='overview'">
+
+          <!-- KPI tiles -->
+          <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+            <template x-for="k in kpis" :key="k.label">
+              <div class="card p-5">
+                <div class="flex items-center justify-between">
+                  <span class="kicker" x-text="k.label"></span>
+                  <i :data-lucide="k.icon" class="h-4 w-4" :style="`color: var(${k.tone||'--ink-3'})`"></i>
+                </div>
+                <div class="mt-2 num font-semibold tracking-tight" style="font-size: 34px; line-height: 1;" x-text="k.value"></div>
+                <div class="mt-1.5 flex items-center gap-1.5 mono text-xs" :style="`color: var(${k.up ? '--pos' : (k.down ? '--neg' : '--ink-3')})`">
+                  <i x-show="k.up || k.down" :data-lucide="k.up ? 'trending-up' : 'trending-down'" class="h-3.5 w-3.5"></i>
+                  <span x-text="k.delta"></span>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Charts row -->
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <!-- Value over time (area) -->
+            <div class="card p-5 xl:col-span-2">
+              <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+                <div>
+                  <span class="kicker">Portfolio</span>
+                  <h2 class="text-lg font-semibold tracking-tight">Contract value under management</h2>
+                  <p class="text-xs mt-0.5" style="color: var(--ink-3);">Executed value &amp; renewal count · trailing 12 months</p>
+                </div>
+                <div class="seg" role="tablist" aria-label="Metric">
+                  <button class="on" role="tab" aria-selected="true">Value</button>
+                  <button role="tab" aria-selected="false" @click="ping('Overlay only', 'This preview keeps both series visible.', 'info', '--navy')">Count</button>
+                </div>
+              </div>
+              <div style="height: 240px;"><canvas id="chartArea" aria-label="Contract value over time"></canvas></div>
+            </div>
+
+            <!-- Portfolio by risk (doughnut) -->
+            <div class="card p-5">
+              <span class="kicker">Exposure</span>
+              <h2 class="text-lg font-semibold tracking-tight">Portfolio by risk tier</h2>
+              <p class="text-xs mt-0.5 mb-2" style="color: var(--ink-3);">Weighted by contract value</p>
+              <div class="grid place-items-center" style="height: 210px;"><canvas id="chartDoughnut" aria-label="Portfolio by risk tier"></canvas></div>
+            </div>
+          </div>
+
+          <!-- Charts + table row -->
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+            <!-- Contracts by stage (bar) -->
+            <div class="card p-5">
+              <span class="kicker">Pipeline</span>
+              <h2 class="text-lg font-semibold tracking-tight">Contracts by stage</h2>
+              <p class="text-xs mt-0.5 mb-3" style="color: var(--ink-3);">Count across the lifecycle</p>
+              <div style="height: 200px;"><canvas id="chartBar" aria-label="Contracts by lifecycle stage"></canvas></div>
+            </div>
+
+            <!-- Recently active table -->
+            <div class="card overflow-hidden xl:col-span-2">
+              <div class="flex items-center justify-between px-5 pt-5 pb-3">
+                <div>
+                  <span class="kicker">Register</span>
+                  <h2 class="text-lg font-semibold tracking-tight">Recently active</h2>
+                </div>
+                <button class="btn btn-ghost btn-sm" @click="go('contracts')">
+                  Full register <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
+                </button>
+              </div>
+              <div class="overflow-x-auto scroll-thin">
+                <table class="dossier text-sm min-w-[560px]">
+                  <thead><tr>
+                    <th class="text-left">Contract</th>
+                    <th class="text-left">Counterparty</th>
+                    <th class="text-right">Value</th>
+                    <th class="text-left">Status</th>
+                  </tr></thead>
+                  <tbody>
+                    <template x-for="row in contracts.slice(0, 6)" :key="row.id">
+                      <tr class="row-hover" style="cursor: pointer;" @click="openEdit(row)">
+                        <td class="mono text-xs font-medium" style="color: var(--accent);" x-text="row.id"></td>
+                        <td class="font-medium whitespace-nowrap" x-text="row.party"></td>
+                        <td class="text-right mono num whitespace-nowrap" x-text="fmtMoney(row.value)"></td>
+                        <td><span class="chip" :style="chipStyle(statusMeta[row.status].v)"><span class="dot"></span><span x-text="statusMeta[row.status].label"></span></span></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= CONTRACTS (register / ledger) ================= -->
+        <div x-show="page==='contracts'" x-cloak>
+          <section class="card overflow-hidden">
+            <!-- Register head -->
+            <div class="px-5 pt-5 pb-4 border-b rule-2">
+              <div class="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 class="text-lg font-semibold tracking-tight">Contracts register</h2>
+                  <p class="text-xs mono mt-0.5" style="color: var(--ink-3);">
+                    <span x-text="filteredContracts.length"></span> of <span x-text="contracts.length"></span> entries · scoped to “<span x-text="range"></span>”
+                  </p>
+                </div>
+                <div class="seg" role="tablist" aria-label="Time range">
+                  <template x-for="r in ranges" :key="r">
+                    <button :class="range===r && 'on'" @click="setRange(r)" :aria-selected="range===r" x-text="r"></button>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Filters -->
+              <div class="mt-4 flex flex-wrap items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Filter contracts">
+                  <div class="fchip" :class="activeChip==='all' && 'on'" @click="activeChip='all'">All <span class="num" x-text="contracts.length"></span></div>
+                  <template x-for="s in statusOrder" :key="s">
+                    <div class="fchip" :class="activeChip===s && 'on'" @click="toggleChip(s)">
+                      <span class="dot" style="width:7px;height:7px;" :style="`background: var(${statusMeta[s].v})`"></span>
+                      <span x-text="statusMeta[s].label"></span>
+                    </div>
+                  </template>
+                </div>
+                <div class="relative ml-auto w-full sm:w-56">
+                  <i data-lucide="search" class="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" style="color: var(--ink-3);"></i>
+                  <input type="search" placeholder="Filter register…" x-model="search" class="field" style="padding-left: 2.25rem;" aria-label="Filter register" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Ledger -->
+            <div class="overflow-x-auto scroll-thin">
+              <table class="dossier text-sm min-w-[900px]">
+                <thead><tr>
+                  <th class="text-right">#</th>
+                  <th class="text-left sortable" @click="sortBy('id')">Contract ID <i data-lucide="chevrons-up-down" class="inline h-3 w-3 align-middle"></i></th>
+                  <th class="text-left sortable" @click="sortBy('party')">Counterparty <i data-lucide="chevrons-up-down" class="inline h-3 w-3 align-middle"></i></th>
+                  <th class="text-left">Type</th>
+                  <th class="text-right sortable" @click="sortBy('value')">Value <i data-lucide="chevrons-up-down" class="inline h-3 w-3 align-middle"></i></th>
+                  <th class="text-left sortable" @click="sortBy('renewal')">Renewal <i data-lucide="chevrons-up-down" class="inline h-3 w-3 align-middle"></i></th>
+                  <th class="text-left">Owner</th>
+                  <th class="text-left">Status</th>
+                  <th></th>
+                </tr></thead>
+                <tbody>
+                  <template x-for="(row, i) in filteredContracts" :key="row.id">
+                    <tr class="row-hover" style="cursor: pointer;" @click="openEdit(row)">
+                      <td class="text-right mono text-xs num" style="color: var(--ink-3);" x-text="String(i + 1).padStart(2, '0')"></td>
+                      <td class="mono text-xs font-medium" style="color: var(--accent);" x-text="row.id"></td>
+                      <td class="font-medium whitespace-nowrap" x-text="row.party"></td>
+                      <td>
+                        <span class="mono text-[11px] uppercase tracking-wide px-2 py-0.5 rounded"
+                              style="background: var(--surface-2); border: 1px solid var(--line-2); color: var(--ink-2);" x-text="row.type"></span>
+                      </td>
+                      <td class="text-right mono num whitespace-nowrap font-medium" x-text="fmtMoney(row.value)"></td>
+                      <td class="mono text-xs whitespace-nowrap" :style="`color: ${dueSoon(row.renewal) ? 'var(--warn)' : 'var(--ink-2)'}`" x-text="row.renewal"></td>
+                      <td class="text-xs whitespace-nowrap" style="color: var(--ink-2);" x-text="row.owner"></td>
+                      <!-- inline-editable status cell -->
+                      <td @click.stop>
+                        <div class="relative inline-flex items-center">
+                          <span class="dot mr-2" :style="`background: var(${statusMeta[row.status].v})`"></span>
+                          <select x-model="row.status" @change="onStatusChange(row)"
+                                  class="mono text-[11px] uppercase tracking-wide appearance-none bg-transparent border-0 pr-5 py-1 rounded cursor-pointer hover:bg-surface2"
+                                  :style="`color: var(${statusMeta[row.status].v}); font-weight: 500;`" aria-label="Change contract status">
+                            <template x-for="s in statusOrder" :key="s">
+                              <option :value="s" x-text="statusMeta[s].label" style="color: var(--ink);"></option>
+                            </template>
+                          </select>
+                          <i data-lucide="chevron-down" class="h-3.5 w-3.5 absolute right-0 pointer-events-none" style="color: var(--ink-3);"></i>
+                        </div>
+                      </td>
+                      <td class="text-right"><i data-lucide="pencil" class="h-4 w-4 inline" style="color: var(--ink-3);"></i></td>
+                    </tr>
+                  </template>
+                  <tr x-show="filteredContracts.length === 0">
+                    <td colspan="9" class="text-center py-12">
+                      <i data-lucide="folder-search" class="h-8 w-8 mx-auto mb-2" style="color: var(--ink-3);"></i>
+                      <div class="text-sm" style="color: var(--ink-2);">No contracts match the current filter.</div>
+                      <button class="btn btn-outline btn-sm mt-3" @click="activeChip='all'; search=''">Clear filters</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <div class="kicker mt-3" x-text="filteredContracts.length + ' of ' + contracts.length + ' contracts · privileged & confidential'"></div>
+        </div>
+
+        <!-- ================= RENEWALS ================= -->
+        <div x-show="page==='renewals'" x-cloak>
+          <!-- KPI band -->
+          <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
+            <template x-for="b in renewalBands" :key="b.label">
+              <div class="card p-5">
+                <div class="flex items-center gap-1.5">
+                  <i :data-lucide="b.icon" class="h-3.5 w-3.5" :style="`color: var(${b.tone})`"></i>
+                  <span class="kicker" x-text="b.label"></span>
+                </div>
+                <div class="mt-2 num font-semibold tracking-tight" style="font-size: 30px; line-height: 1;" x-text="b.value"></div>
+                <div class="mt-1 text-xs" style="color: var(--ink-3);" x-text="b.sub"></div>
+              </div>
+            </template>
+          </div>
+
+          <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-4 items-start">
+            <!-- Renewal schedule -->
+            <section class="card overflow-hidden">
+              <div class="flex items-center justify-between px-5 pt-5 pb-3">
+                <div>
+                  <span class="kicker">Notice calendar</span>
+                  <h2 class="text-lg font-semibold tracking-tight">Upcoming renewals</h2>
+                </div>
+                <span class="kicker">Sorted by date</span>
+              </div>
+              <ul>
+                <template x-for="row in upcomingRenewals" :key="row.id">
+                  <li class="px-5 py-4 border-t rule row-hover">
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2">
+                          <span class="mono text-xs font-medium" style="color: var(--accent);" x-text="row.id"></span>
+                          <span class="chip" :style="chipStyle(statusMeta[row.status].v)"><span class="dot"></span><span x-text="statusMeta[row.status].label"></span></span>
+                        </div>
+                        <div class="font-medium mt-0.5 truncate" x-text="row.party"></div>
+                        <div class="mono text-xs mt-0.5" style="color: var(--ink-3);">
+                          Renews <span x-text="row.renewal"></span> ·
+                          <span :style="`color: ${daysUntil(row.renewal) < 30 ? 'var(--warn)' : 'var(--ink-3)'}`" x-text="daysUntil(row.renewal) + ' days'"></span> ·
+                          <span x-text="fmtMoney(row.value)"></span>
+                        </div>
+                      </div>
+                      <!-- notice period stepper -->
+                      <div class="flex items-center gap-3">
+                        <div class="text-right">
+                          <div class="kicker">Notice</div>
+                          <div class="flex items-center gap-2 mt-1">
+                            <button class="step" @click="row.notice = Math.max(0, row.notice - 15)" :aria-label="'Decrease notice for ' + row.id"><i data-lucide="minus" class="h-4 w-4"></i></button>
+                            <span class="mono text-sm num w-12 text-center" x-text="row.notice + 'd'"></span>
+                            <button class="step" @click="row.notice += 15" :aria-label="'Increase notice for ' + row.id"><i data-lucide="plus" class="h-4 w-4"></i></button>
+                          </div>
+                        </div>
+                        <!-- auto-renew toggle -->
+                        <div class="text-center">
+                          <div class="kicker">Auto</div>
+                          <div class="tg mt-1.5 mx-auto" :class="row.auto && 'on'" @click="row.auto = !row.auto; ping('Auto-renew ' + (row.auto ? 'enabled' : 'disabled'), row.id + ' · ' + row.party, row.auto ? 'refresh-cw' : 'circle-slash', '--navy')" role="switch" :aria-checked="row.auto" :aria-label="'Auto-renew ' + row.id" tabindex="0" @keydown.enter="row.auto = !row.auto"><b></b></div>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+            </section>
+
+            <!-- Renewals by month -->
+            <aside class="space-y-4">
+              <div class="card p-5">
+                <span class="kicker">Cadence</span>
+                <h3 class="text-base font-semibold tracking-tight">Renewals by month</h3>
+                <p class="text-xs mt-0.5" style="color: var(--ink-3);">Next 6 months</p>
+                <div class="mt-3" style="height: 190px;"><canvas id="chartRenew" aria-label="Renewals by month"></canvas></div>
+              </div>
+              <div class="card p-5">
+                <span class="kicker">Default policy</span>
+                <h3 class="text-base font-semibold tracking-tight">Standard notice period</h3>
+                <p class="text-xs mt-0.5 mb-3" style="color: var(--ink-3);">Applied to new contracts</p>
+                <div class="flex items-center gap-3">
+                  <button class="step" @click="defaultNotice = Math.max(0, defaultNotice - 15)" aria-label="Decrease default notice"><i data-lucide="minus" class="h-4 w-4"></i></button>
+                  <div class="flex-1 text-center">
+                    <span class="num font-semibold" style="font-size: 26px;" x-text="defaultNotice"></span>
+                    <span class="text-sm" style="color: var(--ink-3);"> days</span>
+                  </div>
+                  <button class="step" @click="defaultNotice += 15" aria-label="Increase default notice"><i data-lucide="plus" class="h-4 w-4"></i></button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+
+        <!-- ================= OBLIGATIONS ================= -->
+        <div x-show="page==='obligations'" x-cloak>
+          <div class="flex flex-wrap items-center gap-2 mb-4">
+            <div class="flex gap-2 flex-wrap">
+              <div class="fchip" :class="oblFilter==='all' && 'on'" @click="oblFilter='all'">All <span class="num" x-text="obligations.length"></span></div>
+              <template x-for="s in ['met','due','overdue']" :key="s">
+                <div class="fchip" :class="oblFilter===s && 'on'" @click="oblFilter = oblFilter===s ? 'all' : s">
+                  <span class="dot" style="width:7px;height:7px;" :style="`background: var(${complianceMeta[s].v})`"></span>
+                  <span x-text="complianceMeta[s].label"></span>
+                </div>
+              </template>
+            </div>
+            <div class="kicker ml-auto" x-text="obligations.filter(o=>o.status==='overdue').length + ' overdue · ' + obligations.filter(o=>o.status==='due').length + ' due'"></div>
+          </div>
+
+          <section class="card overflow-hidden">
+            <div class="overflow-x-auto scroll-thin">
+              <table class="dossier text-sm min-w-[820px]">
+                <thead><tr>
+                  <th class="text-left">Obligation</th>
+                  <th class="text-left">Contract</th>
+                  <th class="text-left">Owner</th>
+                  <th class="text-left">Due</th>
+                  <th class="text-left">Status</th>
+                </tr></thead>
+                <tbody>
+                  <template x-for="o in filteredObligations" :key="o.id">
+                    <tr class="row-hover">
+                      <td>
+                        <div class="font-medium" x-text="o.title"></div>
+                        <div class="mono text-[11px]" style="color: var(--ink-3);" x-text="o.id"></div>
+                      </td>
+                      <td class="mono text-xs" style="color: var(--accent);" x-text="o.contract"></td>
+                      <!-- inline-editable owner select -->
+                      <td @click.stop>
+                        <select x-model="o.owner" @change="ping('Owner reassigned', o.id + ' → ' + o.owner, 'user-check', '--navy')" class="isel text-sm" style="height: 34px; width: auto; min-width: 140px;" aria-label="Reassign owner">
+                          <template x-for="p in people" :key="p"><option :value="p" x-text="p"></option></template>
+                        </select>
+                      </td>
+                      <td class="mono text-xs whitespace-nowrap" :style="`color: ${o.status==='overdue' ? 'var(--neg)' : 'var(--ink-2)'}`" x-text="o.due"></td>
+                      <!-- inline-editable status select -->
+                      <td @click.stop>
+                        <div class="relative inline-flex items-center">
+                          <span class="dot mr-2" :style="`background: var(${complianceMeta[o.status].v})`"></span>
+                          <select x-model="o.status" @change="ping('Obligation updated', o.id + ' → ' + complianceMeta[o.status].label, 'clipboard-check', complianceMeta[o.status].v)"
+                                  class="mono text-[11px] uppercase tracking-wide appearance-none bg-transparent border-0 pr-5 py-1 rounded cursor-pointer"
+                                  :style="`color: var(${complianceMeta[o.status].v}); font-weight: 500;`" aria-label="Change obligation status">
+                            <template x-for="s in ['met','due','overdue']" :key="s"><option :value="s" x-text="complianceMeta[s].label" style="color: var(--ink);"></option></template>
+                          </select>
+                          <i data-lucide="chevron-down" class="h-3.5 w-3.5 absolute right-0 pointer-events-none" style="color: var(--ink-3);"></i>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- ================= CLAUSES (library) ================= -->
+        <div x-show="page==='clauses'" x-cloak>
+          <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4 items-start">
+            <section class="card overflow-hidden">
+              <div class="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-3">
+                <div>
+                  <span class="kicker">Standard language</span>
+                  <h2 class="text-lg font-semibold tracking-tight">Clause library</h2>
+                </div>
+                <div class="relative w-full sm:w-56">
+                  <i data-lucide="search" class="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2" style="color: var(--ink-3);"></i>
+                  <input type="search" placeholder="Search clauses…" x-model="clauseSearch" class="field" style="padding-left: 2.25rem;" aria-label="Search clauses" />
+                </div>
+              </div>
+              <ul>
+                <template x-for="c in filteredClauses" :key="c.name">
+                  <li class="px-5 py-4 border-t rule row-hover cursor-pointer" @click="activeClause = c" :class="activeClause && activeClause.name === c.name && 'bg-surface2'"
+                      style="cursor: pointer;" role="button" tabindex="0" @keydown.enter="activeClause = c">
+                    <div class="flex items-center gap-3">
+                      <div class="min-w-0 flex-1">
+                        <div class="font-medium" x-text="c.name"></div>
+                        <div class="text-xs mt-0.5" style="color: var(--ink-3);"><span x-text="c.category"></span> · used in <span class="mono" x-text="c.usage"></span> contracts</div>
+                      </div>
+                      <span class="chip" :style="chipStyle(riskTone(c.risk))"><span class="dot"></span><span x-text="c.risk"></span></span>
+                    </div>
+                  </li>
+                </template>
+                <li x-show="filteredClauses.length === 0" class="px-5 py-10 text-center text-sm" style="color: var(--ink-3);">No clauses match “<span x-text="clauseSearch"></span>”.</li>
+              </ul>
+            </section>
+
+            <!-- Clause detail -->
+            <aside class="card p-5" x-show="activeClause">
+              <span class="kicker">Clause detail</span>
+              <h3 class="text-lg font-semibold tracking-tight mt-0.5" x-text="activeClause && activeClause.name"></h3>
+              <div class="flex items-center gap-2 mt-2">
+                <span class="chip" :style="activeClause ? chipStyle(riskTone(activeClause.risk)) : ''"><span class="dot"></span><span x-text="activeClause && (activeClause.risk + ' risk')"></span></span>
+                <span class="mono text-[11px]" style="color: var(--ink-3);">Rev. <span x-text="activeClause && activeClause.updated"></span></span>
+              </div>
+              <p class="text-sm mt-3 leading-relaxed" style="color: var(--ink-2);" x-text="activeClause && activeClause.summary"></p>
+              <div class="border-t rule my-4"></div>
+              <div class="grid grid-cols-2 gap-4">
+                <div><div class="kicker">Category</div><div class="text-sm mt-1" x-text="activeClause && activeClause.category"></div></div>
+                <div><div class="kicker">In use</div><div class="text-sm mt-1 mono num" x-text="activeClause && activeClause.usage"></div></div>
+              </div>
+              <button class="btn btn-outline btn-block mt-4" @click="ping('Clause copied', (activeClause ? activeClause.name : '') + ' added to clipboard.', 'copy', '--navy')">
+                <i data-lucide="copy" class="h-4 w-4"></i> Copy clause text
+              </button>
+            </aside>
+          </div>
+        </div>
+
+        <!-- ================= SETTINGS ================= -->
+        <div x-show="page==='settings'" x-cloak style="max-width: 720px;">
+          <!-- Account with click-to-edit name -->
+          <div class="card p-5 mb-4">
+            <span class="kicker">Account</span>
+            <div class="flex items-center gap-4 mt-3">
+              <div class="grid place-items-center h-14 w-14 rounded-full mono font-medium flex-none" style="background: var(--navy); color: #fff; font-size: 18px;">MC</div>
+              <div class="min-w-0">
+                <template x-if="!editName">
+                  <div class="ie text-xl font-semibold tracking-tight inline-block" @click="editName = true; $nextTick(() => $refs.nm.focus())" tabindex="0" @keydown.enter="editName = true; $nextTick(() => $refs.nm.focus())" x-text="name" role="button" aria-label="Edit name"></div>
+                </template>
+                <template x-if="editName">
+                  <div class="flex items-center gap-2">
+                    <input x-ref="nm" class="field" style="width: 200px;" x-model="name"
+                           @keydown.enter="editName = false; ping('Name updated', 'Signed in as ' + name + '.', 'check-circle-2', '--pos')"
+                           @keydown.escape="editName = false" aria-label="Your name" />
+                    <button class="btn btn-primary btn-sm" @click="editName = false; ping('Name updated', 'Signed in as ' + name + '.', 'check-circle-2', '--pos')">Save</button>
+                  </div>
+                </template>
+                <div class="mono text-xs mt-1" style="color: var(--ink-2);">Counsel · Commercial · ID 2048</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Edition -->
+          <div class="card">
+            <div class="flex items-center justify-between p-5" style="border-bottom: 1px solid var(--line);">
+              <div>
+                <div class="font-medium">Edition</div>
+                <div class="text-sm" style="color: var(--ink-2);">Daylight for the desk, Lamplight for late review.</div>
+              </div>
+              <div class="seg">
+                <button :class="!dark && 'on'" @click="dark && toggleEdition()">Daylight</button>
+                <button :class="dark && 'on'" @click="!dark && toggleEdition()">Lamplight</button>
+              </div>
+            </div>
+            <div class="flex items-center justify-between p-5" style="border-bottom: 1px solid var(--line);">
+              <div>
+                <div class="font-medium">Renewal alerts</div>
+                <div class="text-sm" style="color: var(--ink-2);">Notify me when a contract enters its notice window.</div>
+              </div>
+              <div class="tg on" x-data="{on: true}" :class="on && 'on'" @click="on = !on" role="switch" :aria-checked="on" aria-label="Renewal alerts" tabindex="0" @keydown.enter="on = !on"><b></b></div>
+            </div>
+            <div class="flex items-center justify-between p-5" style="border-bottom: 1px solid var(--line);">
+              <div>
+                <div class="font-medium">Obligation reminders</div>
+                <div class="text-sm" style="color: var(--ink-2);">Email a digest of upcoming obligations each Monday.</div>
+              </div>
+              <div class="tg" x-data="{on: false}" :class="on && 'on'" @click="on = !on" role="switch" :aria-checked="on" aria-label="Obligation reminders" tabindex="0" @keydown.enter="on = !on"><b></b></div>
+            </div>
+            <div class="flex items-center justify-between p-5" style="border-bottom: 1px solid var(--line);">
+              <div>
+                <div class="font-medium">Privileged watermark</div>
+                <div class="text-sm" style="color: var(--ink-2);">Stamp exported documents “Privileged &amp; Confidential”.</div>
+              </div>
+              <div class="tg on" x-data="{on: true}" :class="on && 'on'" @click="on = !on" role="switch" :aria-checked="on" aria-label="Privileged watermark" tabindex="0" @keydown.enter="on = !on"><b></b></div>
+            </div>
+            <div class="flex items-center justify-between p-5">
+              <div>
+                <div class="font-medium">Preview the modal</div>
+                <div class="text-sm" style="color: var(--ink-2);">Open the “New contract” dialog.</div>
+              </div>
+              <button class="btn btn-outline btn-sm" @click="openNew()">Open dialog</button>
+            </div>
+          </div>
+
+          <footer class="mt-6 text-center kicker">Dossier · Contract Lifecycle Management · Privileged &amp; Confidential</footer>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ============ MOBILE NAV DRAWER (left) ============ -->
+<template x-if="navOpen">
+  <div class="lg:hidden">
+    <div class="scrim" @click="navOpen=false" x-transition.opacity></div>
+    <div class="ndrawer" x-transition:enter="transition duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0" style="border-right: 1px solid var(--line-2);">
+      <div class="flex items-center gap-3 px-5 h-[68px] flex-none" style="border-bottom: 1px solid var(--line);">
+        <div class="grid place-items-center h-9 w-9 rounded flex-none" style="background: var(--accent); color: #fff;"><i data-lucide="scale" class="h-5 w-5"></i></div>
+        <div class="leading-tight"><div class="text-lg font-semibold tracking-tight">Dossier</div><div class="kicker">Contract Lifecycle</div></div>
+        <button class="iconbtn ml-auto" @click="navOpen=false" aria-label="Close navigation"><i data-lucide="x" class="h-5 w-5"></i></button>
+      </div>
+      <nav class="flex-1 overflow-y-auto px-3 py-4">
+        <div class="kicker px-2 pb-2">Case index</div>
+        <div class="border-t rule-2 mb-1"></div>
+        <template x-for="(n, idx) in nav" :key="'m' + n.id">
+          <div class="toc-link" :class="page===n.id && 'toc-active'" @click="go(n.id); navOpen=false">
+            <span class="toc-num mono text-[11px] w-5 shrink-0" style="color: var(--ink-3);" x-text="String(idx + 1).padStart(2, '0')"></span>
+            <span class="toc-name text-[15px]" x-text="n.label"></span>
+            <span class="toc-leader flex-1 self-center mx-1"></span>
+            <span x-show="n.badge" class="mono text-[11px]" style="color: var(--ink-3);" x-text="n.badge"></span>
+          </div>
+        </template>
+      </nav>
+      <div class="flex-none px-4 py-3 flex items-center gap-3" style="border-top: 1px solid var(--line);">
+        <div class="grid place-items-center h-9 w-9 rounded-full mono text-xs font-medium" style="background: var(--navy); color: #fff;">MC</div>
+        <div class="leading-tight min-w-0"><div class="text-sm font-medium truncate" x-text="name"></div><div class="text-xs" style="color: var(--ink-3);">Counsel · Commercial</div></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ EDIT DRAWER (right) ============ -->
+<template x-if="drawer">
+  <div>
+    <div class="scrim" @click="drawer=null" x-transition.opacity></div>
+    <div class="drawer" x-transition:enter="transition duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0" @keydown.escape.window="drawer=null">
+      <div class="flex items-center gap-3 px-5 h-[68px] flex-none" style="border-bottom: 1px solid var(--line);">
+        <div><div class="kicker" x-text="drawer.id"></div><div class="text-lg font-semibold tracking-tight">Edit contract</div></div>
+        <button class="iconbtn ml-auto" @click="drawer=null" aria-label="Close drawer"><i data-lucide="x" class="h-5 w-5"></i></button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-5 scroll-thin">
+        <label class="kicker">Counterparty</label>
+        <input class="field mt-1.5 mb-4" x-model="drawer.party" aria-label="Counterparty" />
+
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label class="kicker">Type</label>
+            <select class="isel mt-1.5" x-model="drawer.type" aria-label="Contract type">
+              <template x-for="t in types" :key="t"><option :value="t" x-text="t"></option></template>
+            </select>
+          </div>
+          <div>
+            <label class="kicker">Value (USD)</label>
+            <input type="number" min="0" step="10000" class="field mono mt-1.5" x-model.number="drawer.value" aria-label="Contract value" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label class="kicker">Status</label>
+            <select class="isel mt-1.5" x-model="drawer.status" aria-label="Status">
+              <template x-for="s in statusOrder" :key="s"><option :value="s" x-text="statusMeta[s].label"></option></template>
+            </select>
+          </div>
+          <div>
+            <label class="kicker">Renewal date</label>
+            <input type="date" class="field mono mt-1.5" x-model="drawer.renewal" aria-label="Renewal date" />
+          </div>
+        </div>
+
+        <label class="kicker">Owner</label>
+        <select class="isel mt-1.5 mb-4" x-model="drawer.owner" aria-label="Owner">
+          <template x-for="p in people" :key="p"><option :value="p" x-text="p"></option></template>
+        </select>
+
+        <label class="kicker">Risk tier</label>
+        <div class="seg mt-1.5 mb-4" style="display: flex; width: 100%;">
+          <template x-for="rk in ['Low','Moderate','Elevated','High']" :key="rk">
+            <button :class="drawer.risk===rk && 'on'" @click="drawer.risk=rk" style="flex: 1;" x-text="rk"></button>
+          </template>
+        </div>
+
+        <label class="kicker">Counsel note</label>
+        <textarea class="field mt-1.5" rows="3" placeholder="Add a note for the file…" aria-label="Counsel note"></textarea>
+      </div>
+      <div class="flex-none p-4 flex gap-3" style="border-top: 1px solid var(--line);">
+        <button class="btn btn-outline" style="flex: 1;" @click="drawer=null">Cancel</button>
+        <button class="btn btn-primary" style="flex: 2;" @click="ping('Contract saved', drawer.id + ' updated in the register.', 'check-circle-2', '--pos'); drawer=null">
+          <i data-lucide="check" class="h-4 w-4"></i> Save changes
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ MODAL (new contract) ============ -->
+<template x-if="modal">
+  <div>
+    <div class="scrim" @click="modal=false" x-transition.opacity></div>
+    <div class="modal-wrap" @keydown.escape.window="modal=false">
+      <div class="modal-card" x-transition:enter="transition duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+        <div class="flex items-center gap-3 p-5 pb-3">
+          <div><span class="kicker">Open a matter</span><div class="text-xl font-semibold tracking-tight">New contract</div></div>
+          <button class="iconbtn ml-auto" @click="modal=false" aria-label="Close dialog"><i data-lucide="x" class="h-5 w-5"></i></button>
+        </div>
+        <div class="px-5 pb-2 overflow-y-auto scroll-thin">
+          <label class="kicker">Counterparty</label>
+          <input class="field mt-1.5 mb-3" x-model="nw.party" placeholder="e.g. Ashcombe Freight Co." aria-label="Counterparty" />
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="kicker">Type</label>
+              <select class="isel mt-1.5" x-model="nw.type" aria-label="Type"><template x-for="t in types" :key="t"><option :value="t" x-text="t"></option></template></select>
+            </div>
+            <div>
+              <label class="kicker">Value (USD)</label>
+              <input type="number" min="0" step="10000" class="field mono mt-1.5" x-model.number="nw.value" placeholder="0" aria-label="Value" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="kicker">Owner</label>
+              <select class="isel mt-1.5" x-model="nw.owner" aria-label="Owner"><template x-for="p in people" :key="p"><option :value="p" x-text="p"></option></template></select>
+            </div>
+            <div>
+              <label class="kicker">Renewal date</label>
+              <input type="date" class="field mono mt-1.5" x-model="nw.renewal" aria-label="Renewal date" />
+            </div>
+          </div>
+          <label class="kicker">Opening note</label>
+          <textarea class="field mt-1.5 mb-1" rows="2" placeholder="Context for the file…" aria-label="Opening note"></textarea>
+        </div>
+        <div class="flex gap-3 p-5 pt-3">
+          <button class="btn btn-outline" style="flex: 1;" @click="modal=false">Cancel</button>
+          <button class="btn btn-primary" style="flex: 2;" @click="createContract()"><i data-lucide="plus" class="h-4 w-4"></i> File contract</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ TOASTS ============ -->
+<div class="fixed bottom-5 right-5 z-[70] space-y-2 w-[min(92vw,360px)]" aria-live="polite">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="toast-item card px-4 py-3 flex items-start gap-3" style="box-shadow: var(--shadow-md);">
+      <i :data-lucide="t.icon" class="h-4 w-4 mt-0.5 shrink-0" :style="`color: var(${t.color})`"></i>
+      <div class="min-w-0">
+        <div class="text-sm font-medium" x-text="t.title"></div>
+        <div class="text-xs" style="color: var(--ink-2);" x-text="t.body"></div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<script>
+function dossier() {
+  return {
+    /* ---------- state ---------- */
+    page: 'overview',
+    dark: false,
+    navOpen: false,
+    search: '',
+    range: 'Quarter',
+    ranges: ['30 days', 'Quarter', 'Year'],
+    activeChip: 'all',
+    sort: { key: 'id', dir: 'asc' },
+    drawer: null,
+    modal: false,
+    toasts: [],
+    _tid: 0,
+    _n: 0,
+    name: 'Marion Cole',
+    editName: false,
+    defaultNotice: 60,
+    oblFilter: 'all',
+    clauseSearch: '',
+    activeClause: null,
+    nw: { party: '', type: 'MSA', value: 0, owner: 'Marion Cole', renewal: '' },
+
+    people: ['Marion Cole', 'Devin Rao', 'Priya Nair'],
+    types: ['MSA', 'SOW', 'NDA', 'Lease', 'License', 'Supply'],
+
+    nav: [
+      { id: 'overview',    label: 'Overview' },
+      { id: 'contracts',   label: 'Contracts',   badge: '14' },
+      { id: 'renewals',    label: 'Renewals',    badge: '6' },
+      { id: 'obligations', label: 'Obligations', badge: '2' },
+      { id: 'clauses',     label: 'Clauses' },
+      { id: 'settings',    label: 'Settings' },
+    ],
+
+    meta: {
+      overview:    { kicker: 'Dossier · Register overview', title: 'Contract overview' },
+      contracts:   { kicker: 'Live register', title: 'Contracts register' },
+      renewals:    { kicker: 'Notice & renewal window', title: 'Renewals' },
+      obligations: { kicker: 'Post-signature duties', title: 'Obligations' },
+      clauses:     { kicker: 'Standard language', title: 'Clause library' },
+      settings:    { kicker: 'Marion Cole', title: 'Settings' },
+    },
+
+    /* ---------- the contract-lifecycle status system (single source) ---------- */
+    statusOrder: ['draft', 'review', 'executed', 'renewal', 'expired'],
+    statusMeta: {
+      draft:    { label: 'Draft',       v: '--s-draft',   icon: 'file-pen-line' },
+      review:   { label: 'In review',   v: '--s-review',  icon: 'file-search' },
+      executed: { label: 'Executed',    v: '--s-exec',    icon: 'file-check-2' },
+      renewal:  { label: 'Renewal due', v: '--s-renew',   icon: 'alarm-clock' },
+      expired:  { label: 'Expired',     v: '--s-expired', icon: 'file-x-2' },
+    },
+    /* obligation compliance triplet — reuses semantic colors, same chip component */
+    complianceMeta: {
+      met:     { label: 'Met',     v: '--pos' },
+      due:     { label: 'Due',     v: '--warn' },
+      overdue: { label: 'Overdue', v: '--neg' },
+    },
+
+    kpis: [
+      { label: 'Active contracts', value: '312', icon: 'folder-check', tone: '--navy', delta: '+4.2% vs Q1', up: true },
+      { label: 'Value managed',    value: '$42.6M', icon: 'landmark', tone: '--accent', delta: '+8.7% YoY', up: true },
+      { label: 'Renewals · 30d',   value: '18', icon: 'alarm-clock', tone: '--warn', delta: '3 new this week', up: false, down: false },
+      { label: 'In review',        value: '24', icon: 'file-search', tone: '--navy', delta: '6.1d avg cycle', up: false, down: false },
+    ],
+
+    renewalBands: [
+      { label: 'Within 30 days', value: '18', sub: '$6.4M at renewal', icon: 'alarm-clock', tone: '--warn' },
+      { label: 'Within 60 days', value: '27', sub: '$11.2M at renewal', icon: 'calendar-clock', tone: '--navy' },
+      { label: 'Within 90 days', value: '39', sub: '$17.9M at renewal', icon: 'calendar-range', tone: '--navy' },
+      { label: 'Auto-renewing',  value: '11', sub: 'Notice required', icon: 'refresh-cw', tone: '--pos' },
+    ],
+
+    contracts: [
+      { id: 'CTR-4821', party: 'Halveston Logistics',   type: 'MSA',     value: 4200000, owner: 'Marion Cole', renewal: '2026-09-14', status: 'executed', risk: 'Moderate', notice: 90,  auto: true },
+      { id: 'CTR-4809', party: 'Norwood Analytics',      type: 'SOW',     value: 820000,  owner: 'Devin Rao',   renewal: '2026-07-28', status: 'renewal',  risk: 'Elevated', notice: 60,  auto: false },
+      { id: 'CTR-4795', party: 'Bramley & Fox LLP',      type: 'NDA',     value: 0,       owner: 'Marion Cole', renewal: '2027-01-05', status: 'executed', risk: 'Low',      notice: 30,  auto: true },
+      { id: 'CTR-4788', party: 'Cinder Grid Energy',     type: 'Lease',   value: 1950000, owner: 'Priya Nair',  renewal: '2026-08-02', status: 'review',   risk: 'High',     notice: 90,  auto: false },
+      { id: 'CTR-4772', party: 'Ostend Freight Co.',     type: 'MSA',     value: 3100000, owner: 'Devin Rao',   renewal: '2026-12-19', status: 'draft',    risk: 'Moderate', notice: 60,  auto: false },
+      { id: 'CTR-4760', party: 'Peregrine Software',     type: 'License', value: 640000,  owner: 'Marion Cole', renewal: '2026-07-11', status: 'renewal',  risk: 'Elevated', notice: 45,  auto: true },
+      { id: 'CTR-4744', party: 'Marlowe Chemical',       type: 'SOW',     value: 1280000, owner: 'Priya Nair',  renewal: '2026-10-30', status: 'review',   risk: 'High',     notice: 60,  auto: false },
+      { id: 'CTR-4731', party: 'Aldergate Holdings',     type: 'Lease',   value: 2550000, owner: 'Marion Cole', renewal: '2026-06-20', status: 'expired',  risk: 'Moderate', notice: 90,  auto: false },
+      { id: 'CTR-4726', party: 'Sable & Vane Advisory',  type: 'MSA',     value: 980000,  owner: 'Devin Rao',   renewal: '2027-05-01', status: 'executed', risk: 'Low',      notice: 60,  auto: true },
+      { id: 'CTR-4718', party: 'Corvel Manufacturing',   type: 'Supply',  value: 5400000, owner: 'Priya Nair',  renewal: '2026-08-15', status: 'renewal',  risk: 'High',     notice: 90,  auto: false },
+      { id: 'CTR-4705', party: 'Linden Pharma',          type: 'License', value: 2100000, owner: 'Marion Cole', renewal: '2026-11-09', status: 'review',   risk: 'Moderate', notice: 60,  auto: false },
+      { id: 'CTR-4699', party: 'Thorne Data Centers',    type: 'Lease',   value: 7250000, owner: 'Devin Rao',   renewal: '2028-06-30', status: 'executed', risk: 'Elevated', notice: 120, auto: true },
+      { id: 'CTR-4682', party: 'Wexford Insurance',      type: 'MSA',     value: 1650000, owner: 'Priya Nair',  renewal: '2026-09-30', status: 'draft',    risk: 'Moderate', notice: 60,  auto: false },
+      { id: 'CTR-4671', party: 'Galway Retail Group',    type: 'Supply',  value: 3350000, owner: 'Marion Cole', renewal: '2026-07-19', status: 'renewal',  risk: 'High',     notice: 45,  auto: true },
+    ],
+
+    obligations: [
+      { id: 'OBL-201', contract: 'CTR-4821', title: 'Quarterly service-credit report', owner: 'Marion Cole', due: '2026-07-05', status: 'due' },
+      { id: 'OBL-198', contract: 'CTR-4718', title: 'Insurance certificate renewal',   owner: 'Priya Nair',  due: '2026-06-28', status: 'overdue' },
+      { id: 'OBL-192', contract: 'CTR-4699', title: 'Annual security audit (SOC 2)',    owner: 'Devin Rao',   due: '2026-09-01', status: 'met' },
+      { id: 'OBL-187', contract: 'CTR-4760', title: 'Renewal notice to counterparty',   owner: 'Marion Cole', due: '2026-07-12', status: 'due' },
+      { id: 'OBL-181', contract: 'CTR-4744', title: 'Data-processing addendum signature',owner: 'Priya Nair', due: '2026-07-20', status: 'due' },
+      { id: 'OBL-176', contract: 'CTR-4671', title: 'Volume-rebate reconciliation',     owner: 'Marion Cole', due: '2026-06-15', status: 'overdue' },
+      { id: 'OBL-170', contract: 'CTR-4795', title: 'Confidentiality re-attestation',   owner: 'Devin Rao',   due: '2026-08-30', status: 'met' },
+      { id: 'OBL-166', contract: 'CTR-4788', title: 'Lease escalation review',          owner: 'Priya Nair',  due: '2026-08-01', status: 'due' },
+    ],
+
+    clauses: [
+      { name: 'Limitation of liability',    category: 'Risk allocation', risk: 'High',     usage: 214, updated: '2026-05-12', summary: 'Caps aggregate liability at fees paid in the trailing 12 months; carve-outs for confidentiality breach, indemnities, and gross negligence. Review the cap multiple before executing high-value supply agreements.' },
+      { name: 'Indemnification',            category: 'Risk allocation', risk: 'High',     usage: 198, updated: '2026-04-30', summary: 'Mutual indemnity for third-party IP and data-protection claims, with a duty to defend and standard notice-and-cooperation mechanics. Escalate any uncapped indemnity to the general counsel.' },
+      { name: 'Termination for convenience',category: 'Term & exit',     risk: 'Moderate', usage: 176, updated: '2026-06-02', summary: 'Either party may terminate on 60 days’ written notice without cause; wind-down fees apply for committed spend. Confirm alignment with the renewal notice window.' },
+      { name: 'Auto-renewal',               category: 'Term & exit',     risk: 'Elevated', usage: 143, updated: '2026-06-18', summary: 'Contract renews for successive 12-month terms unless notice is given inside the notice window. Track diligently — a missed window is the most common source of unintended spend.' },
+      { name: 'Confidentiality',            category: 'Information',      risk: 'Low',      usage: 305, updated: '2026-03-21', summary: 'Mutual confidentiality with a five-year survival period and standard exclusions for public or independently developed information. Low-risk, rarely negotiated.' },
+      { name: 'Governing law & jurisdiction',category: 'General',        risk: 'Low',      usage: 312, updated: '2026-01-15', summary: 'Specifies governing law and the exclusive forum for disputes. Standard for the counterparty’s home jurisdiction; flag only where enforcement is uncertain.' },
+      { name: 'Data protection (GDPR)',     category: 'Compliance',      risk: 'Elevated', usage: 121, updated: '2026-05-28', summary: 'Controller/processor terms with sub-processor approval, breach-notification timing, and standard contractual clauses for cross-border transfer. Required wherever personal data is processed.' },
+      { name: 'Force majeure',              category: 'Risk allocation', risk: 'Moderate', usage: 289, updated: '2025-11-04', summary: 'Excuses performance for defined events beyond reasonable control, with a mitigation duty and a termination right after prolonged disruption. Rarely negotiated but material in supply contracts.' },
+    ],
+
+    /* ---------- derived ---------- */
+    get filteredContracts() {
+      const q = this.search.trim().toLowerCase();
+      let rows = this.contracts.filter(r => {
+        const chip = this.activeChip === 'all' ? true : r.status === this.activeChip;
+        const s = !q || (r.id + r.party + r.type + r.owner).toLowerCase().includes(q);
+        return chip && s;
+      });
+      const { key, dir } = this.sort;
+      rows = [...rows].sort((a, b) => {
+        let av = a[key], bv = b[key];
+        if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
+        return (av < bv ? -1 : av > bv ? 1 : 0) * (dir === 'asc' ? 1 : -1);
+      });
+      return rows;
+    },
+    get upcomingRenewals() {
+      return [...this.contracts]
+        .filter(r => r.status !== 'expired')
+        .sort((a, b) => a.renewal.localeCompare(b.renewal))
+        .slice(0, 8);
+    },
+    get filteredObligations() {
+      return this.oblFilter === 'all' ? this.obligations : this.obligations.filter(o => o.status === this.oblFilter);
+    },
+    get filteredClauses() {
+      const q = this.clauseSearch.trim().toLowerCase();
+      return this.clauses.filter(c => !q || (c.name + c.category).toLowerCase().includes(q));
+    },
+
+    /* ---------- helpers ---------- */
+    fmtMoney(n) {
+      if (n >= 1e6) return '$' + (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
+      if (n >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
+      return '$' + n;
+    },
+    chipStyle(v) { return `color: var(${v}); background: color-mix(in srgb, var(${v}) 14%, transparent); border-color: color-mix(in srgb, var(${v}) 30%, transparent);`; },
+    riskTone(r) { return { Low: '--pos', Moderate: '--navy', Elevated: '--warn', High: '--accent' }[r] || '--ink-3'; },
+    daysUntil(dateStr) {
+      const today = new Date('2026-07-01');
+      const d = new Date(dateStr);
+      return Math.round((d - today) / 86400000);
+    },
+    dueSoon(dateStr) { const n = this.daysUntil(dateStr); return n >= 0 && n <= 45; },
+    sortBy(key) {
+      if (this.sort.key === key) this.sort.dir = this.sort.dir === 'asc' ? 'desc' : 'asc';
+      else this.sort = { key, dir: 'asc' };
+    },
+    toggleChip(k) { this.activeChip = this.activeChip === k ? 'all' : k; },
+    setRange(r) { this.range = r; this.ping('Range updated', `Register scoped to “${r}”.`, 'calendar-range', '--navy'); },
+
+    onStatusChange(row) {
+      this.ping('Status updated', `${row.id} → ${this.statusMeta[row.status].label}.`, 'check-circle-2', this.statusMeta[row.status].v);
+      this.$nextTick(() => { this.icons(); if (this.page === 'overview') this.renderCharts(); });
+    },
+
+    /* ---------- overlays ---------- */
+    openEdit(row) { this.drawer = row; this.$nextTick(() => this.icons()); },
+    openNew() {
+      this.modal = true;
+      this.nw = { party: '', type: 'MSA', value: 0, owner: 'Marion Cole', renewal: '' };
+      this.$nextTick(() => this.icons());
+    },
+    createContract() {
+      this._n++;
+      const id = 'CTR-' + (4822 + this._n);
+      this.contracts.unshift({
+        id, party: this.nw.party || 'New counterparty', type: this.nw.type, value: this.nw.value || 0,
+        owner: this.nw.owner, renewal: this.nw.renewal || '2027-01-01', status: 'draft', risk: 'Moderate',
+        notice: this.defaultNotice, auto: false,
+      });
+      this.modal = false; this.page = 'contracts';
+      this.ping('Contract filed', `${id} added to the register as a draft.`, 'folder-plus', '--pos');
+      this.$nextTick(() => this.icons());
+    },
+
+    /* ---------- toasts ---------- */
+    ping(title, body, icon = 'info', color = '--accent') {
+      const id = ++this._tid;
+      this.toasts.push({ id, title, body, icon, color });
+      this.$nextTick(() => this.icons());
+      setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 2800);
+    },
+
+    /* ---------- routing ---------- */
+    go(p) {
+      this.page = p;
+      this.$nextTick(() => { this.icons(); this.renderCharts(); });
+    },
+
+    /* ---------- edition ---------- */
+    toggleEdition() {
+      this.dark = !this.dark;
+      document.documentElement.classList.toggle('dark', this.dark);
+      const m = document.querySelector('meta[name=theme-color]');
+      if (m) m.setAttribute('content', this.dark ? '#1F1B15' : '#7C2D3A');
+    },
+
+    /* ---------- boot ---------- */
+    boot() {
+      this.activeClause = this.clauses[0];
+      this.$nextTick(() => { this.icons(); this.renderCharts(); });
+      // Re-render charts + icons on edition (class) swap
+      new MutationObserver(() => {
+        this.$nextTick(() => { this.icons(); this.renderCharts(); });
+      }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    },
+    icons() { if (window.lucide) lucide.createIcons(); },
+
+    /* ---------- charts ---------- */
+    renderCharts() {
+      if (!window.Chart) return;
+      const css = getComputedStyle(document.documentElement);
+      const c = n => css.getPropertyValue(n).trim();
+      const ink2 = c('--ink-2'), ink3 = c('--ink-3'), line = c('--line');
+      const accent = c('--accent'), navy = c('--navy');
+
+      Chart.defaults.font.family = "'Roboto Mono', monospace";
+      Chart.defaults.font.size = 10;
+      Chart.defaults.color = ink3;
+
+      if (!window._c) window._c = {};
+      const draw = (id, cfg) => {
+        const el = document.getElementById(id);
+        if (!el || el.offsetParent === null) return;   // skip hidden canvases
+        if (window._c[id]) window._c[id].destroy();
+        window._c[id] = new Chart(el.getContext('2d'), cfg);
+      };
+      const hexA = (hex, a) => {
+        const h = hex.replace('#', '');
+        if (h.length < 6) return hex;
+        const r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
+        return `rgba(${r},${g},${b},${a})`;
+      };
+      const tip = {
+        backgroundColor: c('--surface'), titleColor: c('--ink'), bodyColor: ink2,
+        borderColor: c('--line-2'), borderWidth: 1, padding: 10, cornerRadius: 4,
+        titleFont: { family: "'Roboto Mono', monospace", weight: '500' }, bodyFont: { family: "'Roboto Mono', monospace" },
+        displayColors: true, boxWidth: 8, boxHeight: 8,
+      };
+      const months = ['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'];
+
+      /* Area — value under management + renewals */
+      const areaEl = document.getElementById('chartArea');
+      if (areaEl && areaEl.offsetParent !== null) {
+        const g = areaEl.getContext('2d').createLinearGradient(0, 0, 0, 240);
+        g.addColorStop(0, hexA(accent, 0.22)); g.addColorStop(1, hexA(accent, 0));
+        draw('chartArea', {
+          type: 'line',
+          data: { labels: months, datasets: [
+            { label: 'Value ($M)', data: [28.4,30.1,31.5,33.0,34.2,33.8,35.9,37.4,38.1,39.8,41.2,42.6],
+              borderColor: accent, backgroundColor: g, fill: true, tension: 0.35, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, yAxisID: 'y' },
+            { label: 'Renewals', data: [9,12,8,14,11,7,16,13,10,18,15,18],
+              borderColor: navy, backgroundColor: navy, fill: false, tension: 0.35, borderWidth: 2, borderDash: [4,3], pointRadius: 0, pointHoverRadius: 4, yAxisID: 'y1' },
+          ]},
+          options: {
+            responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { display: false }, tooltip: tip },
+            scales: {
+              x: { grid: { display: false }, border: { color: line }, ticks: { color: ink3 } },
+              y: { position: 'left', grid: { color: line }, border: { display: false }, ticks: { color: ink3, callback: v => '$' + v + 'M' } },
+              y1: { position: 'right', grid: { display: false }, border: { display: false }, ticks: { color: ink3 }, suggestedMax: 30 },
+            },
+          },
+        });
+      }
+
+      /* Bar — contracts by lifecycle stage */
+      const stageCounts = this.statusOrder.map(s => this.contracts.filter(r => r.status === s).length);
+      const stageColors = this.statusOrder.map(s => c(this.statusMeta[s].v));
+      draw('chartBar', {
+        type: 'bar',
+        data: { labels: this.statusOrder.map(s => this.statusMeta[s].label),
+          datasets: [{ data: stageCounts, backgroundColor: stageColors, borderRadius: 3, borderSkipped: false, maxBarThickness: 46 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: tip },
+          scales: {
+            x: { grid: { display: false }, border: { color: line }, ticks: { color: ink2, font: { size: 9 } } },
+            y: { grid: { color: line }, border: { display: false }, ticks: { color: ink3, precision: 0 }, beginAtZero: true },
+          },
+        },
+      });
+
+      /* Doughnut — portfolio by risk tier */
+      draw('chartDoughnut', {
+        type: 'doughnut',
+        data: { labels: ['Low','Moderate','Elevated','High'],
+          datasets: [{ data: [46,28,17,9], backgroundColor: [c('--pos'), navy, c('--warn'), accent], borderColor: c('--surface'), borderWidth: 3, hoverOffset: 6 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '64%',
+          plugins: { legend: { position: 'bottom', labels: { color: ink2, usePointStyle: true, pointStyle: 'circle', padding: 12, boxWidth: 7 } },
+            tooltip: { ...tip, callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}%` } } },
+        },
+      });
+
+      /* Renewals by month (renewals page) */
+      draw('chartRenew', {
+        type: 'bar',
+        data: { labels: ['Jul','Aug','Sep','Oct','Nov','Dec'],
+          datasets: [{ data: [18,9,6,4,7,3], backgroundColor: c('--warn'), borderRadius: 3, borderSkipped: false, maxBarThickness: 34 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: tip },
+          scales: {
+            x: { grid: { display: false }, border: { color: line }, ticks: { color: ink2 } },
+            y: { grid: { color: line }, border: { display: false }, ticks: { color: ink3, precision: 0 }, beginAtZero: true },
+          },
+        },
+      });
+    },
+  };
+}
+</script>
+</body>
+</html>

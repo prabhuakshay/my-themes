@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Voltaic — SCADA Design System for Grid & Energy Operations</title>
+<meta name="description" content="Voltaic — a dark-forward, control-room design system for grid and energy monitoring. Radial load gauges, a five-level alarm-severity system, BI dashboard, substation tables, inline edits, edit drawers, and modals. Control Room + Day Board editions." />
+<meta name="theme-color" content="#0C0F13" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;800;900&family=Red+Hat+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['"Red Hat Display"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono: ['"Red Hat Mono"', 'ui-monospace', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<style>
+  /* ============================================================
+     VOLTAIC — EDITION TOKENS
+     Dark ("Control Room") is the hero; Light ("Day Board") the alternate.
+     Every value is a role token so an edition swap is one class on <html>.
+     ============================================================ */
+
+  /* ---------- CONTROL ROOM (dark) — default / hero ---------- */
+  html.dark, :root {
+    color-scheme: dark;
+    --canvas:     #0C0F13;   /* page background */
+    --surface:    #14181D;   /* cards */
+    --surface-2:  #1B2129;   /* insets, fields, steppers */
+    --line:       #262D35;   /* card hairlines */
+    --line-2:     #333C46;   /* structural separators (chrome) */
+
+    --ink:        #E7ECEF;   /* primary text */
+    --ink-2:      #9CA7B0;   /* secondary text */
+    --ink-3:      #6C7783;   /* captions */
+
+    --chrome:     #090C0F;   /* sidebar + top bar (darkest layer) */
+    --chrome-2:   #171C22;   /* chrome hover / inset */
+    --chrome-line:#20262E;   /* seam inside chrome */
+    --chrome-ink: #E7ECEF;
+    --chrome-ink-2:#8B97A2;
+
+    --accent:     #A3E635;   /* electric lime — the brand */
+    --accent-2:   #BEF264;   /* lime hover */
+    --accent-ink: #A3E635;   /* lime text on dark surfaces (AA) */
+    --accent-soft:rgba(163,230,53,.14);
+    --on-accent:  #0C0F13;   /* text/icon on a lime fill */
+
+    /* ---- ALARM SEVERITY (signature) ---- */
+    --sev-normal:   #4ADE80;  /* NORMAL   — nominal */
+    --sev-warning:  #FBBF24;  /* WARNING  — watch */
+    --sev-alarm:    #FB923C;  /* ALARM    — action needed */
+    --sev-critical: #F87171;  /* CRITICAL — trip/fault */
+    --sev-offline:  #94A3B8;  /* OFFLINE  — no data */
+
+    --r:   8px;
+    --r-sm:5px;
+    --shadow:    0 1px 2px rgba(0,0,0,.5), 0 8px 22px rgba(0,0,0,.5);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,.62), 0 4px 12px rgba(0,0,0,.5);
+    --scrim: rgba(4,6,8,.66);
+  }
+
+  /* ---------- DAY BOARD (light) — alternate ---------- */
+  html.light {
+    color-scheme: light;
+    --canvas:     #F7F9FA;
+    --surface:    #FFFFFF;
+    --surface-2:  #F0F3F5;
+    --line:       #E4E9ED;
+    --line-2:     #C7D0D7;
+
+    --ink:        #14181D;
+    --ink-2:      #48525C;
+    --ink-3:      #7A8691;
+
+    --chrome:     #14181D;   /* chrome stays dark charcoal — the SCADA frame */
+    --chrome-2:   #1E242B;
+    --chrome-line:#2A313A;
+    --chrome-ink: #E7ECEF;
+    --chrome-ink-2:#93A0AB;
+
+    --accent:     #84CC16;
+    --accent-2:   #65A30D;
+    --accent-ink: #4D7C0F;   /* darker lime for text on light surfaces (AA) */
+    --accent-soft:#EAF7D4;
+    --on-accent:  #14181D;
+
+    --sev-normal:   #16A34A;
+    --sev-warning:  #D97706;
+    --sev-alarm:    #EA580C;
+    --sev-critical: #DC2626;
+    --sev-offline:  #64748B;
+
+    --shadow:    0 1px 2px rgba(20,24,29,.05), 0 2px 8px rgba(20,24,29,.06);
+    --shadow-lg: 0 10px 30px rgba(20,24,29,.14), 0 3px 10px rgba(20,24,29,.10);
+    --scrim: rgba(20,24,29,.5);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: 'Red Hat Display', ui-sans-serif, system-ui, sans-serif;
+    background: var(--canvas); color: var(--ink);
+    font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+  }
+  [x-cloak] { display: none !important; }
+  .mono { font-family: 'Red Hat Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* focus — electric lime, visible on every surface */
+  a, button, select, input, textarea, [tabindex] { outline: none; }
+  a:focus-visible, button:focus-visible, select:focus-visible,
+  input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm);
+  }
+
+  /* ---------- primitives ---------- */
+  .lbl { font-family: 'Red Hat Mono', monospace; font-size: 10px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+  .display { font-weight: 800; letter-spacing: -.01em; }
+
+  /* chrome (sidebar + top bar) */
+  .chrome  { background: var(--chrome); color: var(--chrome-ink); }
+  .chrome-seam { border-color: var(--chrome-line) !important; }
+
+  /* nav */
+  .nav-item { position: relative; display: flex; align-items: center; gap: 12px; height: 44px;
+    padding: 0 14px; border-radius: var(--r-sm); color: var(--chrome-ink-2); cursor: pointer;
+    font-weight: 500; transition: background .12s, color .12s; }
+  .nav-item:hover { background: var(--chrome-2); color: var(--chrome-ink); }
+  .nav-item.on { background: var(--chrome-2); color: var(--chrome-ink); font-weight: 600; }
+  .nav-item.on::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px;
+    width: 3px; background: var(--accent); border-radius: 0 3px 3px 0; }
+  .nav-item.on i { color: var(--accent); }
+
+  /* buttons */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px;
+    padding: 0 16px; border-radius: var(--r-sm); font-weight: 600; font-size: 14px;
+    border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+    transition: background .12s, border-color .12s, transform .06s; }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+  .btn-primary:hover { background: var(--accent-2); }
+  .btn-outline { background: transparent; color: var(--ink); border-color: var(--line-2); }
+  .btn-outline:hover { background: var(--surface-2); }
+  .btn-ghost { background: var(--surface-2); color: var(--ink); }
+  .btn-ghost:hover { background: var(--line); }
+  .btn-danger { background: var(--sev-critical); color: #fff; font-weight: 700; }
+  .btn-sm { height: 34px; padding: 0 12px; font-size: 13px; }
+  .btn-block { width: 100%; }
+  .iconbtn { width: 40px; height: 40px; border-radius: var(--r-sm); display: flex; align-items: center;
+    justify-content: center; color: var(--ink-2); cursor: pointer; border: 1px solid transparent; background: transparent; }
+  .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
+  .chrome-icon { color: var(--chrome-ink-2); background: var(--chrome-2); }
+  .chrome-icon:hover { background: var(--line-2); color: var(--chrome-ink); }
+
+  /* inputs */
+  .field, .isel { height: 40px; width: 100%; background: var(--surface-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 12px; font-size: 14px;
+    font-family: 'Red Hat Display', sans-serif; }
+  .field:focus, .isel:focus { border-color: var(--accent); }
+  .field::placeholder { color: var(--ink-3); }
+  textarea.field { height: auto; padding: 10px 12px; resize: vertical; line-height: 1.5; }
+  select.isel { -webkit-appearance: none; appearance: none; cursor: pointer;
+    background-image: none; padding-right: 30px; }
+
+  /* severity tag — SIGNATURE. Rectangular instrument label, mono uppercase. */
+  .sev { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px;
+    border-radius: 4px; font-family: 'Red Hat Mono', monospace; font-weight: 700; font-size: 10.5px;
+    letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+  .sev .d { width: 6px; height: 6px; border-radius: 2px; background: currentColor; flex: none; }
+
+  /* filter chip */
+  .fchip { height: 32px; padding: 0 12px; border-radius: var(--r-sm); border: 1px solid var(--line);
+    background: var(--surface); font-family: 'Red Hat Mono', monospace; font-weight: 600; font-size: 11px;
+    letter-spacing: .04em; color: var(--ink-2); white-space: nowrap; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; }
+  .fchip:hover { border-color: var(--line-2); }
+  .fchip.on { background: var(--ink); color: var(--canvas); border-color: var(--ink); }
+
+  /* segmented control */
+  .seg { display: inline-flex; padding: 3px; gap: 3px; background: var(--surface-2);
+    border: 1px solid var(--line); border-radius: var(--r-sm); }
+  .seg button { height: 30px; padding: 0 12px; border-radius: 4px; font-family: 'Red Hat Mono', monospace;
+    font-weight: 600; font-size: 11.5px; letter-spacing: .03em; color: var(--ink-2); background: transparent;
+    border: 0; cursor: pointer; transition: background .12s, color .12s; }
+  .seg button:hover { color: var(--ink); }
+  .seg button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+  /* toggle */
+  .tg { width: 44px; height: 26px; border-radius: 99px; background: var(--line-2); position: relative;
+    cursor: pointer; transition: background .16s; flex: none; }
+  .tg.on { background: var(--accent); }
+  .tg b { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; transition: left .16s; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  .tg.on b { left: 21px; }
+
+  /* stepper */
+  .step { width: 36px; height: 36px; border-radius: var(--r-sm); border: 1px solid var(--line);
+    background: var(--surface-2); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex: none; color: var(--ink); }
+  .step:hover { border-color: var(--line-2); }
+  .step:active { background: var(--line); }
+
+  /* table */
+  table.tbl { width: 100%; border-collapse: collapse; }
+  table.tbl th { position: sticky; top: 0; z-index: 1; background: var(--surface);
+    font-family: 'Red Hat Mono', monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-3); text-align: left; font-weight: 700; padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.tbl th.sortable { cursor: pointer; user-select: none; }
+  table.tbl th.sortable:hover { color: var(--ink-2); }
+  table.tbl td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  table.tbl tbody tr { transition: background .1s; }
+  table.tbl tbody tr.zebra { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+  table.tbl tbody tr:hover td { background: var(--accent-soft); }
+  table.tbl tbody tr:last-child td { border-bottom: 0; }
+  .r { text-align: right; }
+
+  /* overlays */
+  .scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 50; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 94vw); background: var(--surface);
+    z-index: 60; box-shadow: var(--shadow-lg); display: flex; flex-direction: column;
+    border-left: 1px solid var(--line-2); }
+  .ndrawer { position: fixed; top: 0; left: 0; bottom: 0; width: 280px; z-index: 60;
+    box-shadow: var(--shadow-lg); display: flex; flex-direction: column; }
+  .modal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal-card { width: 100%; max-width: 480px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--r); box-shadow: var(--shadow-lg); max-height: 92vh; display: flex; flex-direction: column; }
+
+  /* inline-edit affordance */
+  .ie { border: 1px solid transparent; border-radius: 6px; padding: 3px 7px; margin: -3px -7px; cursor: text; }
+  .ie:hover { background: var(--surface-2); border-color: var(--line); }
+
+  /* live ping dot */
+  .live { position: relative; }
+  .live::after { content: ""; position: absolute; inset: -4px; border-radius: 999px;
+    border: 2px solid var(--accent); opacity: 0; animation: ping 1.9s cubic-bezier(0,0,.2,1) infinite; }
+  @keyframes ping { 0% { transform: scale(1); opacity: .6; } 80%, 100% { transform: scale(2.3); opacity: 0; } }
+
+  .toast-in { animation: toastIn .2s ease both; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+
+<body x-data="voltaic()" x-init="boot()" x-cloak @keydown.escape.window="closeOverlays()">
+<div class="flex h-[100dvh] overflow-hidden">
+
+  <!-- ============ SIDEBAR (desktop) ============ -->
+  <aside class="chrome hidden lg:flex flex-col flex-none w-64 h-full">
+    <div class="h-16 flex items-center gap-3 px-5 border-b chrome-seam flex-none">
+      <div class="grid place-items-center w-9 h-9 rounded" style="background: var(--accent);">
+        <i data-lucide="zap" class="w-5 h-5" style="color: var(--on-accent);"></i>
+      </div>
+      <div>
+        <div class="display text-[18px] leading-none">Voltaic</div>
+        <div class="mono text-[9px] mt-1" style="color: var(--chrome-ink-2);">GRID CONTROL</div>
+      </div>
+    </div>
+
+    <nav class="flex-1 min-h-0 overflow-y-auto px-3 py-4">
+      <div class="lbl px-3 mb-2" style="color: var(--chrome-ink-2);">Operations</div>
+      <div class="flex flex-col gap-1">
+        <template x-for="n in nav" :key="n.id">
+          <div class="nav-item" :class="page===n.id && 'on'" @click="go(n.id)" tabindex="0"
+               @keydown.enter="go(n.id)" role="link" :aria-current="page===n.id ? 'page' : false">
+            <i :data-lucide="n.icon" class="w-[18px] h-[18px] flex-none"></i>
+            <span x-text="n.label"></span>
+            <span x-show="n.id==='alarms' && activeAlarms.length" class="ml-auto mono text-[10px] font-700 px-1.5 py-0.5 rounded"
+                  style="background: var(--sev-critical); color: #fff;" x-text="activeAlarms.length"></span>
+          </div>
+        </template>
+      </div>
+    </nav>
+
+    <div class="px-3 py-4 border-t chrome-seam flex-none">
+      <div class="flex items-center gap-2.5 px-3 py-2.5 rounded" style="background: var(--chrome-2);">
+        <span class="live w-2 h-2 rounded-full block" style="background: var(--accent);"></span>
+        <span class="mono text-[11px]" style="color: var(--chrome-ink);">SCADA LINK · LIVE</span>
+      </div>
+      <div class="mono text-[9px] mt-3 px-1" style="color: var(--chrome-ink-2);">v4.2 · NODE NE-CTRL-01</div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="flex-1 min-w-0 flex flex-col h-full">
+
+    <!-- TOP STATUS STRIP -->
+    <header class="chrome flex-none flex items-center gap-2 sm:gap-3 px-3 sm:px-5 h-16 border-b chrome-seam">
+      <button @click="navOpen=true" class="iconbtn chrome-icon lg:hidden" aria-label="Open navigation">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+      </button>
+
+      <div class="min-w-0">
+        <div class="lbl hidden sm:block" style="color: var(--chrome-ink-2);" x-text="meta[page].kicker"></div>
+        <h1 class="display text-[18px] sm:text-[20px] leading-tight truncate" x-text="meta[page].title"></h1>
+      </div>
+
+      <div class="ml-auto flex items-center gap-2 sm:gap-3">
+        <!-- grid frequency readout -->
+        <div class="hidden sm:flex items-center gap-2 h-10 px-3 rounded mono text-[12px]" style="background: var(--chrome-2);">
+          <span class="live w-2 h-2 rounded-full block" style="background: var(--accent);"></span>
+          <span style="color: var(--chrome-ink-2);">FREQ</span>
+          <span class="font-700" style="color: var(--accent);">50.02 Hz</span>
+        </div>
+        <!-- clock -->
+        <div class="hidden md:flex items-center gap-2 h-10 px-3 rounded mono text-[12px]" style="background: var(--chrome-2);">
+          <i data-lucide="clock" class="w-4 h-4" style="color: var(--chrome-ink-2);"></i>
+          <span class="font-700" style="color: var(--chrome-ink);" x-text="clock"></span>
+          <span style="color: var(--chrome-ink-2);">UTC−05</span>
+        </div>
+        <!-- alarms -->
+        <button @click="go('alarms')" class="iconbtn chrome-icon relative" aria-label="View alarms">
+          <i data-lucide="bell-ring" class="w-[18px] h-[18px]"></i>
+          <span x-show="activeAlarms.length" class="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 grid place-items-center rounded-full mono text-[9px] font-700"
+                style="background: var(--sev-critical); color: #fff;" x-text="activeAlarms.length"></span>
+        </button>
+        <!-- edition -->
+        <button @click="toggleEdition()" class="iconbtn chrome-icon" :aria-label="dark ? 'Switch to Day Board edition' : 'Switch to Control Room edition'">
+          <i data-lucide="sun" class="w-[18px] h-[18px]" x-show="dark"></i>
+          <i data-lucide="moon" class="w-[18px] h-[18px]" x-show="!dark" x-cloak></i>
+        </button>
+        <!-- operator -->
+        <div class="flex items-center gap-2.5 pl-1">
+          <div class="grid place-items-center w-9 h-9 rounded mono text-[12px] font-700 flex-none"
+               style="background: var(--accent-soft); color: var(--accent-ink);" x-text="initials"></div>
+          <div class="hidden xl:block leading-tight">
+            <div class="text-[13px] font-600" style="color: var(--chrome-ink);" x-text="operator"></div>
+            <div class="mono text-[9px]" style="color: var(--chrome-ink-2);">DISPATCH OPS</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <main class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
+      <div class="max-w-[1500px] mx-auto">
+
+      <!-- ================= DASHBOARD ================= -->
+      <section x-show="page==='dashboard'">
+
+        <!-- KPI strip -->
+        <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+          <template x-for="k in kpis" :key="k.l">
+            <div class="card p-4">
+              <div class="flex items-center justify-between">
+                <span class="lbl" x-text="k.l"></span>
+                <i :data-lucide="k.i" class="w-4 h-4" style="color: var(--ink-3);"></i>
+              </div>
+              <div class="mono display mt-1.5 text-[26px] leading-none" x-text="k.v"></div>
+              <div class="flex items-center gap-1 mt-2 mono text-[11px]"
+                   :style="`color: var(${k.good ? '--sev-normal' : '--sev-critical'})`">
+                <i :data-lucide="k.rise ? 'trending-up' : 'trending-down'" class="w-3.5 h-3.5"></i>
+                <span x-text="k.d"></span>
+                <span style="color: var(--ink-3);" class="ml-1" x-text="k.sub"></span>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Gauge cluster — the signature load board -->
+        <div class="flex items-center gap-2.5 mt-6 mb-3">
+          <h2 class="display text-[15px]">Live load board</h2>
+          <span class="inline-flex items-center gap-1.5 mono text-[10px] px-2 py-1 rounded" style="background: var(--accent-soft); color: var(--accent-ink);">
+            <span class="live w-1.5 h-1.5 rounded-full block" style="background: var(--accent);"></span>REAL-TIME
+          </span>
+          <span class="ml-auto mono text-[10px]" style="color: var(--ink-3);">POLL 50.02 Hz</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <template x-for="g in gauges" :key="g.key">
+            <div class="card p-4 flex flex-col">
+              <div class="flex items-center justify-between">
+                <span class="lbl" x-text="g.label"></span>
+                <i :data-lucide="g.icon" class="w-4 h-4" style="color: var(--accent-ink);"></i>
+              </div>
+              <div class="relative w-full max-w-[176px] mx-auto mt-2" style="aspect-ratio: 1 / 1;">
+                <svg viewBox="0 0 140 140" class="w-full h-full block" aria-hidden="true">
+                  <g transform="rotate(135 70 70)">
+                    <circle cx="70" cy="70" r="54" fill="none" stroke="var(--surface-2)"
+                            stroke-width="11" stroke-linecap="round" stroke-dasharray="254.469 339.292"></circle>
+                    <circle cx="70" cy="70" r="54" fill="none" :stroke="g.arc"
+                            stroke-width="11" stroke-linecap="round"
+                            :stroke-dasharray="(mounted ? (g.fill * 254.469).toFixed(1) : '0') + ' 339.292'"
+                            style="transition: stroke-dasharray 1.1s cubic-bezier(.2,.8,.2,1);"></circle>
+                  </g>
+                </svg>
+                <div class="absolute inset-0 grid place-items-center">
+                  <div class="text-center leading-none">
+                    <div class="mono display" style="font-size: 28px; color: var(--ink);">
+                      <span x-text="g.value"></span><span class="text-[13px] ml-0.5" style="color: var(--ink-3);" x-text="g.unit"></span>
+                    </div>
+                    <div class="mono text-[10px] mt-2" style="color: var(--ink-3);" x-text="g.sub"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-2 flex justify-center">
+                <span class="sev" :style="sevStyle(g.sev)"><span class="d"></span><span x-text="g.chip"></span></span>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Alarm banner -->
+        <div class="mt-5" x-show="activeAlarms.length">
+          <div class="rounded overflow-hidden" style="border: 1px solid var(--sev-alarm);">
+            <div class="flex flex-wrap items-center gap-2 px-4 py-2.5" style="background: color-mix(in srgb, var(--sev-alarm) 12%, var(--surface)); border-bottom: 1px solid color-mix(in srgb, var(--sev-alarm) 40%, transparent);">
+              <i data-lucide="triangle-alert" class="w-[18px] h-[18px]" style="color: var(--sev-alarm);"></i>
+              <span class="text-[13px] font-700">
+                <span x-text="activeAlarms.length"></span> active alarm<span x-show="activeAlarms.length !== 1">s</span>
+              </span>
+              <span class="sev" :style="sevStyle('alarm')"><span class="d"></span>ACTION REQUIRED</span>
+              <button @click="ackAll()" class="btn btn-primary btn-sm ml-auto">
+                <i data-lucide="check-check" class="w-4 h-4"></i>Acknowledge all
+              </button>
+            </div>
+            <div>
+              <template x-for="(a, i) in activeAlarms" :key="a.id">
+                <div class="flex flex-wrap items-center gap-3 px-4 py-3"
+                     :style="i ? 'border-top: 1px solid var(--line);' : ''">
+                  <span class="sev" :style="sevStyle(a.level)"><span class="d"></span><span x-text="sevMeta[a.level].label"></span></span>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-[13px] font-500" x-text="a.msg"></div>
+                    <div class="mono text-[10px] mt-0.5" style="color: var(--ink-3);"><span x-text="a.site"></span> · <span x-text="a.time"></span></div>
+                  </div>
+                  <button @click="ackAlarm(a.id)" class="btn btn-ghost btn-sm">
+                    <i data-lucide="bell-off" class="w-3.5 h-3.5"></i>ACK
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+        <div class="mt-5" x-show="!activeAlarms.length">
+          <div class="flex items-center gap-2.5 px-4 py-3 rounded card" style="border-color: color-mix(in srgb, var(--sev-normal) 40%, var(--line));">
+            <i data-lucide="shield-check" class="w-[18px] h-[18px]" style="color: var(--sev-normal);"></i>
+            <span class="text-[13px] font-500">All alarms acknowledged — grid nominal.</span>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-5">
+          <div class="card p-4 xl:col-span-2">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h2 class="display text-[15px]">Grid load · 24h</h2>
+                <p class="lbl mt-0.5">Demand (MW) vs firm capacity</p>
+              </div>
+              <div class="seg">
+                <template x-for="r in ranges" :key="r">
+                  <button :class="range===r && 'on'" @click="range=r; ping('Time range · '+r, 'clock')" x-text="r"></button>
+                </template>
+              </div>
+            </div>
+            <div style="height: 250px;"><canvas id="chartLoad"></canvas></div>
+          </div>
+          <div class="card p-4">
+            <h2 class="display text-[15px]">Energy mix</h2>
+            <p class="lbl mt-0.5 mb-2">Share of current supply</p>
+            <div style="height: 220px;"><canvas id="chartMix"></canvas></div>
+          </div>
+          <div class="card p-4 xl:col-span-3">
+            <h2 class="display text-[15px]">Generation by source</h2>
+            <p class="lbl mt-0.5 mb-3">Output (MW) · current dispatch</p>
+            <div style="height: 230px;"><canvas id="chartGen"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Substation preview table -->
+        <div class="card mt-5 overflow-hidden">
+          <div class="flex items-center justify-between p-4 pb-3">
+            <div>
+              <h2 class="display text-[15px]">Substations at a glance</h2>
+              <p class="lbl mt-0.5">Top load-bearing sites</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" @click="go('substations')">All substations <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="tbl min-w-[600px]">
+              <thead><tr><th>Site</th><th>Region</th><th class="r">Load MW</th><th class="r">Cap %</th><th>Condition</th></tr></thead>
+              <tbody>
+                <template x-for="(s, i) in sites.slice(0,5)" :key="'d'+s.id">
+                  <tr :class="i % 2 && 'zebra'">
+                    <td><div class="font-600" x-text="s.name"></div><div class="mono text-[10px]" style="color: var(--ink-3);" x-text="s.code"></div></td>
+                    <td style="color: var(--ink-2);" x-text="s.region"></td>
+                    <td class="r mono font-600" x-text="s.load.toLocaleString()"></td>
+                    <td class="r mono font-600" :style="`color: var(${s.cap>=90 ? '--sev-critical' : (s.cap>=75 ? '--sev-warning' : '--ink')})`" x-text="s.cap + '%'"></td>
+                    <td><span class="sev" :style="sevStyle(s.cond)"><span class="d"></span><span x-text="sevMeta[s.cond].label"></span></span></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SUBSTATIONS ================= -->
+      <section x-show="page==='substations'" x-cloak>
+        <!-- controls -->
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <div class="flex flex-wrap gap-1.5">
+            <div class="fchip" :class="activeFilter==='all' && 'on'" @click="activeFilter='all'">ALL <span class="mono" x-text="sites.length"></span></div>
+            <template x-for="s in sevOrder" :key="'f'+s">
+              <div class="fchip" :class="activeFilter===s && 'on'" @click="activeFilter=s">
+                <span class="w-1.5 h-1.5 rounded-sm" :style="`background: var(${sevMeta[s].v})`"></span>
+                <span x-text="sevMeta[s].label"></span>
+              </div>
+            </template>
+          </div>
+          <div class="relative ml-auto">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style="color: var(--ink-3);"></i>
+            <input type="search" x-model="q" placeholder="Search sites…" class="field mono text-[13px]" style="width: 220px; padding-left: 34px;" aria-label="Search substations" />
+          </div>
+        </div>
+
+        <div class="card overflow-hidden">
+          <div class="overflow-x-auto" style="max-height: calc(100dvh - 220px);">
+            <table class="tbl min-w-[820px]">
+              <thead>
+                <tr>
+                  <th class="sortable" @click="sortBy('name')">Site <span class="mono" x-text="sortArrow('name')"></span></th>
+                  <th class="sortable" @click="sortBy('region')">Region <span class="mono" x-text="sortArrow('region')"></span></th>
+                  <th class="r sortable" @click="sortBy('load')">Load MW <span class="mono" x-text="sortArrow('load')"></span></th>
+                  <th class="r sortable" @click="sortBy('cap')">Cap % <span class="mono" x-text="sortArrow('cap')"></span></th>
+                  <th class="r">Setpoint MW</th>
+                  <th>Condition</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="(s, i) in filteredSites" :key="s.id">
+                  <tr :class="i % 2 && 'zebra'">
+                    <td>
+                      <div class="font-600" x-text="s.name"></div>
+                      <div class="mono text-[10px]" style="color: var(--ink-3);" x-text="s.code"></div>
+                    </td>
+                    <td style="color: var(--ink-2);" x-text="s.region"></td>
+                    <td class="r mono font-600" x-text="s.load.toLocaleString()"></td>
+                    <td class="r"><span class="mono font-600" :style="`color: var(${s.cap>=90 ? '--sev-critical' : (s.cap>=75 ? '--sev-warning' : '--ink')})`" x-text="s.cap + '%'"></span></td>
+                    <!-- inline-edit: numeric setpoint -->
+                    <td class="r">
+                      <input type="number" x-model.number="s.setpoint" @change="ping(s.name+' setpoint → '+s.setpoint+' MW', 'sliders-horizontal')"
+                             class="field mono text-right" style="width: 96px; height: 34px; padding: 0 8px; display: inline-block;"
+                             :aria-label="s.name + ' setpoint'" />
+                    </td>
+                    <!-- inline-edit: severity select -->
+                    <td>
+                      <div class="relative inline-flex items-center">
+                        <span class="w-2 h-2 rounded-sm mr-2 flex-none" :style="`background: var(${sevMeta[s.cond].v})`"></span>
+                        <select x-model="s.cond" @change="onCondChange(s)"
+                                class="isel mono font-600" style="height: 34px; width: auto; padding: 0 26px 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em;"
+                                :style="`color: var(${sevMeta[s.cond].v})`" :aria-label="s.name + ' condition'">
+                          <template x-for="opt in sevOrder" :key="opt"><option :value="opt" x-text="sevMeta[opt].label"></option></template>
+                        </select>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 absolute right-2 pointer-events-none" style="color: var(--ink-3);"></i>
+                      </div>
+                    </td>
+                    <td class="r"><button class="iconbtn" style="width:34px;height:34px" @click="openEdit(s)" :aria-label="'Edit ' + s.name"><i data-lucide="pencil" class="w-4 h-4"></i></button></td>
+                  </tr>
+                </template>
+                <template x-if="filteredSites.length === 0">
+                  <tr><td colspan="7" class="text-center" style="padding: 40px;">
+                    <i data-lucide="search-x" class="w-6 h-6 mx-auto mb-2" style="color: var(--ink-3);"></i>
+                    <div class="text-[13px]" style="color: var(--ink-2);">No substations match this filter.</div>
+                    <button class="btn btn-outline btn-sm mt-3" @click="activeFilter='all'; q=''">Clear filters</button>
+                  </td></tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <div class="px-4 py-2.5 mono text-[10px] flex items-center justify-between" style="color: var(--ink-3); border-top: 1px solid var(--line);">
+            <span><span x-text="filteredSites.length"></span> OF <span x-text="sites.length"></span> SITES</span>
+            <span>LAST SYNC 12s AGO · POLLING 50.02 Hz</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= ALARMS ================= -->
+      <section x-show="page==='alarms'" x-cloak>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          <template x-for="t in alarmStats" :key="t.l">
+            <div class="card p-4">
+              <div class="lbl" x-text="t.l"></div>
+              <div class="mono display mt-1.5 text-[24px]" :style="t.v_color ? `color: var(${t.v_color})` : ''" x-text="t.v"></div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Active alarm queue -->
+        <div class="card overflow-hidden mb-5">
+          <div class="flex flex-wrap items-center gap-2 p-4 pb-3">
+            <h2 class="display text-[15px]">Active alarm queue</h2>
+            <span class="sev" :style="sevStyle('critical')"><span class="d"></span><span x-text="activeAlarms.length + ' OPEN'"></span></span>
+            <button class="btn btn-outline btn-sm ml-auto" @click="ackAll()" :disabled="!activeAlarms.length"
+                    :style="!activeAlarms.length ? 'opacity:.5; cursor:not-allowed' : ''">
+              <i data-lucide="check-check" class="w-4 h-4"></i>Acknowledge all
+            </button>
+          </div>
+          <template x-if="activeAlarms.length">
+            <div>
+              <template x-for="a in activeAlarms" :key="a.id">
+                <div class="flex flex-wrap items-center gap-3 px-4 py-3" style="border-top: 1px solid var(--line);">
+                  <span class="sev" :style="sevStyle(a.level)"><span class="d"></span><span x-text="sevMeta[a.level].label"></span></span>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-[13px] font-500" x-text="a.msg"></div>
+                    <div class="mono text-[10px] mt-0.5" style="color: var(--ink-3);"><span x-text="a.site"></span> · <span x-text="a.time"></span></div>
+                  </div>
+                  <button @click="ackAlarm(a.id)" class="btn btn-ghost btn-sm"><i data-lucide="bell-off" class="w-3.5 h-3.5"></i>ACK</button>
+                </div>
+              </template>
+            </div>
+          </template>
+          <template x-if="!activeAlarms.length">
+            <div class="flex flex-col items-center justify-center gap-2 py-10" style="border-top: 1px solid var(--line);">
+              <i data-lucide="shield-check" class="w-8 h-8" style="color: var(--sev-normal);"></i>
+              <div class="text-[14px] font-600">Queue clear</div>
+              <div class="text-[12px]" style="color: var(--ink-2);">Every alarm has been acknowledged. Grid nominal.</div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Alarm rules table -->
+        <div class="card overflow-hidden">
+          <div class="flex items-center justify-between p-4 pb-3">
+            <div>
+              <h2 class="display text-[15px]">Alarm rules</h2>
+              <p class="lbl mt-0.5">Threshold triggers by metric</p>
+            </div>
+            <button class="btn btn-primary btn-sm" @click="openRule()"><i data-lucide="plus" class="w-4 h-4"></i>New rule</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="tbl min-w-[720px]">
+              <thead><tr><th>Rule</th><th>Metric</th><th class="r">Threshold</th><th>Severity</th><th class="r">Enabled</th></tr></thead>
+              <tbody>
+                <template x-for="(r, i) in rules" :key="r.id">
+                  <tr :class="i % 2 && 'zebra'">
+                    <td class="font-600" x-text="r.name"></td>
+                    <td style="color: var(--ink-2);" x-text="r.metric"></td>
+                    <td class="r mono" x-text="r.op + ' ' + r.threshold + ' ' + r.unit"></td>
+                    <td><span class="sev" :style="sevStyle(r.level)"><span class="d"></span><span x-text="sevMeta[r.level].label"></span></span></td>
+                    <td class="r"><div class="tg inline-block align-middle" :class="r.on && 'on'" @click="r.on=!r.on; ping(r.name + (r.on?' enabled':' disabled'), r.on?'bell-ring':'bell-off')" role="switch" :aria-checked="r.on" tabindex="0" @keydown.enter="r.on=!r.on"><b></b></div></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= ASSETS ================= -->
+      <section x-show="page==='assets'" x-cloak>
+        <div class="flex items-center gap-2 mb-4 flex-wrap">
+          <div class="seg">
+            <template x-for="v in assetViews" :key="v">
+              <button :class="assetView===v && 'on'" @click="assetView=v" x-text="v"></button>
+            </template>
+          </div>
+          <p class="lbl ml-auto" x-text="filteredAssets.length + ' assets'"></p>
+        </div>
+
+        <div class="card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="tbl min-w-[820px]">
+              <thead><tr><th>Asset</th><th>Type</th><th>Station</th><th class="r">Load %</th><th>Tap position</th><th>Condition</th></tr></thead>
+              <tbody>
+                <template x-for="(a, i) in filteredAssets" :key="a.id">
+                  <tr :class="i % 2 && 'zebra'">
+                    <td><div class="font-600" x-text="a.name"></div><div class="mono text-[10px]" style="color: var(--ink-3);" x-text="a.tag"></div></td>
+                    <td style="color: var(--ink-2);" x-text="a.type"></td>
+                    <td style="color: var(--ink-2);" x-text="a.station"></td>
+                    <td class="r mono font-600" :style="`color: var(${a.pct>=90 ? '--sev-critical' : (a.pct>=75 ? '--sev-warning' : '--ink')})`" x-text="a.pct + '%'"></td>
+                    <!-- stepper inline edit -->
+                    <td>
+                      <div class="flex items-center gap-2">
+                        <button class="step" style="width:32px;height:32px" @click="a.tap = Math.max(-8, a.tap-1); ping(a.name+' tap → '+a.tap, 'sliders-horizontal')" :aria-label="'Lower tap on ' + a.name"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                        <span class="mono font-700 text-center" style="width: 36px;" x-text="(a.tap>0?'+':'') + a.tap"></span>
+                        <button class="step" style="width:32px;height:32px" @click="a.tap = Math.min(8, a.tap+1); ping(a.name+' tap → '+a.tap, 'sliders-horizontal')" :aria-label="'Raise tap on ' + a.name"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                      </div>
+                    </td>
+                    <td><span class="sev" :style="sevStyle(a.cond)"><span class="d"></span><span x-text="sevMeta[a.cond].label"></span></span></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <div class="px-4 py-2.5 mono text-[10px]" style="color: var(--ink-3); border-top: 1px solid var(--line);">
+            TAP CHANGES STAGED · APPLY AT NEXT DISPATCH WINDOW
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SETTINGS ================= -->
+      <section x-show="page==='settings'" x-cloak style="max-width: 720px;">
+        <!-- operator -->
+        <div class="card p-5 mb-4">
+          <div class="lbl mb-3">Operator</div>
+          <div class="flex items-center gap-4">
+            <div class="grid place-items-center w-14 h-14 rounded flex-none mono display text-[20px]"
+                 style="background: var(--accent-soft); color: var(--accent-ink);" x-text="initials"></div>
+            <div class="min-w-0">
+              <!-- inline click-to-edit name -->
+              <template x-if="!editName">
+                <div class="display text-[20px] ie" @click="editName=true; $nextTick(()=>$refs.nm.focus())" tabindex="0" @keydown.enter="editName=true; $nextTick(()=>$refs.nm.focus())" x-text="operator"></div>
+              </template>
+              <template x-if="editName">
+                <div class="flex items-center gap-2">
+                  <input x-ref="nm" class="field" style="width: 220px;" x-model="operator"
+                         @keydown.enter="editName=false; ping('Operator name updated', 'check')"
+                         @keydown.escape="editName=false" />
+                  <button class="btn btn-primary btn-sm" @click="editName=false; ping('Operator name updated', 'check')">Save</button>
+                </div>
+              </template>
+              <div class="mono text-[11px] mt-1" style="color: var(--ink-2);">Dispatch Ops · Desk 3 · Clearance L2</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- preferences -->
+        <div class="card mb-4">
+          <div class="flex items-center justify-between p-4" style="border-bottom: 1px solid var(--line);">
+            <div><div class="font-600">Edition</div><div class="text-[13px]" style="color: var(--ink-2);">Control Room for night desks, Day Board for daylight.</div></div>
+            <div class="seg">
+              <button :class="dark && 'on'" @click="!dark || toggleEdition()">Control</button>
+              <button :class="!dark && 'on'" @click="dark && toggleEdition()">Day</button>
+            </div>
+          </div>
+          <div class="flex items-center justify-between p-4" style="border-bottom: 1px solid var(--line);">
+            <div><div class="font-600">Audible alarms</div><div class="text-[13px]" style="color: var(--ink-2);">Sound the console horn on new critical alarms.</div></div>
+            <div class="tg" :class="prefs.sound && 'on'" @click="prefs.sound=!prefs.sound" role="switch" :aria-checked="prefs.sound" tabindex="0" @keydown.enter="prefs.sound=!prefs.sound"><b></b></div>
+          </div>
+          <div class="flex items-center justify-between p-4" style="border-bottom: 1px solid var(--line);">
+            <div><div class="font-600">Auto-acknowledge warnings</div><div class="text-[13px]" style="color: var(--ink-2);">Clear WARNING-level events after 5 minutes.</div></div>
+            <div class="tg" :class="prefs.autoAck && 'on'" @click="prefs.autoAck=!prefs.autoAck" role="switch" :aria-checked="prefs.autoAck" tabindex="0" @keydown.enter="prefs.autoAck=!prefs.autoAck"><b></b></div>
+          </div>
+          <div class="flex items-center justify-between p-4 flex-wrap gap-3">
+            <div><div class="font-600">Escalation floor</div><div class="text-[13px]" style="color: var(--ink-2);">Lowest severity that pages the on-call engineer.</div></div>
+            <div class="seg">
+              <template x-for="s in ['warning','alarm','critical']" :key="'esc'+s">
+                <button :class="prefs.floor===s && 'on'" @click="prefs.floor=s" x-text="sevMeta[s].label"></button>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- shift notes + sample modal -->
+        <div class="card p-5 mb-4">
+          <div class="lbl mb-2">Shift handover notes</div>
+          <textarea class="field" rows="3" placeholder="Note anything the next desk should watch…">Millbrook T2 running hot — keep an eye on feeder 3. Granite Pass back online after 16:00.</textarea>
+          <div class="flex items-center gap-3 mt-4">
+            <button class="btn btn-primary btn-sm" @click="ping('Handover notes saved', 'save')"><i data-lucide="save" class="w-4 h-4"></i>Save notes</button>
+            <button class="btn btn-outline btn-sm" @click="openRule()">Preview modal</button>
+          </div>
+        </div>
+
+        <p class="mono text-[10px]" style="color: var(--ink-3);">VOLTAIC GRID CONTROL · NORTHEAST INTERCONNECT · SESSION SECURE</p>
+      </section>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ============ MOBILE NAV DRAWER (left) ============ -->
+<template x-if="navOpen">
+  <div>
+    <div class="scrim lg:hidden" @click="navOpen=false" x-transition.opacity></div>
+    <div class="ndrawer chrome lg:hidden" x-transition:enter="transition duration-200"
+         x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0">
+      <div class="h-16 flex items-center gap-3 px-5 border-b chrome-seam flex-none">
+        <div class="grid place-items-center w-9 h-9 rounded" style="background: var(--accent);">
+          <i data-lucide="zap" class="w-5 h-5" style="color: var(--on-accent);"></i>
+        </div>
+        <div class="display text-[18px]">Voltaic</div>
+        <button class="iconbtn chrome-icon ml-auto" @click="navOpen=false" aria-label="Close navigation"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <nav class="flex-1 overflow-y-auto px-3 py-4">
+        <div class="lbl px-3 mb-2" style="color: var(--chrome-ink-2);">Operations</div>
+        <div class="flex flex-col gap-1">
+          <template x-for="n in nav" :key="'m'+n.id">
+            <div class="nav-item" :class="page===n.id && 'on'" @click="go(n.id); navOpen=false">
+              <i :data-lucide="n.icon" class="w-[18px] h-[18px]"></i><span x-text="n.label"></span>
+              <span x-show="n.id==='alarms' && activeAlarms.length" class="ml-auto mono text-[10px] font-700 px-1.5 py-0.5 rounded"
+                    style="background: var(--sev-critical); color: #fff;" x-text="activeAlarms.length"></span>
+            </div>
+          </template>
+        </div>
+      </nav>
+      <div class="px-3 py-4 border-t chrome-seam flex items-center gap-3">
+        <div class="grid place-items-center w-9 h-9 rounded mono text-[12px] font-700 flex-none" style="background: var(--accent-soft); color: var(--accent-ink);" x-text="initials"></div>
+        <div><div class="text-[13px] font-600" style="color: var(--chrome-ink);" x-text="operator"></div><div class="mono text-[9px]" style="color: var(--chrome-ink-2);">DISPATCH OPS</div></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ EDIT DRAWER (right) — substation ============ -->
+<template x-if="drawer">
+  <div>
+    <div class="scrim" @click="drawer=null" x-transition.opacity></div>
+    <div class="drawer" x-transition:enter="transition duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0">
+      <div class="flex items-center gap-3 h-16 flex-none px-5" style="border-bottom: 1px solid var(--line);">
+        <div><div class="lbl" x-text="drawer.code"></div><div class="display text-[18px]">Edit substation</div></div>
+        <button class="iconbtn ml-auto" @click="drawer=null" aria-label="Close drawer"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-5">
+        <label class="lbl">Site name</label>
+        <input class="field mt-1.5 mb-4" x-model="drawer.name" />
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div><label class="lbl">Region</label>
+            <select class="isel mt-1.5" x-model="drawer.region">
+              <template x-for="rg in regions" :key="rg"><option x-text="rg"></option></template>
+            </select>
+          </div>
+          <div><label class="lbl">Condition</label>
+            <select class="isel mt-1.5" x-model="drawer.cond">
+              <template x-for="opt in sevOrder" :key="'dr'+opt"><option :value="opt" x-text="sevMeta[opt].label"></option></template>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div><label class="lbl">Load (MW)</label>
+            <input class="field mono mt-1.5" type="number" x-model.number="drawer.load" />
+          </div>
+          <div><label class="lbl">Setpoint (MW)</label>
+            <div class="flex items-center gap-2 mt-1.5">
+              <button class="step" @click="drawer.setpoint = Math.max(0, drawer.setpoint-10)" aria-label="Lower setpoint"><i data-lucide="minus" class="w-4 h-4"></i></button>
+              <input class="field mono text-center" type="number" x-model.number="drawer.setpoint" />
+              <button class="step" @click="drawer.setpoint += 10" aria-label="Raise setpoint"><i data-lucide="plus" class="w-4 h-4"></i></button>
+            </div>
+          </div>
+        </div>
+        <label class="lbl">Capacity utilisation</label>
+        <div class="flex items-center gap-3 mt-1.5 mb-4">
+          <div class="flex-1 h-2 rounded-full overflow-hidden" style="background: var(--surface-2);">
+            <div class="h-full rounded-full" :style="`width: ${Math.min(100, drawer.cap)}%; background: var(${drawer.cap>=90 ? '--sev-critical' : (drawer.cap>=75 ? '--sev-warning' : '--accent')})`"></div>
+          </div>
+          <span class="mono font-700 text-[13px]" x-text="drawer.cap + '%'"></span>
+        </div>
+        <label class="lbl">Dispatch note</label>
+        <textarea class="field mt-1.5" rows="3" placeholder="Add a note for the next shift…"></textarea>
+      </div>
+      <div class="flex-none p-4 flex gap-3" style="border-top: 1px solid var(--line);">
+        <button class="btn btn-outline" style="flex: 1;" @click="drawer=null">Cancel</button>
+        <button class="btn btn-primary" style="flex: 2;" @click="ping(drawer.name + ' saved', 'check'); drawer=null"><i data-lucide="check" class="w-4 h-4"></i>Save changes</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ MODAL — new alarm rule ============ -->
+<template x-if="modal">
+  <div>
+    <div class="scrim" @click="modal=false" x-transition.opacity></div>
+    <div class="modal">
+      <div class="modal-card" x-transition:enter="transition duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+        <div class="flex items-center gap-3 p-5 pb-3">
+          <div>
+            <div class="lbl">Alarm engine</div>
+            <div class="display text-[19px]">New alarm rule</div>
+          </div>
+          <button class="iconbtn ml-auto" @click="modal=false" aria-label="Close dialog"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="px-5 pb-2 overflow-y-auto">
+          <label class="lbl">Rule name</label>
+          <input class="field mt-1.5 mb-3" x-model="nw.name" placeholder="e.g. Feeder over-current" />
+          <label class="lbl">Metric</label>
+          <select class="isel mt-1.5 mb-3" x-model="nw.metric">
+            <option>Transformer temp (°C)</option>
+            <option>Feeder load (%)</option>
+            <option>Bus voltage (kV)</option>
+            <option>Grid frequency (Hz)</option>
+            <option>Reserve margin (%)</option>
+          </select>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div><label class="lbl">Condition</label>
+              <select class="isel mt-1.5" x-model="nw.op"><option>&gt;</option><option>&gt;=</option><option>&lt;</option><option>&lt;=</option></select>
+            </div>
+            <div><label class="lbl">Threshold</label>
+              <input class="field mono mt-1.5" type="number" x-model.number="nw.threshold" placeholder="0" />
+            </div>
+          </div>
+          <label class="lbl">Severity</label>
+          <div class="seg mt-1.5 mb-1" style="display: flex; width: 100%;">
+            <template x-for="s in ['warning','alarm','critical']" :key="'nw'+s">
+              <button :class="nw.level===s && 'on'" @click="nw.level=s" style="flex: 1;" x-text="sevMeta[s].label"></button>
+            </template>
+          </div>
+        </div>
+        <div class="flex gap-3 p-5 pt-3">
+          <button class="btn btn-outline" style="flex: 1;" @click="modal=false">Cancel</button>
+          <button class="btn btn-primary" style="flex: 2;" @click="createRule()"><i data-lucide="plus" class="w-4 h-4"></i>Create rule</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ TOASTS ============ -->
+<div class="fixed bottom-5 right-5 z-[70] space-y-2 w-[calc(100%-2.5rem)] max-w-sm">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="toast-in card flex items-start gap-3 p-3.5" style="box-shadow: var(--shadow-lg);" role="status" aria-live="polite">
+      <div class="grid place-items-center w-8 h-8 rounded flex-none" style="background: var(--accent-soft); color: var(--accent-ink);">
+        <i :data-lucide="t.icon" class="w-4 h-4"></i>
+      </div>
+      <div class="flex-1 min-w-0 pt-0.5"><div class="text-[13px] font-500" x-text="t.msg"></div></div>
+      <button @click="dismiss(t.id)" class="iconbtn flex-none" style="width:24px;height:24px" aria-label="Dismiss"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+    </div>
+  </template>
+</div>
+
+<script>
+function voltaic() {
+  return {
+    // ---------- shell state ----------
+    page: 'dashboard',
+    dark: true,
+    navOpen: false,
+    drawer: null,
+    modal: false,
+    clock: '--:--:--',
+    mounted: false,
+    operator: 'Dana Kessler',
+    editName: false,
+    toasts: [], _tid: 0,
+
+    // ---------- dashboard controls ----------
+    range: '24h', ranges: ['Live', '24h', '7d'],
+
+    // ---------- substations ----------
+    q: '', activeFilter: 'all', sortKey: 'cap', sortDir: 'desc',
+    regions: ['North Ridge', 'West Basin', 'Central', 'Coastal', 'East Valley'],
+
+    // ---------- assets ----------
+    assetView: 'All', assetViews: ['All', 'Transformer', 'Breaker', 'Feeder'],
+
+    // ---------- preferences ----------
+    prefs: { sound: true, autoAck: false, floor: 'alarm' },
+
+    // ---------- new-rule form ----------
+    nw: { name: '', metric: 'Feeder load (%)', op: '>', threshold: null, level: 'warning' },
+
+    // ============ ALARM SEVERITY SYSTEM (signature) ============
+    sevOrder: ['normal', 'warning', 'alarm', 'critical', 'offline'],
+    sevMeta: {
+      normal:   { label: 'NORMAL',   v: '--sev-normal' },
+      warning:  { label: 'WARNING',  v: '--sev-warning' },
+      alarm:    { label: 'ALARM',    v: '--sev-alarm' },
+      critical: { label: 'CRITICAL', v: '--sev-critical' },
+      offline:  { label: 'OFFLINE',  v: '--sev-offline' },
+    },
+    sevStyle(k) {
+      const v = this.sevMeta[k].v;
+      return `color: var(${v}); background: color-mix(in srgb, var(${v}) 15%, transparent);`;
+    },
+
+    // ---------- nav / page meta ----------
+    nav: [
+      { id: 'dashboard',   label: 'Dashboard',   icon: 'layout-dashboard' },
+      { id: 'substations', label: 'Substations', icon: 'radio-tower' },
+      { id: 'alarms',      label: 'Alarms',      icon: 'bell-ring' },
+      { id: 'assets',      label: 'Assets',      icon: 'cpu' },
+      { id: 'settings',    label: 'Settings',    icon: 'settings' },
+    ],
+    meta: {
+      dashboard:   { kicker: 'Northeast Interconnect · SCADA mimic', title: 'Grid control board' },
+      substations: { kicker: 'Live topology', title: 'Substations & sites' },
+      alarms:      { kicker: 'Event queue', title: 'Alarms & rules' },
+      assets:      { kicker: 'Plant register', title: 'Assets & equipment' },
+      settings:    { kicker: 'Dana Kessler', title: 'Console settings' },
+    },
+
+    // ---------- KPI strip ----------
+    kpis: [
+      { l: 'Peak demand today', v: '2,910', i: 'zap',      d: '+3.1%',  sub: 'MW',      rise: true,  good: false },
+      { l: 'System losses',     v: '2.4%',  i: 'activity', d: '−0.2pt', sub: 'vs plan', rise: false, good: true },
+      { l: 'CO₂ intensity',     v: '218',   i: 'leaf',     d: '−12',    sub: 'g/kWh',   rise: false, good: true },
+      { l: 'Open work orders',  v: '7',     i: 'wrench',   d: '+2',     sub: 'today',   rise: true,  good: false },
+    ],
+
+    // ---------- gauges ----------
+    gauges: [
+      { key: 'load',    label: 'System load',    icon: 'activity',         value: '2,480', unit: 'MW', sub: 'of 3,050 MW firm', fill: 0.813, arc: 'var(--accent)',       sev: 'warning', chip: '81% CAPACITY' },
+      { key: 'freq',    label: 'Grid frequency', icon: 'radio',            value: '50.02', unit: 'Hz', sub: 'nominal 50.00 Hz', fill: 0.52,  arc: 'var(--sev-normal)',    sev: 'normal',  chip: 'NOMINAL' },
+      { key: 'renew',   label: 'Renewable mix',  icon: 'leaf',             value: '38',    unit: '%',  sub: 'target 45% by EOD', fill: 0.38, arc: 'var(--accent)',       sev: 'warning', chip: 'BELOW TARGET' },
+      { key: 'reserve', label: 'Reserve margin', icon: 'battery-charging', value: '18.7',  unit: '%',  sub: '570 MW · min 15%',  fill: 0.62, arc: 'var(--sev-normal)',    sev: 'normal',  chip: 'HEALTHY' },
+    ],
+
+    // ---------- alarms ----------
+    alarms: [
+      { id: 1, level: 'critical', site: 'Millbrook SS-MLB-345',   msg: 'Transformer T2 over-temperature — 118 °C', time: '14:22:07', acked: false },
+      { id: 2, level: 'alarm',    site: 'Sable Creek SS-SBC-138',  msg: 'Feeder 3 load 92% — above firm limit',     time: '14:19:41', acked: false },
+      { id: 3, level: 'warning',  site: 'Dunmore SS-DNM-345',      msg: 'Bus voltage 232 kV — drifting low',        time: '14:11:03', acked: false },
+    ],
+    get activeAlarms() { return this.alarms.filter(a => !a.acked); },
+    get alarmStats() {
+      return [
+        { l: 'Open alarms', v: this.activeAlarms.length, v_color: '--sev-critical' },
+        { l: 'Critical', v: this.activeAlarms.filter(a => a.level === 'critical').length },
+        { l: 'Acked today', v: this.alarms.filter(a => a.acked).length + 14 },
+        { l: 'Mean ack time', v: '1m 40s' },
+      ];
+    },
+
+    // ---------- alarm rules ----------
+    rules: [
+      { id: 1, name: 'Transformer over-temp', metric: 'Transformer temp', op: '>', threshold: 110, unit: '°C', level: 'critical', on: true },
+      { id: 2, name: 'Feeder over-current',   metric: 'Feeder load',      op: '>', threshold: 90,  unit: '%',  level: 'alarm',    on: true },
+      { id: 3, name: 'Bus under-voltage',     metric: 'Bus voltage',      op: '<', threshold: 233, unit: 'kV', level: 'warning',  on: true },
+      { id: 4, name: 'Frequency deviation',   metric: 'Grid frequency',   op: '>', threshold: 50.2,unit: 'Hz', level: 'alarm',    on: false },
+      { id: 5, name: 'Low reserve margin',    metric: 'Reserve margin',   op: '<', threshold: 15,  unit: '%',  level: 'critical', on: true },
+    ],
+
+    // ---------- substations ----------
+    sites: [
+      { id: 1, name: 'Millbrook',    code: 'SS-MLB-345', region: 'Central',     load: 531, cap: 92, setpoint: 540, cond: 'critical' },
+      { id: 2, name: 'Sable Creek',  code: 'SS-SBC-138', region: 'East Valley', load: 344, cap: 81, setpoint: 360, cond: 'alarm' },
+      { id: 3, name: 'Dunmore',      code: 'SS-DNM-345', region: 'Central',     load: 476, cap: 88, setpoint: 500, cond: 'warning' },
+      { id: 4, name: 'Ironwood',     code: 'SS-IRW-230', region: 'North Ridge', load: 412, cap: 78, setpoint: 430, cond: 'warning' },
+      { id: 5, name: 'Cedar Falls',  code: 'SS-CDF-138', region: 'West Basin',  load: 286, cap: 64, setpoint: 300, cond: 'normal' },
+      { id: 6, name: 'Harborline',   code: 'SS-HBL-115', region: 'Coastal',     load: 198, cap: 55, setpoint: 220, cond: 'normal' },
+      { id: 7, name: 'Ashford',      code: 'SS-ASH-230', region: 'East Valley', load: 358, cap: 71, setpoint: 380, cond: 'normal' },
+      { id: 8, name: 'Granite Pass', code: 'SS-GRP-230', region: 'North Ridge', load: 0,   cap: 0,  setpoint: 0,   cond: 'offline' },
+      { id: 9, name: 'Whitfield',    code: 'SS-WHF-115', region: 'Coastal',     load: 0,   cap: 0,  setpoint: 0,   cond: 'offline' },
+      { id: 10, name: 'Rockvale',    code: 'SS-RKV-138', region: 'West Basin',  load: 241, cap: 60, setpoint: 260, cond: 'normal' },
+    ],
+    get filteredSites() {
+      let list = this.sites.slice();
+      if (this.activeFilter !== 'all') list = list.filter(s => s.cond === this.activeFilter);
+      const q = this.q.trim().toLowerCase();
+      if (q) list = list.filter(s => (s.name + ' ' + s.code + ' ' + s.region).toLowerCase().includes(q));
+      if (this.sortKey) {
+        const d = this.sortDir === 'asc' ? 1 : -1;
+        list.sort((a, b) => {
+          const x = a[this.sortKey], y = b[this.sortKey];
+          if (typeof x === 'string') return x.localeCompare(y) * d;
+          return (x - y) * d;
+        });
+      }
+      return list;
+    },
+    sortBy(k) {
+      if (this.sortKey === k) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+      else { this.sortKey = k; this.sortDir = 'asc'; }
+    },
+    sortArrow(k) { return this.sortKey === k ? (this.sortDir === 'asc' ? '▲' : '▼') : ''; },
+
+    // ---------- assets ----------
+    assets: [
+      { id: 1, name: 'Transformer T2', tag: 'TX-MLB-02', type: 'Transformer', station: 'Millbrook',    pct: 94, tap: 3,  cond: 'critical' },
+      { id: 2, name: 'Feeder F3',      tag: 'FD-SBC-03', type: 'Feeder',      station: 'Sable Creek',  pct: 92, tap: 0,  cond: 'alarm' },
+      { id: 3, name: 'Breaker B1',     tag: 'CB-DNM-01', type: 'Breaker',     station: 'Dunmore',      pct: 61, tap: -1, cond: 'warning' },
+      { id: 4, name: 'Transformer T1', tag: 'TX-IRW-01', type: 'Transformer', station: 'Ironwood',     pct: 78, tap: 2,  cond: 'warning' },
+      { id: 5, name: 'Feeder F1',      tag: 'FD-CDF-01', type: 'Feeder',      station: 'Cedar Falls',  pct: 64, tap: 0,  cond: 'normal' },
+      { id: 6, name: 'Breaker B4',     tag: 'CB-HBL-04', type: 'Breaker',     station: 'Harborline',   pct: 40, tap: 0,  cond: 'normal' },
+      { id: 7, name: 'Transformer T3', tag: 'TX-GRP-03', type: 'Transformer', station: 'Granite Pass', pct: 0,  tap: 0,  cond: 'offline' },
+      { id: 8, name: 'Feeder F2',      tag: 'FD-RKV-02', type: 'Feeder',      station: 'Rockvale',     pct: 60, tap: 1,  cond: 'normal' },
+    ],
+    get filteredAssets() {
+      if (this.assetView === 'All') return this.assets;
+      return this.assets.filter(a => a.type === this.assetView);
+    },
+
+    // ---------- computed ----------
+    get initials() {
+      const p = this.operator.trim().split(/\s+/);
+      return ((p[0]?.[0] || '') + (p[p.length - 1]?.[0] || '')).toUpperCase() || 'OP';
+    },
+
+    // ---------- navigation ----------
+    go(p) {
+      this.page = p;
+      this.$nextTick(() => { this.icons(); if (p === 'dashboard') this.renderCharts(); });
+    },
+
+    // ---------- overlays ----------
+    openEdit(s) { this.drawer = s; this.$nextTick(() => this.icons()); },
+    openRule() {
+      this.nw = { name: '', metric: 'Feeder load (%)', op: '>', threshold: null, level: 'warning' };
+      this.modal = true; this.$nextTick(() => this.icons());
+    },
+    createRule() {
+      const id = Math.max(0, ...this.rules.map(r => r.id)) + 1;
+      const unit = (this.nw.metric.match(/\(([^)]+)\)/) || [,''])[1];
+      this.rules.unshift({
+        id, name: this.nw.name || 'Untitled rule',
+        metric: this.nw.metric.replace(/\s*\([^)]+\)/, ''),
+        op: this.nw.op, threshold: this.nw.threshold ?? 0, unit,
+        level: this.nw.level, on: true,
+      });
+      this.modal = false; this.page = 'alarms';
+      this.ping('Alarm rule created', 'plus');
+      this.$nextTick(() => this.icons());
+    },
+    closeOverlays() { this.drawer = null; this.modal = false; this.navOpen = false; },
+
+    // ---------- alarms ----------
+    ackAlarm(id) {
+      const a = this.alarms.find(x => x.id === id);
+      if (a) { a.acked = true; this.ping('Acknowledged · ' + a.site.split(' ')[0], 'bell-off'); }
+      this.$nextTick(() => this.icons());
+    },
+    ackAll() {
+      if (!this.activeAlarms.length) return;
+      this.alarms.forEach(a => a.acked = true);
+      this.ping('All alarms acknowledged — grid nominal', 'shield-check');
+      this.$nextTick(() => this.icons());
+    },
+    onCondChange(s) {
+      this.ping(s.name + ' → ' + this.sevMeta[s.cond].label, 'refresh-cw');
+      this.$nextTick(() => this.icons());
+    },
+
+    // ---------- clock ----------
+    tick() {
+      const d = new Date(), p = n => String(n).padStart(2, '0');
+      this.clock = p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+    },
+
+    // ---------- toasts ----------
+    ping(msg, icon = 'check') {
+      const id = ++this._tid;
+      this.toasts.push({ id, msg, icon });
+      this.$nextTick(() => this.icons());
+      setTimeout(() => this.dismiss(id), 2600);
+    },
+    dismiss(id) { this.toasts = this.toasts.filter(t => t.id !== id); },
+
+    // ---------- edition ----------
+    toggleEdition() {
+      this.dark = !this.dark;
+      const html = document.documentElement;
+      html.classList.toggle('dark', this.dark);
+      html.classList.toggle('light', !this.dark);
+      const m = document.querySelector('meta[name=theme-color]');
+      if (m) m.setAttribute('content', this.dark ? '#0C0F13' : '#14181D');
+    },
+
+    // ---------- icons ----------
+    icons() { if (window.lucide) window.lucide.createIcons(); },
+
+    // ---------- boot ----------
+    boot() {
+      this.tick();
+      setInterval(() => this.tick(), 1000);
+      this.$nextTick(() => {
+        this.icons();
+        this.renderCharts();
+        requestAnimationFrame(() => { this.mounted = true; });
+      });
+      // re-render charts + icons when the edition (html class) changes
+      new MutationObserver(() => {
+        this.$nextTick(() => { this.icons(); this.renderCharts(); });
+      }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    },
+
+    // ---------- charts ----------
+    _charts: {},
+    renderCharts() {
+      if (!window.Chart) return;
+      const css = getComputedStyle(document.documentElement);
+      const c = n => css.getPropertyValue(n).trim();
+      const accent = c('--accent'), ink2 = c('--ink-2'), ink3 = c('--ink-3'),
+            line = c('--line'), surface = c('--surface'),
+            sWarn = c('--sev-warning'), sViolet = '#8B5CF6', sBlue = '#38BDF8';
+
+      Chart.defaults.font.family = '"Red Hat Mono", monospace';
+      Chart.defaults.font.size = 11;
+      Chart.defaults.color = ink3;
+
+      const tooltip = {
+        backgroundColor: c('--chrome'), titleColor: '#fff', bodyColor: c('--chrome-ink'),
+        titleFont: { family: '"Red Hat Mono", monospace', weight: '700', size: 11 },
+        bodyFont: { family: '"Red Hat Mono", monospace', size: 11 },
+        padding: 10, cornerRadius: 5, boxPadding: 4, borderColor: c('--chrome-line'), borderWidth: 1,
+      };
+      const rgba = (hex, a) => {
+        const h = hex.replace('#', ''); const n = parseInt(h.length === 3 ? h.replace(/(.)/g, '$1$1') : h, 16);
+        return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+      };
+      const draw = (id, cfg) => {
+        const el = document.getElementById(id);
+        if (!el || el.offsetParent === null) return;       // guard hidden canvases
+        if (this._charts[id]) this._charts[id].destroy();
+        this._charts[id] = new Chart(el.getContext('2d'), cfg);
+      };
+
+      // (a) AREA — load vs firm capacity, 24h
+      const hours = Array.from({ length: 25 }, (_, i) => String(i).padStart(2, '0') + ':00');
+      const load = [1980,1890,1840,1810,1830,1920,2110,2340,2520,2640,2710,2760,2800,2830,2870,2910,2880,2810,2760,2700,2640,2560,2360,2180,2480];
+      draw('chartLoad', {
+        type: 'line',
+        data: { labels: hours, datasets: [
+          { label: 'Load', data: load, borderColor: accent, borderWidth: 2, tension: .35, pointRadius: 0, pointHoverRadius: 4,
+            pointHoverBackgroundColor: accent, pointHoverBorderColor: surface, pointHoverBorderWidth: 2, fill: true,
+            backgroundColor: (ctx) => {
+              const { chartArea, ctx: g } = ctx.chart; if (!chartArea) return rgba(accent, .18);
+              const grad = g.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+              grad.addColorStop(0, rgba(accent, .34)); grad.addColorStop(1, rgba(accent, .02)); return grad;
+            } },
+          { label: 'Capacity', data: hours.map(() => 3050), borderColor: ink3, borderWidth: 1.5, borderDash: [5, 4], fill: false, pointRadius: 0, pointHoverRadius: 0 },
+        ] },
+        options: {
+          responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false }, tooltip: { ...tooltip, callbacks: { label: i => ' ' + i.dataset.label + ': ' + i.parsed.y.toLocaleString() + ' MW' } } },
+          scales: {
+            x: { grid: { display: false }, border: { color: line }, ticks: { maxTicksLimit: 9, color: ink3 } },
+            y: { grid: { color: line }, border: { display: false }, min: 1500, max: 3200, ticks: { color: ink3, callback: v => (v / 1000).toFixed(1) + 'k' } },
+          },
+        },
+      });
+
+      // (b) DOUGHNUT — energy mix
+      draw('chartMix', {
+        type: 'doughnut',
+        data: { labels: ['Gas', 'Nuclear', 'Hydro', 'Wind', 'Solar'], datasets: [{
+          data: [40, 15, 21, 16, 8],
+          backgroundColor: [rgba(ink2, .85), sViolet, sBlue, accent, sWarn],
+          borderColor: surface, borderWidth: 2, hoverOffset: 6,
+        }] },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '62%',
+          plugins: {
+            legend: { position: 'bottom', labels: { color: ink2, boxWidth: 10, boxHeight: 10, padding: 12, font: { size: 10 } } },
+            tooltip: { ...tooltip, callbacks: { label: i => ' ' + i.label + ': ' + i.parsed + '%' } },
+          },
+        },
+      });
+
+      // (c) BAR — generation by source
+      draw('chartGen', {
+        type: 'bar',
+        data: { labels: ['Gas', 'Hydro', 'Wind', 'Solar', 'Nuclear'], datasets: [{
+          label: 'Output', data: [980, 520, 410, 190, 380],
+          backgroundColor: [rgba(ink2, .85), sBlue, accent, sWarn, sViolet],
+          borderRadius: 4, borderSkipped: false, maxBarThickness: 54,
+        }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { ...tooltip, callbacks: { label: i => ' ' + i.parsed.y.toLocaleString() + ' MW' } } },
+          scales: {
+            x: { grid: { display: false }, border: { color: line }, ticks: { color: ink2, font: { weight: '700' } } },
+            y: { grid: { color: line }, border: { display: false }, ticks: { color: ink3, callback: v => v.toLocaleString() } },
+          },
+        },
+      });
+    },
+  };
+}
+</script>
+</body>
+</html>

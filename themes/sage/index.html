@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Sage — People Ops design system for the roster</title>
+<meta name="description" content="Sage — a humane, airy design system for HR & people-ops software. Cream paper surfaces, moss green + clay accents, an employment-status system, BI dashboard, roster tables, inline edits, edit drawers, modals. Daylight + Lamplight editions." />
+<meta name="theme-color" content="#4F7A4E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Overpass+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['"Schibsted Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono: ['"Overpass Mono"', 'ui-monospace', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+  /* ============ EDITION TOKENS — DAYLIGHT (light) ============ */
+  :root{
+    --canvas:#F4F2EB; --surface:#FFFFFF; --surface-2:#F7F5EE;
+    --line:#E7E3D8; --line-2:#D5CFC0;
+    --ink:#23261F; --ink-2:#5C6152; --ink-3:#6E7460;
+    --accent:#4F7A4E; --accent-press:#446B43; --accent-soft:#E4EEDF; --accent-ink:#2F5C30;
+    --clay:#C1683C;
+    --on-accent:#FFFFFF;
+    /* employment-status tokens */
+    --s-active:#3F7A4E; --s-onboarding:#B7791F; --s-leave:#5F7793; --s-offboarding:#C0492E;
+    --pos:#3F7A4E; --warn:#B7791F; --neg:#C0492E;
+    --r:16px; --r-sm:10px; --r-xs:8px;
+    --shadow-sm:0 1px 2px rgba(35,38,31,.05);
+    --shadow:0 1px 2px rgba(35,38,31,.05),0 6px 20px rgba(35,38,31,.06);
+    --shadow-lg:0 12px 32px rgba(35,38,31,.14),0 30px 64px rgba(35,38,31,.12);
+    color-scheme:light;
+  }
+  /* ============ EDITION TOKENS — LAMPLIGHT (dark) ============ */
+  html.dark{
+    --canvas:#191B14; --surface:#22251C; --surface-2:#2A2E23;
+    --line:#333829; --line-2:#454C38;
+    --ink:#ECEADF; --ink-2:#B2B4A2; --ink-3:#8B9080;
+    --accent:#86B27F; --accent-press:#97C08F; --accent-soft:#2A3823; --accent-ink:#AFD3A8;
+    --clay:#D98E60;
+    --on-accent:#17210F;
+    --s-active:#83BC86; --s-onboarding:#DBA94E; --s-leave:#93A6C4; --s-offboarding:#E28A6E;
+    --pos:#83BC86; --warn:#DBA94E; --neg:#E28A6E;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.42);
+    --shadow-lg:0 16px 40px rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; }
+  body{ font-family:'Schibsted Grotesk',system-ui,sans-serif; color:var(--ink); background:var(--canvas); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+  .mono{ font-family:'Overpass Mono',ui-monospace,monospace; }
+  .tnum{ font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; }
+  [x-cloak]{ display:none !important; }
+
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
+
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb{ background:var(--line-2); border-radius:99px; border:2px solid var(--canvas); }
+  ::-webkit-scrollbar-track{ background:transparent; }
+
+  /* micro-label */
+  .lbl{ font-family:'Overpass Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3); }
+
+  /* surfaces */
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow-sm); }
+  .sidebar{ background:var(--surface); border-right:1px solid var(--line-2); }
+  .topbar{ background:color-mix(in srgb,var(--canvas) 88%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--line-2); }
+
+  /* nav */
+  .nav-item{ display:flex; align-items:center; gap:12px; min-height:44px; padding:0 14px; border-radius:12px; color:var(--ink-2); cursor:pointer; font-weight:500; font-size:14.5px; transition:background .14s,color .14s; }
+  .nav-item:hover{ background:var(--surface-2); color:var(--ink); }
+  .nav-item.on{ background:var(--accent-soft); color:var(--accent-ink); font-weight:600; }
+  .nav-item.on i{ color:var(--accent); }
+
+  /* buttons */
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:44px; padding:0 18px; border-radius:var(--r-sm); font-weight:600; font-size:14px; border:1px solid transparent; cursor:pointer; transition:background .14s,border-color .14s,transform .06s; white-space:nowrap; }
+  .btn:active{ transform:translateY(1px); }
+  .btn-primary{ background:var(--accent); color:var(--on-accent); }
+  .btn-primary:hover{ background:var(--accent-press); }
+  .btn-outline{ background:var(--surface); color:var(--ink); border-color:var(--line-2); }
+  .btn-outline:hover{ background:var(--surface-2); border-color:var(--ink-3); }
+  .btn-ghost{ background:var(--surface-2); color:var(--ink-2); }
+  .btn-ghost:hover{ background:var(--line); color:var(--ink); }
+  .btn-soft{ background:var(--accent-soft); color:var(--accent-ink); }
+  .btn-soft:hover{ filter:brightness(.97); }
+  .btn-sm{ height:38px; padding:0 13px; font-size:13.5px; }
+  .btn-block{ width:100%; }
+  .iconbtn{ width:44px; height:44px; border-radius:var(--r-sm); display:flex; align-items:center; justify-content:center; color:var(--ink-2); cursor:pointer; border:1px solid transparent; transition:background .14s,color .14s; }
+  .iconbtn:hover{ background:var(--surface-2); color:var(--ink); }
+
+  /* inputs */
+  .field,.isel{ height:44px; background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-sm); padding:0 13px; font-size:14px; color:var(--ink); font-family:'Schibsted Grotesk',sans-serif; width:100%; transition:border-color .14s; }
+  .field:focus,.isel:focus{ outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
+  textarea.field{ height:auto; padding:11px 13px; resize:vertical; line-height:1.5; }
+  .field::placeholder{ color:var(--ink-3); }
+  .isel{ appearance:none; -webkit-appearance:none; padding-right:34px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236E7460' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 12px center; cursor:pointer; }
+  html.dark .isel{ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238B9080' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); }
+
+  /* filter chips */
+  .fchip{ min-height:36px; padding:0 14px; border-radius:99px; border:1px solid var(--line-2); background:var(--surface); font-weight:500; font-size:13px; color:var(--ink-2); white-space:nowrap; cursor:pointer; display:inline-flex; align-items:center; gap:7px; transition:background .14s,border-color .14s,color .14s; }
+  .fchip:hover{ border-color:var(--ink-3); }
+  .fchip.on{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  .fchip.on .mono{ opacity:.85; }
+
+  /* segmented control */
+  .seg{ display:inline-flex; padding:4px; gap:3px; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-sm); }
+  .seg button{ min-height:34px; padding:0 14px; border-radius:7px; font-weight:500; font-size:13px; color:var(--ink-3); background:transparent; cursor:pointer; border:none; transition:color .14s; }
+  .seg button:hover{ color:var(--ink-2); }
+  .seg button.on{ background:var(--surface); color:var(--ink); font-weight:600; box-shadow:var(--shadow-sm); }
+
+  /* toggle */
+  .tg{ width:46px; height:28px; border-radius:99px; background:var(--line-2); position:relative; cursor:pointer; transition:background .18s; flex:none; }
+  .tg.on{ background:var(--accent); }
+  .tg b{ position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; transition:left .18s; box-shadow:0 1px 3px rgba(0,0,0,.28); }
+  .tg.on b{ left:21px; }
+
+  /* stepper */
+  .step{ width:44px; height:44px; border-radius:var(--r-sm); border:1px solid var(--line-2); background:var(--surface-2); display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; color:var(--ink-2); transition:background .14s; }
+  .step:hover{ background:var(--line); color:var(--ink); }
+  .step:active{ transform:translateY(1px); }
+
+  /* status chip */
+  .chip{ display:inline-flex; align-items:center; gap:7px; height:28px; padding:0 11px; border-radius:99px; font-weight:600; font-size:12.5px; white-space:nowrap; border:1px solid transparent; }
+  .chip .d{ width:7px; height:7px; border-radius:50%; background:currentColor; flex:none; }
+
+  /* table */
+  table.tbl{ width:100%; border-collapse:collapse; }
+  table.tbl th{ font-family:'Overpass Mono',monospace; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); text-align:left; font-weight:600; padding:15px 16px 12px; border-bottom:1px solid var(--line-2); white-space:nowrap; background:var(--surface); position:sticky; top:0; z-index:1; }
+  table.tbl th.sortable{ cursor:pointer; user-select:none; }
+  table.tbl th.sortable:hover{ color:var(--ink-2); }
+  table.tbl td{ padding:13px 16px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  table.tbl tbody tr{ transition:background .12s; }
+  table.tbl tbody tr:nth-child(even){ background:var(--surface-2); }
+  table.tbl tbody tr:hover{ background:var(--accent-soft); }
+  table.tbl tbody tr:last-child td{ border-bottom:0; }
+  .r{ text-align:right; }
+
+  /* avatar */
+  .av{ border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; color:#fff; flex:none; }
+
+  /* inline-edit affordance */
+  .ie{ border:1px solid transparent; border-radius:8px; padding:3px 7px; margin:-3px -7px; cursor:text; transition:background .12s,border-color .12s; }
+  .ie:hover{ background:var(--surface-2); border-color:var(--line-2); }
+
+  /* status <select> inside the pill */
+  select.status-select{ appearance:none; -webkit-appearance:none; background:transparent; border:none; font-family:'Schibsted Grotesk',sans-serif; font-weight:600; font-size:12.5px; outline:none; cursor:pointer; padding-right:16px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right center; }
+
+  /* overlays */
+  .scrim{ position:fixed; inset:0; background:rgba(24,26,18,.46); z-index:50; }
+  .drawer{ position:fixed; top:0; right:0; bottom:0; width:min(460px,94vw); background:var(--surface); z-index:60; box-shadow:var(--shadow-lg); display:flex; flex-direction:column; }
+  .ndrawer{ position:fixed; top:0; left:0; bottom:0; width:280px; background:var(--surface); z-index:60; box-shadow:var(--shadow-lg); display:flex; flex-direction:column; }
+  .modal{ position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; padding:16px; }
+  .modal-card{ width:100%; max-width:480px; background:var(--surface); border-radius:var(--r); box-shadow:var(--shadow-lg); max-height:92vh; display:flex; flex-direction:column; }
+
+  @keyframes toastIn{ from{ opacity:0; transform:translateY(12px) scale(.98); } to{ opacity:1; transform:translateY(0) scale(1); } }
+  .toast-item{ animation:toastIn .22s cubic-bezier(.4,0,.2,1); }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
+  }
+</style>
+</head>
+
+<body x-data="sage()" x-init="boot()" x-cloak>
+<div class="flex h-[100dvh] overflow-hidden">
+
+  <!-- ============ SIDEBAR (desktop) ============ -->
+  <aside class="sidebar hidden lg:flex flex-col flex-none h-full transition-all" :style="`width:${collapsed?'76px':'256px'}`">
+    <div class="flex items-center gap-3 h-[72px] flex-none px-5" style="border-bottom:1px solid var(--line-2)">
+      <div class="w-10 h-10 rounded-[12px] flex items-center justify-center flex-none" style="background:var(--accent)">
+        <i data-lucide="sprout" class="w-[22px] h-[22px]" style="color:var(--on-accent)"></i>
+      </div>
+      <div x-show="!collapsed" class="leading-tight">
+        <div style="font-size:18px; font-weight:700; letter-spacing:-.01em">Sage</div>
+        <div class="lbl" style="font-size:9.5px">People Ops</div>
+      </div>
+    </div>
+    <nav class="flex-1 min-h-0 overflow-y-auto p-3">
+      <div class="lbl px-3 mb-2" x-show="!collapsed">The roster</div>
+      <div class="flex flex-col gap-1">
+        <template x-for="n in nav" :key="n.id">
+          <div class="nav-item" :class="page===n.id&&'on'" @click="go(n.id)" :title="n.label" :style="collapsed&&'justify-content:center; padding:0'">
+            <i :data-lucide="n.icon" class="w-[19px] h-[19px] flex-none"></i>
+            <span x-show="!collapsed" x-text="n.label"></span>
+            <span x-show="!collapsed && n.badge" class="ml-auto mono tnum text-[11px] px-2 py-0.5 rounded-md"
+                  :style="page===n.id ? 'background:var(--surface); color:var(--accent-ink); border:1px solid var(--line)' : 'background:var(--surface-2); color:var(--ink-2); border:1px solid var(--line)'"
+                  x-text="n.badge"></span>
+          </div>
+        </template>
+      </div>
+    </nav>
+    <div class="flex-none p-3" style="border-top:1px solid var(--line-2)">
+      <div class="flex items-center gap-3 p-2 rounded-[12px]" style="background:var(--surface-2)" x-show="!collapsed">
+        <div class="av w-9 h-9 text-[13px]" style="background:var(--clay)">MR</div>
+        <div class="leading-tight min-w-0">
+          <div class="text-[13.5px] font-semibold truncate" x-text="name"></div>
+          <div class="text-[11.5px] truncate" style="color:var(--ink-3)">People Ops Lead</div>
+        </div>
+      </div>
+      <div class="nav-item mt-1" @click="collapsed=!collapsed" :style="collapsed&&'justify-content:center; padding:0'">
+        <i :data-lucide="collapsed?'chevrons-right':'chevrons-left'" class="w-[19px] h-[19px] flex-none"></i>
+        <span x-show="!collapsed">Collapse</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN COLUMN ============ -->
+  <div class="flex-1 min-w-0 flex flex-col h-full">
+
+    <!-- topbar -->
+    <header class="topbar sticky top-0 z-30 flex-none flex items-center gap-2 sm:gap-3 px-3 sm:px-5 h-[72px]">
+      <div class="iconbtn lg:hidden" @click="navOpen=true" aria-label="Open navigation"><i data-lucide="menu" class="w-6 h-6"></i></div>
+      <div class="min-w-0">
+        <div class="lbl hidden sm:block" x-text="meta[page].kicker"></div>
+        <div style="font-size:20px; font-weight:700; line-height:1.15; letter-spacing:-.01em" x-text="meta[page].title"></div>
+      </div>
+
+      <div class="relative ml-auto hidden md:block">
+        <i data-lucide="search" class="w-[18px] h-[18px] absolute left-3.5 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+        <input class="field" style="width:236px; padding-left:40px" placeholder="Search people…" aria-label="Search people" x-model="search" @focus="page='people'" />
+      </div>
+      <button class="btn btn-primary ml-auto md:ml-0" @click="openNew()"><i data-lucide="user-plus" class="w-[18px] h-[18px]"></i><span class="hidden sm:inline">Add person</span></button>
+      <div class="iconbtn" @click="toggleEdition()" :aria-label="dark?'Switch to Daylight edition':'Switch to Lamplight edition'" :title="dark?'Daylight edition':'Lamplight edition'">
+        <i data-lucide="sun" class="w-5 h-5" x-show="dark" x-cloak></i><i data-lucide="moon" class="w-5 h-5" x-show="!dark"></i>
+      </div>
+      <div class="av w-10 h-10 text-[13px] hidden sm:flex" style="background:var(--clay)">MR</div>
+    </header>
+
+    <!-- content -->
+    <main class="flex-1 min-h-0 overflow-y-auto">
+    <div class="mx-auto max-w-[1400px] p-4 sm:p-6">
+
+      <!-- mobile search -->
+      <div class="md:hidden mb-4 relative">
+        <i data-lucide="search" class="w-[18px] h-[18px] absolute left-3.5 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+        <input class="field" style="height:48px; padding-left:40px" placeholder="Search people…" aria-label="Search people" x-model="search" @focus="page='people'" />
+      </div>
+
+      <!-- ========================================================= -->
+      <!-- ================ DASHBOARD (BI overview) ================ -->
+      <!-- ========================================================= -->
+      <div x-show="page==='dashboard'">
+
+        <!-- KPI tiles -->
+        <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+          <template x-for="k in kpis" :key="k.l">
+            <div class="card p-4 sm:p-5">
+              <div class="flex items-center justify-between">
+                <span class="lbl" x-text="k.l"></span>
+                <div class="w-8 h-8 rounded-[10px] flex items-center justify-center" style="background:var(--accent-soft)">
+                  <i :data-lucide="k.i" class="w-[16px] h-[16px]" style="color:var(--accent)"></i>
+                </div>
+              </div>
+              <div class="tnum mt-2.5" style="font-size:32px; font-weight:700; line-height:1; letter-spacing:-.02em" x-text="k.v"></div>
+              <div class="flex items-center gap-1.5 mt-2 text-[12.5px]">
+                <span class="tnum inline-flex items-center gap-0.5 font-semibold" :style="`color:var(${k.good?'--pos':'--neg'})`">
+                  <i :data-lucide="k.up?'arrow-up-right':'arrow-down-right'" class="w-3.5 h-3.5"></i><span x-text="k.d"></span>
+                </span>
+                <span style="color:var(--ink-3)" x-text="k.sub"></span>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- charts row 1 -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+          <div class="card p-5 xl:col-span-2">
+            <div class="flex items-start justify-between gap-3 mb-4 flex-wrap">
+              <div>
+                <div class="lbl">Headcount growth</div>
+                <div style="font-size:17px; font-weight:600; margin-top:2px" x-text="'Trailing '+range"></div>
+              </div>
+              <div class="seg" role="tablist" aria-label="Range">
+                <button :class="range==='12 months'&&'on'" @click="range='12 months'; renderCharts()">12 mo</button>
+                <button :class="range==='6 months'&&'on'" @click="range='6 months'; renderCharts()">6 mo</button>
+              </div>
+            </div>
+            <div style="height:248px"><canvas id="cLine"></canvas></div>
+          </div>
+
+          <div class="card p-5">
+            <div class="lbl mb-1">Distribution</div>
+            <div class="mb-3" style="font-size:17px; font-weight:600">Headcount by department</div>
+            <div style="height:196px"><canvas id="cDonut"></canvas></div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-4">
+              <template x-for="d in deptMix" :key="d.name">
+                <div class="flex items-center gap-2 text-[12px]">
+                  <span style="width:9px;height:9px;border-radius:3px;flex:none" :style="`background:${d.color}`"></span>
+                  <span class="truncate" style="color:var(--ink-2)" x-text="d.name"></span>
+                  <span class="mono tnum ml-auto" x-text="d.n"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- charts row 2 -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+          <div class="card p-5">
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <div class="lbl">Flow</div>
+                <div style="font-size:17px; font-weight:600; margin-top:2px">Hires vs. exits</div>
+              </div>
+              <div class="hidden sm:flex flex-col gap-1 text-[11px]" style="color:var(--ink-2)">
+                <span class="inline-flex items-center gap-1.5"><span style="width:10px;height:10px;border-radius:3px;background:var(--accent)"></span>Hires</span>
+                <span class="inline-flex items-center gap-1.5"><span style="width:10px;height:10px;border-radius:3px;background:var(--clay)"></span>Exits</span>
+              </div>
+            </div>
+            <div style="height:210px"><canvas id="cBar"></canvas></div>
+          </div>
+
+          <!-- department summary table -->
+          <div class="card xl:col-span-2 overflow-hidden">
+            <div class="p-5 pb-3 flex items-center justify-between">
+              <div>
+                <div class="lbl">This quarter</div>
+                <div style="font-size:17px; font-weight:600; margin-top:2px">Department snapshot</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" @click="go('people')">Open roster <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="tbl">
+                <thead><tr><th>Department</th><th class="r">People</th><th class="r">Open roles</th><th class="r">Attrition</th><th>Trend</th></tr></thead>
+                <tbody>
+                  <template x-for="d in deptTable" :key="d.name">
+                    <tr @click="go('people')" style="cursor:pointer">
+                      <td style="font-weight:600" x-text="d.name"></td>
+                      <td class="r mono tnum" x-text="d.people"></td>
+                      <td class="r mono tnum" style="color:var(--ink-2)" x-text="d.open"></td>
+                      <td class="r mono tnum" :style="`color:var(${d.attr<=4?'--pos':(d.attr<=6?'--warn':'--neg')})`" x-text="d.attr.toFixed(1)+'%'"></td>
+                      <td><span class="mono tnum text-[12px]" :style="`color:var(${d.up?'--pos':'--neg'})`" x-text="(d.up?'▲ ':'▼ ')+d.dv"></span></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================= -->
+      <!-- ================== PEOPLE (roster) ====================== -->
+      <!-- ========================================================= -->
+      <div x-show="page==='people'" x-cloak>
+        <!-- toolbar -->
+        <div class="flex flex-col gap-3 mb-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="fchip" :class="statusFilter==='All'&&'on'" @click="statusFilter='All'">All <span class="mono tnum" x-text="people.length"></span></div>
+            <template x-for="s in statusOrder" :key="s">
+              <div class="fchip" :class="statusFilter===s&&'on'" @click="statusFilter=s">
+                <span style="width:8px;height:8px;border-radius:50%;flex:none" :style="`background:var(${statusVar[s]})`"></span>
+                <span x-text="s"></span>
+                <span class="mono tnum" x-text="people.filter(p=>p.status===s).length"></span>
+              </div>
+            </template>
+          </div>
+          <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+            <select class="isel" style="width:auto; min-width:190px" x-model="deptFilter" aria-label="Filter by department">
+              <option>All departments</option>
+              <template x-for="d in departments" :key="d"><option x-text="d"></option></template>
+            </select>
+            <div class="relative flex-1 sm:max-w-[280px]">
+              <i data-lucide="search" class="w-[18px] h-[18px] absolute left-3.5 top-1/2 -translate-y-1/2" style="color:var(--ink-3)"></i>
+              <input class="field" style="padding-left:40px" placeholder="Search name, title, location…" aria-label="Search roster" x-model="search" />
+            </div>
+            <div class="sm:ml-auto flex items-center gap-2">
+              <span class="lbl hidden lg:block" x-text="roster.length+' of '+people.length"></span>
+              <button class="btn btn-outline btn-sm" @click="ping('Roster exported to CSV','download')"><i data-lucide="download" class="w-4 h-4"></i> Export</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card overflow-hidden">
+          <div class="overflow-x-auto" style="max-height:calc(100dvh - 250px)">
+            <table class="tbl">
+              <thead><tr>
+                <th class="sortable" @click="sortBy('name')">Name <span x-show="sortKey==='name'" x-text="sortDir>0?'↑':'↓'"></span></th>
+                <th class="sortable hidden md:table-cell" @click="sortBy('dept')">Department <span x-show="sortKey==='dept'" x-text="sortDir>0?'↑':'↓'"></span></th>
+                <th class="sortable hidden lg:table-cell" @click="sortBy('title')">Title <span x-show="sortKey==='title'" x-text="sortDir>0?'↑':'↓'"></span></th>
+                <th class="hidden sm:table-cell">Location</th>
+                <th>Status</th>
+                <th class="sortable r" @click="sortBy('start')">Start <span x-show="sortKey==='start'" x-text="sortDir>0?'↑':'↓'"></span></th>
+                <th></th>
+              </tr></thead>
+              <tbody>
+                <template x-for="p in roster" :key="p.id">
+                  <tr @click="openEdit(p)" style="cursor:pointer">
+                    <td>
+                      <div class="flex items-center gap-3">
+                        <span class="av w-9 h-9 text-[12px]" :style="`background:${p.color}`" x-text="p.initials"></span>
+                        <div class="leading-tight min-w-0">
+                          <div class="text-[13.5px] font-semibold truncate" x-text="p.name"></div>
+                          <div class="mono text-[11px] truncate" style="color:var(--ink-3)" x-text="p.email"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="hidden md:table-cell text-[13.5px]" style="color:var(--ink-2)" x-text="p.dept"></td>
+                    <td class="hidden lg:table-cell text-[13.5px]" style="color:var(--ink-2)" x-text="p.title"></td>
+                    <td class="hidden sm:table-cell text-[13.5px]" style="color:var(--ink-2)">
+                      <span class="inline-flex items-center gap-1.5"><i data-lucide="map-pin" class="w-3.5 h-3.5" style="color:var(--ink-3)"></i><span x-text="p.location"></span></span>
+                    </td>
+                    <!-- inline-editable status cell -->
+                    <td @click.stop>
+                      <span class="chip" :style="chipStyle(p.status)">
+                        <span class="d"></span>
+                        <select class="status-select" x-model="p.status" x-init="$nextTick(() => $el.value = p.status)" @change="changeStatus(p)" :aria-label="`Status for ${p.name}`">
+                          <template x-for="s in statusOrder" :key="s"><option :value="s" x-text="s"></option></template>
+                        </select>
+                      </span>
+                    </td>
+                    <td class="r mono tnum text-[12.5px]" style="color:var(--ink-2)" x-text="p.start"></td>
+                    <td class="r"><i data-lucide="pencil" class="w-4 h-4" style="color:var(--ink-3)" @click.stop="openEdit(p)"></i></td>
+                  </tr>
+                </template>
+                <tr x-show="roster.length===0">
+                  <td colspan="7" class="py-14 text-center" style="background:var(--surface)">
+                    <div class="flex flex-col items-center gap-2" style="color:var(--ink-3)">
+                      <i data-lucide="search-x" class="w-8 h-8"></i>
+                      <div class="text-[14px]" style="color:var(--ink-2)">No people match your filters.</div>
+                      <button class="btn btn-soft btn-sm mt-1" @click="search=''; statusFilter='All'; deptFilter='All departments'">Clear filters</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================= -->
+      <!-- ==================== HIRING ============================= -->
+      <!-- ========================================================= -->
+      <div x-show="page==='hiring'" x-cloak>
+        <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-4">
+          <template x-for="k in hiringKpis" :key="k.l">
+            <div class="card p-4 sm:p-5">
+              <div class="flex items-center justify-between">
+                <span class="lbl" x-text="k.l"></span>
+                <div class="w-8 h-8 rounded-[10px] flex items-center justify-center" style="background:var(--accent-soft)">
+                  <i :data-lucide="k.i" class="w-[16px] h-[16px]" style="color:var(--accent)"></i>
+                </div>
+              </div>
+              <div class="tnum mt-2.5" style="font-size:30px; font-weight:700; line-height:1" x-text="k.v"></div>
+              <div class="text-[12.5px] mt-1.5" style="color:var(--ink-3)" x-text="k.sub"></div>
+            </div>
+          </template>
+        </div>
+
+        <div class="card overflow-hidden">
+          <div class="p-5 pb-3 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <div style="font-size:17px; font-weight:600">Open roles</div>
+              <div class="text-[13px]" style="color:var(--ink-3)"><span class="tnum" x-text="roles.length"></span> requisitions in flight</div>
+            </div>
+            <button class="btn btn-soft btn-sm" @click="ping('New requisition form opened','file-plus')"><i data-lucide="plus" class="w-4 h-4"></i> New requisition</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="tbl">
+              <thead><tr><th>Role</th><th class="hidden md:table-cell">Department</th><th class="hidden sm:table-cell">Location</th><th>Stage</th><th class="r">Applicants</th><th class="r">Age</th></tr></thead>
+              <tbody>
+                <template x-for="r in roles" :key="r.id">
+                  <tr>
+                    <td style="font-weight:600; min-width:180px" x-text="r.role"></td>
+                    <td class="hidden md:table-cell text-[13.5px]" style="color:var(--ink-2)" x-text="r.dept"></td>
+                    <td class="hidden sm:table-cell text-[13.5px]" style="color:var(--ink-2)" x-text="r.loc"></td>
+                    <!-- inline-editable stage cell -->
+                    <td @click.stop>
+                      <select class="isel" style="height:36px; width:auto; min-width:130px; font-size:13px; padding:0 30px 0 12px; background-position:right 10px center"
+                              x-model="r.stage" x-init="$nextTick(() => $el.value = r.stage)" @change="ping('“'+r.role+'” → '+r.stage,'git-branch')">
+                        <template x-for="s in stages" :key="s"><option x-text="s"></option></template>
+                      </select>
+                    </td>
+                    <td class="r mono tnum" x-text="r.applicants"></td>
+                    <td class="r">
+                      <span class="mono tnum text-[12.5px]" :style="`color:var(${r.age>21?'--neg':(r.age>14?'--warn':'--ink-2')})`" x-text="r.age+'d'"></span>
+                      <span x-show="r.age>14" class="chip ml-1" style="height:20px;padding:0 7px;font-size:10.5px;color:var(--warn);background:color-mix(in srgb,var(--warn) 15%,transparent)">Aging</span>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- new hires starting -->
+        <div class="card mt-4 p-5">
+          <div class="flex items-center gap-2 mb-4">
+            <i data-lucide="user-check" class="w-[18px] h-[18px]" style="color:var(--accent)"></i>
+            <div style="font-size:16px; font-weight:600">Starting this month</div>
+            <span class="mono tnum ml-auto text-[12px] px-2 py-1 rounded-md" style="background:var(--accent-soft); color:var(--accent-ink)" x-text="newHires.length+' onboarding'"></span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            <template x-for="p in newHires" :key="p.id">
+              <div class="flex items-center gap-3 p-3 rounded-[12px]" style="background:var(--surface-2); border:1px solid var(--line)">
+                <span class="av w-10 h-10 text-[13px]" :style="`background:${p.color}`" x-text="p.initials"></span>
+                <div class="leading-tight min-w-0">
+                  <div class="text-[13.5px] font-semibold truncate" x-text="p.name"></div>
+                  <div class="text-[11.5px] truncate" style="color:var(--ink-3)"><span x-text="p.dept"></span> · <span x-text="p.location"></span></div>
+                </div>
+                <span class="mono tnum ml-auto text-[11px]" style="color:var(--ink-3)" x-text="p.start"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================= -->
+      <!-- ==================== TIME OFF =========================== -->
+      <!-- ========================================================= -->
+      <div x-show="page==='timeoff'" x-cloak>
+        <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-4">
+          <template x-for="k in timeoffKpis" :key="k.l">
+            <div class="card p-4 sm:p-5">
+              <div class="flex items-center justify-between">
+                <span class="lbl" x-text="k.l"></span>
+                <div class="w-8 h-8 rounded-[10px] flex items-center justify-center" style="background:var(--accent-soft)">
+                  <i :data-lucide="k.i" class="w-[16px] h-[16px]" style="color:var(--accent)"></i>
+                </div>
+              </div>
+              <div class="tnum mt-2.5" style="font-size:30px; font-weight:700; line-height:1" x-text="k.v"></div>
+              <div class="text-[12.5px] mt-1.5" style="color:var(--ink-3)" x-text="k.sub"></div>
+            </div>
+          </template>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-4">
+          <!-- requests -->
+          <div class="card overflow-hidden self-start">
+            <div class="p-5 pb-3 flex items-center justify-between gap-3 flex-wrap">
+              <div style="font-size:17px; font-weight:600">Requests</div>
+              <div class="flex flex-wrap gap-2">
+                <div class="fchip" :class="leaveFilter==='All'&&'on'" @click="leaveFilter='All'">All</div>
+                <template x-for="s in ['Pending','Approved','Declined']" :key="s">
+                  <div class="fchip" :class="leaveFilter===s&&'on'" @click="leaveFilter=s" x-text="s"></div>
+                </template>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="tbl">
+                <thead><tr><th>Person</th><th class="hidden sm:table-cell">Type</th><th class="hidden md:table-cell">Dates</th><th class="r">Days</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                  <template x-for="r in filteredLeave" :key="r.id">
+                    <tr>
+                      <td>
+                        <div class="flex items-center gap-3">
+                          <span class="av w-9 h-9 text-[12px]" :style="`background:${r.color}`" x-text="r.initials"></span>
+                          <div class="leading-tight min-w-0">
+                            <div class="text-[13.5px] font-semibold truncate" x-text="r.name"></div>
+                            <div class="text-[11.5px] truncate" style="color:var(--ink-3)" x-text="r.dept"></div>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="hidden sm:table-cell text-[13.5px]" style="color:var(--ink-2)" x-text="r.type"></td>
+                      <td class="hidden md:table-cell mono tnum text-[12px]" style="color:var(--ink-2)" x-text="r.dates"></td>
+                      <td class="r mono tnum" x-text="r.days"></td>
+                      <td><span class="chip" :style="leaveStyle(r.status)"><span class="d"></span><span x-text="r.status"></span></span></td>
+                      <td class="r">
+                        <div class="flex items-center gap-1.5 justify-end" x-show="r.status==='Pending'">
+                          <button class="iconbtn" style="width:36px;height:36px" @click="approve(r)" aria-label="Approve"><i data-lucide="check" class="w-4 h-4" style="color:var(--pos)"></i></button>
+                          <button class="iconbtn" style="width:36px;height:36px" @click="decline(r)" aria-label="Decline"><i data-lucide="x" class="w-4 h-4" style="color:var(--neg)"></i></button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- request form -->
+          <div class="card p-5 self-start">
+            <div style="font-size:16px; font-weight:600" class="mb-4">Request time off</div>
+
+            <label class="lbl" style="color:var(--ink-2)">Type</label>
+            <select class="isel mt-1.5 mb-4" x-model="reqType">
+              <option>Vacation</option><option>Sick</option><option>Personal</option><option>Parental</option>
+            </select>
+
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <div><label class="lbl" style="color:var(--ink-2)">From</label><input type="date" class="field mt-1.5" x-model="reqFrom" aria-label="From date" /></div>
+              <div><label class="lbl" style="color:var(--ink-2)">To</label><input type="date" class="field mt-1.5" x-model="reqTo" aria-label="To date" /></div>
+            </div>
+
+            <label class="lbl" style="color:var(--ink-2)">Days requested</label>
+            <div class="flex items-center gap-3 mt-1.5 mb-4">
+              <div class="step" @click="reqDays=Math.max(1,reqDays-1)" role="button" aria-label="Fewer days"><i data-lucide="minus" class="w-4 h-4"></i></div>
+              <input class="field mono tnum text-center" style="font-size:20px; font-weight:600; flex:1; height:54px" type="tel" x-model.number="reqDays" aria-label="Days requested" />
+              <div class="step" @click="reqDays++" role="button" aria-label="More days"><i data-lucide="plus" class="w-4 h-4"></i></div>
+            </div>
+
+            <label class="lbl" style="color:var(--ink-2)">Note (optional)</label>
+            <textarea class="field mt-1.5 mb-4" rows="3" placeholder="Anything your manager should know…" x-model="reqNote"></textarea>
+
+            <div class="rounded-[12px] p-3 mb-4 flex items-center gap-3" style="background:var(--accent-soft)">
+              <i data-lucide="palmtree" class="w-5 h-5" style="color:var(--accent)"></i>
+              <div class="text-[12.5px]" style="color:var(--accent-ink)"><span class="mono tnum font-semibold">14</span> vacation days remaining this year</div>
+            </div>
+
+            <button class="btn btn-primary btn-block" @click="submitLeave()"><i data-lucide="send" class="w-[18px] h-[18px]"></i> Submit request</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================= -->
+      <!-- ==================== SETTINGS =========================== -->
+      <!-- ========================================================= -->
+      <div x-show="page==='settings'" x-cloak style="max-width:720px">
+        <div class="card p-5 mb-4">
+          <div class="lbl mb-4">Account</div>
+          <div class="flex items-center gap-4">
+            <div class="av w-16 h-16 text-[22px]" style="background:var(--clay)">MR</div>
+            <div class="min-w-0">
+              <!-- inline click-to-edit name -->
+              <template x-if="!editName">
+                <div class="ie inline-block" style="font-size:20px; font-weight:700" @click="editName=true; $nextTick(()=>$refs.nm.focus())" x-text="name"></div>
+              </template>
+              <template x-if="editName">
+                <div class="flex items-center gap-2">
+                  <input x-ref="nm" class="field" style="width:220px" x-model="name"
+                         @keydown.enter="editName=false; ping('Name updated','check')" @keydown.escape="editName=false" />
+                  <button class="btn btn-primary btn-sm" @click="editName=false; ping('Name updated','check')">Save</button>
+                </div>
+              </template>
+              <div class="mono text-[12px] mt-0.5" style="color:var(--ink-2)">People Ops Lead · Employee ID 1024</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-4">
+          <div class="flex items-center justify-between p-5" style="border-bottom:1px solid var(--line)">
+            <div><div style="font-weight:600">Edition</div><div class="text-[13px]" style="color:var(--ink-2)">Daylight for the office, Lamplight for late reviews.</div></div>
+            <div class="seg">
+              <button :class="!dark&&'on'" @click="dark&&toggleEdition()">Daylight</button>
+              <button :class="dark&&'on'" @click="!dark&&toggleEdition()">Lamplight</button>
+            </div>
+          </div>
+          <div class="flex items-center justify-between p-5" style="border-bottom:1px solid var(--line)">
+            <div><div style="font-weight:600">Weekly people digest</div><div class="text-[13px]" style="color:var(--ink-2)">A Monday summary of joins, moves, and leavers.</div></div>
+            <div class="tg on" x-data="{on:true}" :class="on&&'on'" @click="on=!on; ping('Preference saved','check')" role="switch" :aria-checked="on" tabindex="0" @keydown.enter="on=!on"><b></b></div>
+          </div>
+          <div class="flex items-center justify-between p-5" style="border-bottom:1px solid var(--line)">
+            <div><div style="font-weight:600">Approval reminders</div><div class="text-[13px]" style="color:var(--ink-2)">Nudge me about pending time-off requests.</div></div>
+            <div class="tg" x-data="{on:false}" :class="on&&'on'" @click="on=!on; ping('Preference saved','check')" role="switch" :aria-checked="on" tabindex="0" @keydown.enter="on=!on"><b></b></div>
+          </div>
+          <div class="flex items-center justify-between p-5">
+            <div><div style="font-weight:600">Preview a dialog</div><div class="text-[13px]" style="color:var(--ink-2)">See the Add person modal pattern.</div></div>
+            <button class="btn btn-outline btn-sm" @click="openNew()">Open modal</button>
+          </div>
+        </div>
+
+        <div class="text-center text-[11.5px] pt-1 pb-3" style="color:var(--ink-3)">
+          Sage People Ops · roster as of 1 July 2026 · a humane view of the people org
+        </div>
+      </div>
+
+    </div>
+    </main>
+  </div>
+</div>
+
+<!-- ============ MOBILE NAV DRAWER (left) ============ -->
+<template x-if="navOpen">
+  <div>
+    <div class="scrim lg:hidden" @click="navOpen=false" x-transition.opacity></div>
+    <div class="ndrawer lg:hidden" x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+         @keydown.escape.window="navOpen=false">
+      <div class="flex items-center gap-3 h-[72px] flex-none px-5" style="border-bottom:1px solid var(--line-2)">
+        <div class="w-10 h-10 rounded-[12px] flex items-center justify-center" style="background:var(--accent)"><i data-lucide="sprout" class="w-[22px] h-[22px]" style="color:var(--on-accent)"></i></div>
+        <div class="leading-tight"><div style="font-size:18px; font-weight:700">Sage</div><div class="lbl" style="font-size:9.5px">People Ops</div></div>
+        <div class="iconbtn ml-auto" @click="navOpen=false" aria-label="Close navigation"><i data-lucide="x" class="w-5 h-5"></i></div>
+      </div>
+      <nav class="flex-1 overflow-y-auto p-3">
+        <div class="lbl px-3 mb-2">The roster</div>
+        <div class="flex flex-col gap-1">
+          <template x-for="n in nav" :key="'m'+n.id">
+            <div class="nav-item" :class="page===n.id&&'on'" @click="go(n.id); navOpen=false">
+              <i :data-lucide="n.icon" class="w-[19px] h-[19px]"></i><span x-text="n.label"></span>
+              <span x-show="n.badge" class="ml-auto mono tnum text-[11px] px-2 py-0.5 rounded-md" style="background:var(--surface-2); color:var(--ink-2); border:1px solid var(--line)" x-text="n.badge"></span>
+            </div>
+          </template>
+        </div>
+      </nav>
+      <div class="p-3 flex items-center gap-3" style="border-top:1px solid var(--line-2)">
+        <div class="av w-9 h-9 text-[12px]" style="background:var(--clay)">MR</div>
+        <div class="leading-tight"><div class="text-[13px] font-semibold" x-text="name"></div><div class="text-[11px]" style="color:var(--ink-3)">People Ops Lead</div></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ EDIT DRAWER (right) ============ -->
+<template x-if="drawer">
+  <div>
+    <div class="scrim" @click="closeEdit()" x-transition.opacity></div>
+    <div class="drawer" x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+         @keydown.escape.window="closeEdit()">
+      <div class="flex items-center gap-3 h-[72px] flex-none px-5" style="border-bottom:1px solid var(--line)">
+        <span class="av w-11 h-11 text-[14px]" :style="`background:${drawer.color}`" x-text="drawer.initials"></span>
+        <div class="min-w-0">
+          <div style="font-size:17px; font-weight:700; line-height:1.15" x-text="drawer.name"></div>
+          <div class="mono text-[11.5px] truncate" style="color:var(--ink-3)" x-text="drawer.email"></div>
+        </div>
+        <div class="iconbtn ml-auto" @click="closeEdit()" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></div>
+      </div>
+      <div class="flex-1 overflow-y-auto p-5">
+        <label class="lbl" style="color:var(--ink-2)">Full name</label>
+        <input class="field mt-1.5 mb-4" x-model="drawer.name" />
+        <label class="lbl" style="color:var(--ink-2)">Email</label>
+        <input class="field mt-1.5 mb-4" type="email" x-model="drawer.email" />
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label class="lbl" style="color:var(--ink-2)">Department</label>
+            <select class="isel mt-1.5" x-model="drawer.dept" x-init="$nextTick(() => $el.value = drawer.dept)"><template x-for="d in departments" :key="d"><option :value="d" x-text="d"></option></template></select>
+          </div>
+          <div>
+            <label class="lbl" style="color:var(--ink-2)">Status</label>
+            <select class="isel mt-1.5" x-model="drawer.status" x-init="$nextTick(() => $el.value = drawer.status)"><template x-for="s in statusOrder" :key="s"><option :value="s" x-text="s"></option></template></select>
+          </div>
+        </div>
+        <label class="lbl" style="color:var(--ink-2)">Title</label>
+        <input class="field mt-1.5 mb-4" x-model="drawer.title" />
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div><label class="lbl" style="color:var(--ink-2)">Location</label><input class="field mt-1.5" x-model="drawer.location" /></div>
+          <div><label class="lbl" style="color:var(--ink-2)">Start date</label><input class="field mono" style="margin-top:6px" x-model="drawer.start" /></div>
+        </div>
+        <label class="lbl" style="color:var(--ink-2)">Manager</label>
+        <input class="field mt-1.5 mb-4" x-model="drawer.manager" />
+        <label class="lbl" style="color:var(--ink-2)">Notes</label>
+        <textarea class="field mt-1.5" rows="3" placeholder="Context for the people team…" x-model="drawer.notes"></textarea>
+      </div>
+      <div class="flex-none p-4 flex gap-3" style="border-top:1px solid var(--line)">
+        <button class="btn btn-outline" style="flex:1" @click="closeEdit()">Cancel</button>
+        <button class="btn btn-primary" style="flex:2" @click="saveEdit()"><i data-lucide="check" class="w-[18px] h-[18px]"></i> Save changes</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ MODAL (add person) ============ -->
+<template x-if="modal">
+  <div>
+    <div class="scrim" @click="modal=false" x-transition.opacity></div>
+    <div class="modal" @keydown.escape.window="modal=false">
+      <div class="modal-card" x-transition:enter="transition duration-150 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+        <div class="flex items-center gap-3 p-5 pb-3">
+          <div style="font-size:19px; font-weight:700">Add person</div>
+          <div class="iconbtn ml-auto" @click="modal=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></div>
+        </div>
+        <div class="px-5 pb-2 overflow-y-auto">
+          <label class="lbl" style="color:var(--ink-2)">Full name</label>
+          <input class="field mt-1.5 mb-3" x-model="nw.name" placeholder="e.g. Jordan Ellis" />
+          <label class="lbl" style="color:var(--ink-2)">Work email</label>
+          <input class="field mt-1.5 mb-3" type="email" x-model="nw.email" placeholder="jordan.ellis@sage.co" />
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="lbl" style="color:var(--ink-2)">Department</label>
+              <select class="isel mt-1.5" x-model="nw.dept"><template x-for="d in departments" :key="d"><option :value="d" x-text="d"></option></template></select>
+            </div>
+            <div>
+              <label class="lbl" style="color:var(--ink-2)">Status</label>
+              <select class="isel mt-1.5" x-model="nw.status" x-init="$nextTick(() => $el.value = nw.status)"><template x-for="s in statusOrder" :key="s"><option :value="s" x-text="s"></option></template></select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mb-1">
+            <div><label class="lbl" style="color:var(--ink-2)">Title</label><input class="field mt-1.5" x-model="nw.title" placeholder="Role" /></div>
+            <div><label class="lbl" style="color:var(--ink-2)">Location</label><input class="field mt-1.5" x-model="nw.location" placeholder="City" /></div>
+          </div>
+        </div>
+        <div class="flex gap-3 p-5 pt-3">
+          <button class="btn btn-outline" style="flex:1" @click="modal=false">Cancel</button>
+          <button class="btn btn-primary" style="flex:2" @click="createPerson()"><i data-lucide="user-plus" class="w-[18px] h-[18px]"></i> Add to roster</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ============ TOASTS ============ -->
+<div class="fixed z-[70] bottom-4 right-4 left-4 sm:left-auto sm:w-[344px] flex flex-col gap-2 items-end pointer-events-none" aria-live="polite">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="toast-item pointer-events-auto w-full flex items-start gap-3 p-3.5 rounded-[12px]"
+         style="background:var(--surface); border:1px solid var(--line-2); box-shadow:var(--shadow-lg)">
+      <div class="w-9 h-9 rounded-[10px] flex items-center justify-center flex-none" :style="`background:${t.tint}`">
+        <i :data-lucide="t.icon" class="w-[18px] h-[18px]" :style="`color:${t.color}`" x-init="$nextTick(()=>lucide.createIcons())"></i>
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="text-[13.5px] font-semibold leading-tight" x-text="t.title"></div>
+        <div class="text-[12.5px] mt-0.5" style="color:var(--ink-3)" x-show="t.msg" x-text="t.msg"></div>
+      </div>
+      <button @click="dismiss(t.id)" class="flex-none -mt-0.5 -mr-0.5 p-1 rounded-md" style="color:var(--ink-3)" aria-label="Dismiss">
+        <i data-lucide="x" class="w-4 h-4" x-init="$nextTick(()=>lucide.createIcons())"></i>
+      </button>
+    </div>
+  </template>
+</div>
+
+<script>
+  function sage(){
+    return {
+      /* ---- shell state ---- */
+      page:'dashboard', dark:false, collapsed:false, navOpen:false,
+      drawer:null, _drawerRef:null, modal:false,
+      name:'Mara Ruiz', editName:false,
+      search:'', range:'12 months',
+      toasts:[], _tid:0, _chartsReady:false,
+
+      /* ---- roster filters ---- */
+      statusFilter:'All', deptFilter:'All departments',
+      sortKey:'name', sortDir:1,
+
+      /* ---- time-off form ---- */
+      reqType:'Vacation', reqFrom:'2026-07-14', reqTo:'2026-07-18', reqDays:5, reqNote:'',
+      leaveFilter:'All',
+
+      /* ---- add-person model ---- */
+      nw:{ name:'', email:'', dept:'Engineering', status:'Onboarding', title:'', location:'' },
+      _newId:100,
+
+      nav:[
+        { id:'dashboard', label:'Dashboard', icon:'layout-dashboard' },
+        { id:'people',    label:'People',    icon:'users', badge:'486' },
+        { id:'hiring',    label:'Hiring',    icon:'briefcase', badge:'23' },
+        { id:'timeoff',   label:'Time off',  icon:'palmtree' },
+        { id:'settings',  label:'Settings',  icon:'settings' },
+      ],
+      meta:{
+        dashboard:{ kicker:'People Ops · Q3 2026', title:'Overview' },
+        people:{ kicker:'486 people · 9 departments', title:'People' },
+        hiring:{ kicker:'23 open roles', title:'Hiring' },
+        timeoff:{ kicker:'July 2026', title:'Time off' },
+        settings:{ kicker:'Mara Ruiz', title:'Settings' },
+      },
+
+      statusOrder:['Active','Onboarding','On leave','Offboarding'],
+      statusVar:{ 'Active':'--s-active', 'Onboarding':'--s-onboarding', 'On leave':'--s-leave', 'Offboarding':'--s-offboarding' },
+      departments:['Engineering','Design','Sales','Marketing','Customer Success','Finance','People Ops','Operations','Product'],
+      stages:['Sourcing','Screening','Interview','Offer'],
+
+      kpis:[
+        { l:'Total headcount', v:'486', i:'users', d:'2.6%', sub:'+12 vs last mo', up:true, good:true },
+        { l:'New hires · mo', v:'12', i:'user-plus', d:'4', sub:'joining July', up:true, good:true },
+        { l:'Attrition · TTM', v:'4.2%', i:'log-out', d:'0.5pt', sub:'below 5% median', up:false, good:true },
+        { l:'Open roles', v:'23', i:'briefcase', d:'7', sub:'aging >14d', up:true, good:false },
+      ],
+      deptMix:[
+        { name:'Engineering', n:148, color:'#4F7A4E' },
+        { name:'Sales', n:86, color:'#C1683C' },
+        { name:'Customer Success', n:64, color:'#6A7F9E' },
+        { name:'Marketing', n:42, color:'#B7791F' },
+        { name:'Design', n:38, color:'#8F6B9E' },
+        { name:'Other', n:108, color:'#A9B39B' },
+      ],
+      deptTable:[
+        { name:'Engineering', people:148, open:8, attr:3.2, up:false, dv:'0.4' },
+        { name:'Sales', people:86, open:5, attr:6.8, up:true, dv:'1.1' },
+        { name:'Customer Success', people:64, open:4, attr:5.1, up:false, dv:'0.3' },
+        { name:'Marketing', people:42, open:2, attr:4.0, up:false, dv:'0.2' },
+        { name:'Design', people:38, open:2, attr:2.6, up:false, dv:'0.5' },
+        { name:'Finance', people:34, open:1, attr:3.8, up:true, dv:'0.2' },
+      ],
+
+      hiringKpis:[
+        { l:'Open roles', v:'23', i:'briefcase', sub:'across 7 departments' },
+        { l:'Candidates', v:'148', i:'users', sub:'in active pipelines' },
+        { l:'Offers out', v:'6', i:'file-signature', sub:'awaiting response' },
+        { l:'Avg time-to-fill', v:'32d', i:'timer', sub:'−4d vs last quarter' },
+      ],
+      roles:[
+        { id:'r1', role:'Senior Product Manager', dept:'Product', loc:'Remote', stage:'Interview', applicants:34, age:12 },
+        { id:'r2', role:'Backend Engineer', dept:'Engineering', loc:'Bengaluru', stage:'Screening', applicants:57, age:9 },
+        { id:'r3', role:'Enterprise AE', dept:'Sales', loc:'London', stage:'Offer', applicants:21, age:24 },
+        { id:'r4', role:'Design Systems Lead', dept:'Design', loc:'Remote', stage:'Interview', applicants:18, age:16 },
+        { id:'r5', role:'People Partner', dept:'People Ops', loc:'Dubai', stage:'Sourcing', applicants:8, age:5 },
+        { id:'r6', role:'Growth Marketer', dept:'Marketing', loc:'Austin', stage:'Screening', applicants:41, age:19 },
+        { id:'r7', role:'Financial Analyst', dept:'Finance', loc:'Stockholm', stage:'Sourcing', applicants:12, age:3 },
+      ],
+
+      timeoffKpis:[
+        { l:'Out today', v:'7', i:'palmtree', sub:'across 5 departments' },
+        { l:'Upcoming · 7d', v:'14', i:'calendar-days', sub:'approved & scheduled' },
+        { l:'Pending', v:'5', i:'clock', sub:'awaiting a decision' },
+        { l:'Avg balance', v:'11.4', i:'wallet', sub:'vacation days left' },
+      ],
+      leave:[
+        { id:'l1', name:'Aisha Rahman', initials:'AR', color:'#B7791F', dept:'People Ops', type:'Parental', dates:'Jun 30 – Sep 22', days:60, status:'Approved' },
+        { id:'l2', name:'Tomás Herrera', initials:'TH', color:'#8F6B9E', dept:'Marketing', type:'Vacation', dates:'Jul 14 – Jul 18', days:5, status:'Pending' },
+        { id:'l3', name:'Marcus Bergström', initials:'MB', color:'#7A5C4F', dept:'Finance', type:'Sick', dates:'Jul 2 – Jul 3', days:2, status:'Approved' },
+        { id:'l4', name:'Sofia Marchetti', initials:'SM', color:'#6A7F9E', dept:'Sales', type:'Vacation', dates:'Jul 21 – Jul 30', days:8, status:'Pending' },
+        { id:'l5', name:'Hana Kim', initials:'HK', color:'#4F7A4E', dept:'Engineering', type:'Personal', dates:'Jul 9', days:1, status:'Pending' },
+        { id:'l6', name:'Yusuf Demir', initials:'YD', color:'#C1683C', dept:'Sales', type:'Vacation', dates:'Aug 4 – Aug 8', days:5, status:'Declined' },
+        { id:'l7', name:'Clara Nováková', initials:'CN', color:'#8F6B9E', dept:'Design', type:'Vacation', dates:'Jul 28 – Aug 1', days:5, status:'Pending' },
+      ],
+
+      people:[
+        { id:1, name:'Priya Nair', email:'priya.nair@sage.co', dept:'Engineering', title:'Staff Engineer', location:'Bengaluru', status:'Active', start:'2021-03-15', manager:'Hana Kim', initials:'PN', color:'#4F7A4E', notes:'' },
+        { id:2, name:'Daniel Okafor', email:'daniel.okafor@sage.co', dept:'Design', title:'Product Designer', location:'London', status:'Onboarding', start:'2026-06-22', manager:'Clara Nováková', initials:'DO', color:'#C1683C', notes:'' },
+        { id:3, name:'Sofia Marchetti', email:'sofia.marchetti@sage.co', dept:'Sales', title:'Account Executive', location:'Milan', status:'Active', start:'2023-09-04', manager:'Yusuf Demir', initials:'SM', color:'#6A7F9E', notes:'' },
+        { id:4, name:'Aisha Rahman', email:'aisha.rahman@sage.co', dept:'People Ops', title:'HR Business Partner', location:'Dubai', status:'On leave', start:'2020-01-20', manager:'Mara Ruiz', initials:'AR', color:'#B7791F', notes:'On parental leave through Sep.' },
+        { id:5, name:'Marcus Bergström', email:'marcus.b@sage.co', dept:'Finance', title:'Financial Analyst', location:'Stockholm', status:'Active', start:'2022-11-11', manager:'Mara Ruiz', initials:'MB', color:'#7A5C4F', notes:'' },
+        { id:6, name:'Lin Chen', email:'lin.chen@sage.co', dept:'Engineering', title:'Frontend Engineer', location:'Singapore', status:'Onboarding', start:'2026-06-29', manager:'Priya Nair', initials:'LC', color:'#4F7A4E', notes:'' },
+        { id:7, name:'Tomás Herrera', email:'tomas.herrera@sage.co', dept:'Marketing', title:'Growth Marketer', location:'Austin', status:'Active', start:'2024-02-19', manager:'Mara Ruiz', initials:'TH', color:'#8F6B9E', notes:'' },
+        { id:8, name:'Grace Adeyemi', email:'grace.adeyemi@sage.co', dept:'Customer Success', title:'CS Manager', location:'Lagos', status:'Offboarding', start:'2019-07-08', manager:'Mara Ruiz', initials:'GA', color:'#C0492E', notes:'Last day Jul 31.' },
+        { id:9, name:'Hana Kim', email:'hana.kim@sage.co', dept:'Engineering', title:'Engineering Manager', location:'Seoul', status:'Active', start:'2020-05-12', manager:'Mara Ruiz', initials:'HK', color:'#4F7A4E', notes:'' },
+        { id:10, name:'Yusuf Demir', email:'yusuf.demir@sage.co', dept:'Sales', title:'Sales Development Rep', location:'Istanbul', status:'Active', start:'2025-01-15', manager:'Sofia Marchetti', initials:'YD', color:'#C1683C', notes:'' },
+        { id:11, name:'Clara Nováková', email:'clara.novakova@sage.co', dept:'Design', title:'Design Lead', location:'Prague', status:'Active', start:'2021-08-30', manager:'Mara Ruiz', initials:'CN', color:'#8F6B9E', notes:'' },
+        { id:12, name:'Omar Haddad', email:'omar.haddad@sage.co', dept:'Operations', title:'Ops Coordinator', location:'Cairo', status:'Onboarding', start:'2026-06-18', manager:'Mara Ruiz', initials:'OM', color:'#B7791F', notes:'' },
+      ],
+
+      /* ---------- derived ---------- */
+      get roster(){
+        const q=this.search.trim().toLowerCase();
+        let rows=this.people.filter(p=>{
+          const okS = this.statusFilter==='All' || p.status===this.statusFilter;
+          const okD = this.deptFilter==='All departments' || p.dept===this.deptFilter;
+          const okQ = !q || (p.name+p.title+p.dept+p.location+p.email).toLowerCase().includes(q);
+          return okS && okD && okQ;
+        });
+        const k=this.sortKey, dir=this.sortDir;
+        rows.sort((a,b)=> String(a[k]).localeCompare(String(b[k]), undefined, {numeric:true}) * dir);
+        return rows;
+      },
+      get newHires(){ return this.people.filter(p=>p.status==='Onboarding'); },
+      get filteredLeave(){ return this.leave.filter(r=>this.leaveFilter==='All' || r.status===this.leaveFilter); },
+
+      /* ---------- status styling ---------- */
+      chipStyle(s){ const v=this.statusVar[s]; return `color:var(${v}); background:color-mix(in srgb, var(${v}) 14%, transparent); border-color:color-mix(in srgb, var(${v}) 30%, transparent)`; },
+      leaveStyle(s){ const v={ 'Approved':'--pos', 'Pending':'--warn', 'Declined':'--neg' }[s]||'--ink-3'; return `color:var(${v}); background:color-mix(in srgb, var(${v}) 14%, transparent); border-color:color-mix(in srgb, var(${v}) 30%, transparent)`; },
+
+      /* ---------- actions ---------- */
+      sortBy(k){ if(this.sortKey===k) this.sortDir*=-1; else { this.sortKey=k; this.sortDir=1; } },
+      changeStatus(p){ this.ping('Status updated', 'check', `${p.name} → ${p.status}`); this.$nextTick(()=>this.icons()); },
+
+      openEdit(p){ this._drawerRef=p; this.drawer=JSON.parse(JSON.stringify(p)); this.$nextTick(()=>this.icons()); },
+      closeEdit(){ this.drawer=null; this._drawerRef=null; },
+      saveEdit(){ if(this._drawerRef && this.drawer){ Object.assign(this._drawerRef, this.drawer); this.ping('Changes saved', 'check', this.drawer.name); } this.closeEdit(); },
+
+      openNew(){ this.modal=true; this.nw={ name:'', email:'', dept:'Engineering', status:'Onboarding', title:'', location:'' }; this.$nextTick(()=>this.icons()); },
+      createPerson(){
+        const nm=(this.nw.name||'New teammate').trim();
+        const initials=nm.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase()||'NN';
+        const palette=['#4F7A4E','#C1683C','#6A7F9E','#B7791F','#8F6B9E','#7A5C4F'];
+        this.people.unshift({
+          id:++this._newId, name:nm, email:this.nw.email||nm.toLowerCase().replace(/\s+/g,'.')+'@sage.co',
+          dept:this.nw.dept, title:this.nw.title||'—', location:this.nw.location||'Remote',
+          status:this.nw.status, start:'2026-07-01', manager:'Mara Ruiz', initials, color:palette[this._newId%palette.length], notes:''
+        });
+        this.modal=false; this.page='people'; this.statusFilter='All'; this.deptFilter='All departments'; this.search='';
+        this.ping('Added to roster', 'user-check', nm); this.$nextTick(()=>this.icons());
+      },
+
+      approve(r){ r.status='Approved'; this.ping('Request approved', 'check', `${r.name} · ${r.type}`); this.$nextTick(()=>this.icons()); },
+      decline(r){ r.status='Declined'; this.ping('Request declined', 'x-circle', r.name); this.$nextTick(()=>this.icons()); },
+      submitLeave(){
+        this.leave.unshift({ id:'l'+(++this._tid+90), name:this.name, initials:'MR', color:'#C1683C', dept:'People Ops',
+          type:this.reqType, dates:this.reqFrom+' → '+this.reqTo, days:this.reqDays, status:'Pending' });
+        this.ping('Request submitted', 'send', `${this.reqDays} days · ${this.reqType}`); this.reqNote=''; this.$nextTick(()=>this.icons());
+      },
+
+      /* ---------- toasts ---------- */
+      ping(title, icon='check', msg=''){
+        const map={
+          check:'#3F7A4E', send:'#4F7A4E', download:'#4F7A4E', 'user-check':'#3F7A4E',
+          'file-plus':'#4F7A4E', 'git-branch':'#B7791F', 'x-circle':'#C0492E'
+        };
+        const color=map[icon]||'#4F7A4E';
+        const tint='color-mix(in srgb, '+color+' 16%, var(--surface))';
+        const id=++this._tid;
+        this.toasts.push({ id, title, msg, icon, color, tint });
+        this.$nextTick(()=>this.icons());
+        setTimeout(()=>this.dismiss(id), 2600);
+      },
+      dismiss(id){ this.toasts=this.toasts.filter(t=>t.id!==id); },
+
+      /* ---------- navigation & chrome ---------- */
+      go(p){ this.page=p; this.navOpen=false; this.$nextTick(()=>{ this.icons(); if(p==='dashboard') this.renderCharts(); }); },
+      icons(){ if(window.lucide) lucide.createIcons(); },
+      toggleEdition(){ this.dark=!this.dark; document.documentElement.classList.toggle('dark', this.dark);
+        const m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content', this.dark?'#22251C':'#4F7A4E'); },
+
+      boot(){
+        this.$nextTick(()=>{ this.icons(); this.renderCharts(); });
+        new MutationObserver(()=>{ this.$nextTick(()=>{ this.icons(); this.renderCharts(); }); })
+          .observe(document.documentElement,{ attributes:true, attributeFilter:['class'] });
+      },
+
+      /* ---------- charts ---------- */
+      renderCharts(){
+        if(!window.Chart){ setTimeout(()=>this.renderCharts(), 80); return; }
+        const css=getComputedStyle(document.documentElement);
+        const g=n=>css.getPropertyValue(n).trim();
+        const ink3=g('--ink-3'), ink2=g('--ink-2'), line=g('--line'), accent=g('--accent'), clay=g('--clay'), surface=g('--surface');
+
+        Chart.defaults.font.family="'Overpass Mono', monospace";
+        Chart.defaults.font.size=10.5;
+        Chart.defaults.color=ink3;
+
+        const tip={ backgroundColor:g('--ink'), titleColor:surface, bodyColor:g('--surface-2'),
+          padding:10, cornerRadius:8, displayColors:false,
+          titleFont:{ family:"'Schibsted Grotesk', sans-serif", weight:'600', size:12 },
+          bodyFont:{ family:"'Overpass Mono', monospace", size:11 } };
+
+        if(!window._sc) window._sc={};
+        const draw=(id,cfg)=>{ const el=document.getElementById(id); if(!el || el.offsetParent===null) return;
+          if(window._sc[id]) window._sc[id].destroy(); window._sc[id]=new Chart(el.getContext('2d'), cfg); };
+
+        const baseScale=()=>({
+          x:{ grid:{ display:false }, border:{ color:line }, ticks:{ color:ink3, font:{ family:"'Overpass Mono'", size:10 } } },
+          y:{ grid:{ color:line }, border:{ display:false }, ticks:{ color:ink3, font:{ family:"'Overpass Mono'", size:10 } } }
+        });
+
+        /* headcount growth (area) */
+        const full={ labels:['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'],
+          data:[432,438,441,449,455,458,462,466,470,474,479,486] };
+        const use = this.range==='6 months'
+          ? { labels:full.labels.slice(6), data:full.data.slice(6) } : full;
+        const lc=document.getElementById('cLine');
+        let grad=null;
+        if(lc){ const gg=lc.getContext('2d').createLinearGradient(0,0,0,248); gg.addColorStop(0, accent+'44'); gg.addColorStop(1, accent+'03'); grad=gg; }
+        draw('cLine',{ type:'line',
+          data:{ labels:use.labels, datasets:[{ data:use.data, borderColor:accent, backgroundColor:grad, fill:true,
+            tension:.38, borderWidth:2.5, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:accent, pointHoverBorderColor:surface, pointHoverBorderWidth:2 }] },
+          options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:false }, tooltip:{ ...tip, callbacks:{ label:c=>c.parsed.y+' employees' } } },
+            scales:{ ...baseScale(), y:{ ...baseScale().y, min:420, ticks:{ ...baseScale().y.ticks, stepSize:20 } } } } });
+
+        /* hires vs exits (bar) */
+        draw('cBar',{ type:'bar',
+          data:{ labels:['Feb','Mar','Apr','May','Jun','Jul'], datasets:[
+            { label:'Hires', data:[9,11,8,13,10,12], backgroundColor:accent, borderRadius:5, maxBarThickness:16 },
+            { label:'Exits', data:[4,5,3,6,4,5], backgroundColor:clay, borderRadius:5, maxBarThickness:16 } ] },
+          options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ display:false }, tooltip:{ ...tip, callbacks:{ label:c=>' '+c.dataset.label+': '+c.parsed.y } } },
+            scales:{ ...baseScale(), y:{ ...baseScale().y, beginAtZero:true, ticks:{ ...baseScale().y.ticks, stepSize:5 } } } } });
+
+        /* headcount by department (doughnut) */
+        draw('cDonut',{ type:'doughnut',
+          data:{ labels:this.deptMix.map(d=>d.name), datasets:[{ data:this.deptMix.map(d=>d.n),
+            backgroundColor:this.deptMix.map(d=>d.color), borderColor:surface, borderWidth:3, hoverOffset:6 }] },
+          options:{ responsive:true, maintainAspectRatio:false, cutout:'64%',
+            plugins:{ legend:{ display:false }, tooltip:{ ...tip, callbacks:{ label:c=>' '+c.label+': '+c.parsed+' ('+(c.parsed/486*100).toFixed(0)+'%)' } } } } });
+      },
+    };
+  }
+</script>
+</body>
+</html>

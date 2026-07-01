@@ -1,0 +1,1365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#FFFFFF" />
+<title>Tessera — Procurement & inventory console</title>
+<meta name="description" content="Tessera — a modular, tile-driven enterprise design system for procurement and inventory. True-neutral zinc surfaces, a single cobalt accent, a warehouse-mosaic layout, a signature stock + purchase-order status system, BI dashboard, SKU and PO tables, inline edits, edit drawer, and modal. Floor + Nightshift editions." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['"Familjen Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono: ['"Geist Mono"', 'ui-monospace', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* ═══════════════ EDITION TOKENS — FLOOR (light) ═══════════════ */
+  :root {
+    --canvas:#F4F4F5; --surface:#FFFFFF; --surface-2:#FAFAFA; --surface-3:#F4F4F5;
+    --line:#E4E4E7; --line-2:#D4D4D8;
+    --ink:#18181B; --ink-2:#52525B; --ink-3:#6B6B74;
+    --accent:#2563EB; --accent-strong:#1D4ED8; --accent-solid:#2563EB; --accent-soft:#E4ECFD;
+    --ok:#15803D; --warn:#B45309; --crit:#DC2626; --low:#C2410C; --neutral:#52525B;
+    --ok-graph:#16A34A; --warn-graph:#D97706; --crit-graph:#DC2626; --low-graph:#EA580C;
+    --topbar-bg:rgba(255,255,255,.85);
+    --scrim:rgba(24,24,27,.42);
+    --r-card:10px; --r-tile:10px; --r-chip:6px; --r-ctrl:8px;
+    --shadow-card:0 1px 2px rgba(24,24,27,.04), 0 1px 1px rgba(24,24,27,.03);
+    --shadow-pop:0 8px 24px rgba(24,24,27,.10), 0 2px 6px rgba(24,24,27,.06);
+    color-scheme:light;
+  }
+  /* ═══════════════ EDITION TOKENS — NIGHTSHIFT (dark) ═══════════════ */
+  html.dark {
+    --canvas:#09090B; --surface:#18181B; --surface-2:#212124; --surface-3:#27272A;
+    --line:#27272A; --line-2:#3F3F46;
+    --ink:#FAFAFA; --ink-2:#B0B0B8; --ink-3:#8F8F99;
+    --accent:#3B82F6; --accent-strong:#60A5FA; --accent-solid:#2563EB; --accent-soft:#1E2A44;
+    --ok:#22C55E; --warn:#FBBF24; --crit:#F87171; --low:#FB923C; --neutral:#A1A1AA;
+    --ok-graph:#22C55E; --warn-graph:#FBBF24; --crit-graph:#F87171; --low-graph:#FB923C;
+    --topbar-bg:rgba(24,24,27,.82);
+    --scrim:rgba(0,0,0,.6);
+    --shadow-card:0 1px 2px rgba(0,0,0,.4), 0 1px 1px rgba(0,0,0,.3);
+    --shadow-pop:0 12px 34px rgba(0,0,0,.6), 0 2px 8px rgba(0,0,0,.5);
+    color-scheme:dark;
+  }
+
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; }
+  body {
+    background:var(--canvas); color:var(--ink);
+    font-family:'Familjen Grotesk', ui-sans-serif, system-ui, sans-serif;
+    font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased;
+  }
+  [x-cloak] { display:none !important; }
+  .mono { font-family:'Geist Mono', ui-monospace, monospace; }
+  .tnum { font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1; }
+  ::selection { background:var(--accent-soft); color:var(--ink); }
+
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb { background:var(--line-2); border-radius:8px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+
+  a:focus-visible, button:focus-visible, select:focus-visible,
+  input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline:2px solid var(--accent); outline-offset:2px; border-radius:5px;
+  }
+
+  /* ── surfaces & chrome ── */
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--r-card); box-shadow:var(--shadow-card); }
+  .sidebar { background:var(--surface); border-right:1px solid var(--line-2); }
+  .topbar { background:var(--topbar-bg); backdrop-filter:blur(10px); border-bottom:1px solid var(--line-2); }
+
+  .lbl { font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); }
+
+  /* mosaic tile texture — the Tessera signature */
+  .mosaic {
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:22px 22px;
+    background-position:-1px -1px;
+  }
+
+  /* ── nav ── */
+  .navlink {
+    display:flex; align-items:center; gap:12px; height:44px; padding:0 12px;
+    color:var(--ink-2); border-radius:var(--r-ctrl); cursor:pointer; font-weight:500;
+    transition:background .12s ease, color .12s ease;
+  }
+  .navlink:hover { background:var(--surface-2); color:var(--ink); }
+  .navlink.on { background:var(--accent-soft); color:var(--accent-strong); font-weight:600; }
+  .navlink.on i { color:var(--accent-strong); }
+
+  /* ── buttons ── */
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; height:40px; padding:0 15px;
+         border-radius:var(--r-ctrl); font-weight:600; font-size:14px; border:1px solid transparent; cursor:pointer;
+         transition:background .12s, border-color .12s, transform .06s; white-space:nowrap; }
+  .btn:active { transform:scale(.98); }
+  .btn-primary { background:var(--accent-solid); color:#fff; }
+  .btn-primary:hover { filter:brightness(1.08); }
+  .btn-outline { background:transparent; color:var(--ink); border-color:var(--line-2); }
+  .btn-outline:hover { background:var(--surface-2); }
+  .btn-ghost { background:var(--surface-2); color:var(--ink); border-color:var(--line); }
+  .btn-ghost:hover { background:var(--surface-3); }
+  .btn-sm { height:34px; padding:0 12px; font-size:13px; }
+  .btn-danger { background:transparent; color:var(--crit); border-color:var(--line-2); }
+  .btn-danger:hover { background:color-mix(in srgb, var(--crit) 10%, transparent); }
+  .iconbtn { position:relative; display:grid; place-items:center; width:40px; height:40px; border-radius:var(--r-ctrl);
+             color:var(--ink-2); cursor:pointer; border:1px solid var(--line-2); background:transparent; transition:background .12s, color .12s; }
+  .iconbtn:hover { background:var(--surface-2); color:var(--ink); }
+  .iconbtn.bare { border-color:transparent; }
+
+  /* ── inputs ── */
+  .field, .isel, textarea.field {
+    height:40px; width:100%; background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-ctrl);
+    padding:0 12px; font-size:14px; color:var(--ink); font-family:inherit;
+  }
+  textarea.field { height:auto; padding:10px 12px; resize:vertical; line-height:1.5; }
+  .field::placeholder, textarea.field::placeholder { color:var(--ink-3); }
+  .field:focus, .isel:focus, textarea.field:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .isel, .status-select {
+    -webkit-appearance:none; appearance:none; cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 10px center; padding-right:32px;
+  }
+  .status-select { height:34px; border:1px solid var(--line-2); border-radius:var(--r-ctrl); background-color:transparent;
+                   font-size:13px; font-weight:600; font-family:inherit; padding-left:10px; }
+
+  /* ── segmented control ── */
+  .seg { display:inline-flex; padding:3px; gap:2px; border-radius:var(--r-ctrl); background:var(--surface-2); border:1px solid var(--line); }
+  .seg button { height:30px; padding:0 12px; font-size:13px; font-weight:500; color:var(--ink-2); background:transparent;
+                border:0; border-radius:6px; cursor:pointer; transition:color .12s, background .12s; }
+  .seg button:hover { color:var(--ink); }
+  .seg button[aria-pressed="true"] { background:var(--surface); color:var(--ink); font-weight:600; box-shadow:var(--shadow-card); }
+  html.dark .seg button[aria-pressed="true"] { background:var(--surface-3); }
+
+  /* ── filter chips ── */
+  .chip { display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 12px; border:1px solid var(--line-2);
+          color:var(--ink-2); border-radius:var(--r-chip); font-size:13px; font-weight:500; cursor:pointer; white-space:nowrap;
+          background:var(--surface); transition:background .12s, color .12s, border-color .12s; }
+  .chip:hover { background:var(--surface-2); color:var(--ink); }
+  .chip[aria-pressed="true"] { background:var(--ink); border-color:var(--ink); color:var(--surface); }
+
+  /* ── status badge (color + label, never color alone) ── */
+  .badge { display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 9px; border-radius:99px;
+           font-size:12px; font-weight:600; letter-spacing:.01em; white-space:nowrap; }
+  .badge .dot { width:6px; height:6px; border-radius:50%; background:currentColor; flex:none; }
+
+  /* ── toggle / switch ── */
+  .tg { width:42px; height:24px; border-radius:99px; background:var(--line-2); position:relative; cursor:pointer; transition:background .16s; flex:none; border:0; }
+  .tg[aria-checked="true"] { background:var(--accent-solid); }
+  .tg b { position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:left .16s; box-shadow:0 1px 2px rgba(0,0,0,.35); }
+  .tg[aria-checked="true"] b { left:21px; }
+
+  /* ── stepper ── */
+  .step { display:grid; place-items:center; width:30px; height:30px; border-radius:7px; border:1px solid var(--line-2);
+          background:var(--surface-2); color:var(--ink-2); cursor:pointer; flex:none; transition:background .1s, color .1s; }
+  .step:hover { background:var(--surface-3); color:var(--ink); }
+  .step:active { transform:scale(.94); }
+  .step:disabled { opacity:.4; cursor:not-allowed; }
+
+  /* ── table ── */
+  table.tbl { width:100%; border-collapse:collapse; }
+  table.tbl th { text-align:left; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3);
+                 font-weight:600; font-family:'Geist Mono', monospace; padding:12px 14px; border-bottom:1px solid var(--line);
+                 white-space:nowrap; background:var(--surface); position:sticky; top:0; z-index:1; }
+  table.tbl th.sortable { cursor:pointer; user-select:none; }
+  table.tbl th.sortable:hover { color:var(--ink-2); }
+  table.tbl td { padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  table.tbl tbody tr { transition:background .1s ease; }
+  table.tbl tbody tr:nth-child(even) td { background:var(--surface-2); }
+  table.tbl tbody tr:hover td { background:var(--accent-soft); }
+  table.tbl tbody tr:last-child td { border-bottom:0; }
+  .r { text-align:right; }
+
+  /* inline-edit affordance */
+  .ie { border:1px dashed transparent; border-radius:6px; padding:1px 5px; margin:-1px -5px; cursor:text; transition:border-color .1s, background .1s; }
+  .ie:hover { border-color:var(--line-2); background:var(--surface); }
+
+  /* ── overlays ── */
+  .scrim { position:fixed; inset:0; background:var(--scrim); z-index:50; }
+  .drawer { position:fixed; top:0; right:0; bottom:0; width:min(460px,94vw); background:var(--surface); z-index:60;
+            box-shadow:var(--shadow-pop); display:flex; flex-direction:column; border-left:1px solid var(--line-2); }
+  .ndrawer { position:fixed; top:0; left:0; bottom:0; width:min(300px,82vw); background:var(--surface); z-index:60;
+             box-shadow:var(--shadow-pop); display:flex; flex-direction:column; border-right:1px solid var(--line-2); }
+  .modalwrap { position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; padding:16px; }
+  .modal-card { width:100%; max-width:520px; background:var(--surface); border:1px solid var(--line-2); border-radius:14px;
+                box-shadow:var(--shadow-pop); max-height:92vh; display:flex; flex-direction:column; }
+
+  /* toast */
+  .toast-enter { animation:toastIn .22s cubic-bezier(.2,.7,.3,1); }
+  @keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+  /* reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
+  }
+</style>
+</head>
+
+<body x-data="tessera()" x-init="boot()" x-cloak>
+<div class="flex h-[100dvh] overflow-hidden">
+
+  <!-- ═══════════════ MOBILE NAV DRAWER ═══════════════ -->
+  <template x-if="navOpen">
+    <div class="lg:hidden">
+      <div class="scrim" @click="navOpen=false" x-transition.opacity></div>
+      <aside class="ndrawer" x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
+             @keydown.escape.window="navOpen=false">
+        <div class="h-16 flex items-center justify-between px-4 flex-none" style="border-bottom:1px solid var(--line)">
+          <div class="flex items-center gap-2.5" x-html="logoMarkup()"></div>
+          <button class="iconbtn bare" @click="navOpen=false" aria-label="Close menu"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <nav class="flex-1 min-h-0 overflow-y-auto p-3">
+          <div class="lbl px-3 pt-1 pb-2">Operations</div>
+          <div class="flex flex-col gap-1">
+            <template x-for="n in nav" :key="n.id">
+              <button class="navlink" :class="page===n.id&&'on'" @click="go(n.id); navOpen=false" :aria-current="page===n.id?'page':false">
+                <i :data-lucide="n.icon" class="w-[18px] h-[18px] flex-none"></i>
+                <span x-text="n.label"></span>
+                <span x-show="n.badge" class="ml-auto badge tnum" style="color:var(--accent-strong); background:var(--accent-soft)" x-text="n.badge"></span>
+              </button>
+            </template>
+          </div>
+        </nav>
+        <div class="flex-none p-3" style="border-top:1px solid var(--line)" x-html="profileMarkup()"></div>
+      </aside>
+    </div>
+  </template>
+
+  <!-- ═══════════════ DESKTOP SIDEBAR ═══════════════ -->
+  <aside class="sidebar hidden lg:flex flex-col flex-none w-64 h-full">
+    <div class="h-16 flex items-center px-5 flex-none" style="border-bottom:1px solid var(--line)">
+      <div class="flex items-center gap-2.5" x-html="logoMarkup()"></div>
+    </div>
+    <nav class="flex-1 min-h-0 overflow-y-auto p-3">
+      <div class="lbl px-3 pt-1 pb-2">Operations</div>
+      <div class="flex flex-col gap-1">
+        <template x-for="n in nav" :key="n.id">
+          <button class="navlink" :class="page===n.id&&'on'" @click="go(n.id)" :aria-current="page===n.id?'page':false">
+            <i :data-lucide="n.icon" class="w-[18px] h-[18px] flex-none"></i>
+            <span x-text="n.label"></span>
+            <span x-show="n.badge" class="ml-auto badge tnum" style="color:var(--accent-strong); background:var(--accent-soft)" x-text="n.badge"></span>
+          </button>
+        </template>
+      </div>
+    </nav>
+    <div class="flex-none p-3" style="border-top:1px solid var(--line)" x-html="profileMarkup()"></div>
+  </aside>
+
+  <!-- ═══════════════ MAIN COLUMN ═══════════════ -->
+  <div class="flex-1 min-w-0 flex flex-col h-full">
+
+    <!-- topbar -->
+    <header class="topbar flex-none z-30 h-16 flex items-center gap-2 sm:gap-3 px-3 sm:px-5">
+      <button class="iconbtn bare lg:hidden" @click="navOpen=true" aria-label="Open menu"><i data-lucide="menu" class="w-5 h-5"></i></button>
+
+      <!-- warehouse switcher -->
+      <label class="relative min-w-0">
+        <span class="sr-only">Active warehouse</span>
+        <i data-lucide="warehouse" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color:var(--ink-3)"></i>
+        <select x-model="warehouse" @change="setWarehouse(warehouse)"
+                class="isel !w-auto !h-10 !pl-9 font-semibold max-w-[180px] sm:max-w-none" aria-label="Switch warehouse">
+          <template x-for="w in warehouses" :key="w"><option :value="w" x-text="w"></option></template>
+        </select>
+      </label>
+      <span class="hidden md:inline-flex items-center gap-1.5 text-xs" style="color:var(--ink-3)">
+        <span class="w-1.5 h-1.5 rounded-full" style="background:var(--ok-graph)"></span>updated 4 min ago
+      </span>
+
+      <div class="ml-auto flex items-center gap-2 sm:gap-3">
+        <label class="relative hidden sm:block">
+          <span class="sr-only">Search everything</span>
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color:var(--ink-3)"></i>
+          <input type="search" x-model="globalQuery" @keydown.enter="runGlobalSearch()"
+                 placeholder="Search SKU, item, supplier…"
+                 class="field !w-44 md:!w-64 !pl-9" />
+        </label>
+        <button class="iconbtn sm:hidden" @click="go('inventory')" aria-label="Search inventory"><i data-lucide="search" class="w-4 h-4"></i></button>
+
+        <button class="iconbtn" @click="toggleEdition()" :aria-label="dark?'Switch to Floor edition':'Switch to Nightshift edition'">
+          <i data-lucide="sun" class="w-4 h-4" x-show="dark" x-cloak></i>
+          <i data-lucide="moon" class="w-4 h-4" x-show="!dark"></i>
+        </button>
+
+        <button class="iconbtn" @click="go('orders')" aria-label="Notifications">
+          <i data-lucide="bell" class="w-4 h-4"></i>
+          <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style="background:var(--low)"></span>
+        </button>
+
+        <button class="flex items-center gap-2 pl-1 pr-2.5 h-10 rounded-[8px]" style="border:1px solid var(--line-2)" @click="go('settings')" aria-label="Account settings">
+          <span class="grid place-items-center w-7 h-7 rounded-md text-xs font-semibold" style="background:var(--accent-solid); color:#fff">RM</span>
+          <span class="hidden md:block text-sm font-medium" style="color:var(--ink)" x-text="userInitialsName()"></span>
+          <i data-lucide="chevron-down" class="hidden md:block w-4 h-4" style="color:var(--ink-3)"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- scroll region -->
+    <main class="flex-1 min-h-0 overflow-y-auto">
+      <div class="p-4 sm:p-6 max-w-[1440px] w-full mx-auto">
+
+        <!-- page heading -->
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+          <div>
+            <div class="lbl mb-1" x-text="meta[page].kicker"></div>
+            <h1 class="text-[22px] sm:text-[26px] font-bold tracking-tight leading-none" style="color:var(--ink)" x-text="meta[page].title"></h1>
+          </div>
+          <div class="flex items-center gap-2">
+            <template x-if="page==='inventory' || page==='orders'">
+              <button class="btn btn-outline btn-sm" @click="exportToast()"><i data-lucide="download" class="w-4 h-4"></i><span class="hidden sm:inline">Export</span></button>
+            </template>
+            <template x-if="page==='inventory'">
+              <button class="btn btn-primary btn-sm" @click="openNewSku()"><i data-lucide="plus" class="w-4 h-4"></i>Add SKU</button>
+            </template>
+            <template x-if="page==='orders' || page==='dashboard'">
+              <button class="btn btn-primary btn-sm" @click="openNewPO()"><i data-lucide="plus" class="w-4 h-4"></i>New PO</button>
+            </template>
+            <template x-if="page==='suppliers'">
+              <button class="btn btn-primary btn-sm" @click="ping('Supplier invite sent','mail')"><i data-lucide="plus" class="w-4 h-4"></i><span class="hidden sm:inline">Invite supplier</span></button>
+            </template>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             PAGE · DASHBOARD (BI overview — the warehouse mosaic)
+             ═══════════════════════════════════════════════════════════════ -->
+        <div x-show="page==='dashboard'">
+          <section aria-label="Warehouse overview" class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+
+            <!-- HERO tile: inventory value + turnover (2×2) -->
+            <div class="card p-4 sm:p-5 flex flex-col col-span-2 lg:row-span-2">
+              <div class="flex items-start justify-between gap-3 mb-4">
+                <div>
+                  <h2 class="text-sm font-semibold" style="color:var(--ink)">Inventory value &amp; turnover</h2>
+                  <p class="text-xs mt-0.5" style="color:var(--ink-3)">Value on hand vs. weekly turns · <span x-text="range"></span></p>
+                </div>
+                <div class="seg shrink-0" role="group" aria-label="Time range">
+                  <template x-for="r in ranges" :key="r">
+                    <button :aria-pressed="range===r" @click="setRange(r)" x-text="r"></button>
+                  </template>
+                </div>
+              </div>
+
+              <div class="relative rounded-lg overflow-hidden mb-4" style="border:1px solid var(--line); background:var(--surface-2)">
+                <div class="absolute inset-0 mosaic opacity-60" aria-hidden="true"></div>
+                <div class="relative p-4 sm:p-5 flex items-end justify-between gap-3">
+                  <div>
+                    <div class="lbl">Inventory value</div>
+                    <div class="text-[34px] sm:text-[40px] leading-none font-semibold tnum mt-1.5 mono" style="color:var(--ink)">$8.24M</div>
+                    <div class="flex items-center gap-2 mt-2.5">
+                      <span class="inline-flex items-center gap-1 text-xs font-semibold tnum" style="color:var(--ok)">
+                        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>+0.9%
+                      </span>
+                      <span class="text-xs" style="color:var(--ink-3)">vs last week</span>
+                    </div>
+                  </div>
+                  <div class="hidden sm:flex flex-col items-end gap-1.5 text-xs" style="color:var(--ink-2)">
+                    <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background:var(--accent)"></span>Value</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background:var(--ink-3)"></span>Turns</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-auto" style="height:220px"><canvas id="chartArea"></canvas></div>
+            </div>
+
+            <!-- small tile: SKUs in stock -->
+            <template x-for="k in kpis" :key="k.label">
+              <div class="card p-4 sm:p-5 flex flex-col col-span-1">
+                <div class="flex items-center justify-between">
+                  <span class="lbl" x-text="k.label"></span>
+                  <span class="grid place-items-center w-7 h-7 rounded-md" style="background:var(--surface-2); border:1px solid var(--line)">
+                    <i :data-lucide="k.icon" class="w-4 h-4" :style="`color:${k.iconColor}`"></i>
+                  </span>
+                </div>
+                <div class="text-[26px] sm:text-[28px] leading-none font-semibold tnum mono mt-3" :style="`color:${k.valueColor||'var(--ink)'}`" x-text="k.value"></div>
+                <div class="flex items-center gap-2 mt-auto pt-3">
+                  <span x-html="sparkline(k.spark, k.trendColor)"></span>
+                  <span class="inline-flex items-center gap-1 text-xs font-semibold tnum" :style="`color:${k.deltaColor}`">
+                    <i :data-lucide="k.deltaIcon" class="w-3.5 h-3.5"></i><span x-text="k.delta"></span>
+                  </span>
+                </div>
+              </div>
+            </template>
+
+            <!-- medium tile: stock by warehouse (bar) -->
+            <div class="card p-4 sm:p-5 col-span-2">
+              <div class="mb-4">
+                <h2 class="text-sm font-semibold" style="color:var(--ink)">Stock on hand by warehouse</h2>
+                <p class="text-xs mt-0.5" style="color:var(--ink-3)">Units in thousands · current snapshot</p>
+              </div>
+              <div style="height:200px"><canvas id="chartBar"></canvas></div>
+            </div>
+
+            <!-- alert tile (2 wide) -->
+            <div class="card p-4 sm:p-5 col-span-2 flex flex-col">
+              <div class="flex items-start gap-4 sm:gap-5">
+                <div class="shrink-0">
+                  <div class="flex items-center gap-2">
+                    <span class="grid place-items-center w-7 h-7 rounded-md" style="background:var(--surface-2); border:1px solid var(--line)">
+                      <i data-lucide="triangle-alert" class="w-4 h-4" style="color:var(--crit)"></i>
+                    </span>
+                    <span class="lbl">Needs attention</span>
+                  </div>
+                  <div class="text-[34px] leading-none font-semibold tnum mono mt-2.5" style="color:var(--crit)">14</div>
+                  <div class="text-xs mt-1.5" style="color:var(--ink-3)">stockouts today</div>
+                </div>
+                <ul class="flex-1 min-w-0 space-y-2.5 text-sm pl-4 sm:pl-5" style="border-left:1px solid var(--line)">
+                  <li class="flex items-start gap-3">
+                    <span class="grid place-items-center w-7 h-7 rounded-md shrink-0 mt-0.5" style="background:var(--surface-2); border:1px solid var(--line)"><i data-lucide="triangle-alert" class="w-4 h-4" style="color:var(--crit)"></i></span>
+                    <div class="min-w-0"><div class="font-medium" style="color:var(--ink)">14 SKUs stocked out</div><div class="text-xs" style="color:var(--ink-3)">Nitrile gloves, ESD straps +12</div></div>
+                  </li>
+                  <li class="flex items-start gap-3">
+                    <span class="grid place-items-center w-7 h-7 rounded-md shrink-0 mt-0.5" style="background:var(--surface-2); border:1px solid var(--line)"><i data-lucide="trending-down" class="w-4 h-4" style="color:var(--low)"></i></span>
+                    <div class="min-w-0"><div class="font-medium" style="color:var(--ink)">9 SKUs below reorder</div><div class="text-xs" style="color:var(--ink-3)">Li-Ion cell, Cat6 patch +7</div></div>
+                  </li>
+                  <li class="flex items-start gap-3">
+                    <span class="grid place-items-center w-7 h-7 rounded-md shrink-0 mt-0.5" style="background:var(--surface-2); border:1px solid var(--line)"><i data-lucide="clock" class="w-4 h-4" style="color:var(--warn)"></i></span>
+                    <div class="min-w-0"><div class="font-medium" style="color:var(--ink)">6 POs delayed</div><div class="text-xs" style="color:var(--ink-3)">Murata Direct running 8 days late</div></div>
+                  </li>
+                </ul>
+              </div>
+              <button class="btn btn-ghost btn-sm mt-4 w-full" @click="go('inventory'); setStockFilter('out')">
+                View replenishment queue <i data-lucide="arrow-right" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+            <!-- medium tile: PO status (doughnut) -->
+            <div class="card p-4 sm:p-5 col-span-2">
+              <div class="mb-4">
+                <h2 class="text-sm font-semibold" style="color:var(--ink)">Purchase-order status</h2>
+                <p class="text-xs mt-0.5" style="color:var(--ink-3)"><span class="tnum" x-text="orders.length"></span> open across suppliers</p>
+              </div>
+              <div class="flex items-center gap-4 sm:gap-6">
+                <div class="shrink-0" style="width:150px; height:150px"><canvas id="chartDoughnut"></canvas></div>
+                <div class="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                  <template x-for="p in poDoughnut" :key="p.label">
+                    <div class="flex items-center gap-2">
+                      <span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="`background:${p.color}`"></span>
+                      <span style="color:var(--ink-2)" x-text="p.label"></span>
+                      <span class="ml-auto mono tnum" style="color:var(--ink)" x-text="p.value"></span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- dashboard table -->
+          <section class="card overflow-hidden mt-5">
+            <div class="p-4 sm:p-5 flex items-center gap-3" style="border-bottom:1px solid var(--line)">
+              <div class="mr-auto">
+                <h2 class="text-sm font-semibold" style="color:var(--ink)">Replenishment watchlist</h2>
+                <p class="text-xs mt-0.5" style="color:var(--ink-3)">Lowest cover first · tap a row to edit</p>
+              </div>
+              <button class="btn btn-outline btn-sm" @click="go('inventory')">All inventory <i data-lucide="arrow-right" class="w-4 h-4"></i></button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="tbl min-w-[720px]">
+                <thead><tr>
+                  <th>SKU</th><th>Item</th><th>Supplier</th><th class="r">On hand</th><th class="r">Reorder</th><th>Stock state</th>
+                </tr></thead>
+                <tbody>
+                  <template x-for="row in watchlist" :key="row.sku">
+                    <tr @click="openSku(row)" class="cursor-pointer">
+                      <td class="mono text-[13px]" style="color:var(--ink-2)" x-text="row.sku"></td>
+                      <td class="font-medium whitespace-nowrap" style="color:var(--ink)" x-text="row.item"></td>
+                      <td class="whitespace-nowrap" style="color:var(--ink-2)" x-text="row.supplier"></td>
+                      <td class="r mono tnum text-[13px]" :style="`color:${row.onHand<=row.reorder?'var(--low)':'var(--ink)'}; font-weight:${row.onHand<=row.reorder?600:400}`" x-text="row.onHand.toLocaleString()"></td>
+                      <td class="r mono tnum text-[13px]" style="color:var(--ink-3)" x-text="row.reorder.toLocaleString()"></td>
+                      <td><span class="badge" :style="stockBadge(row.status)"><span class="dot"></span><span x-text="stockMeta[row.status].label"></span></span></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             PAGE · INVENTORY (full SKU table — stepper + inline edits + sort)
+             ═══════════════════════════════════════════════════════════════ -->
+        <div x-show="page==='inventory'" x-cloak>
+          <section class="card overflow-hidden">
+            <div class="p-4 sm:p-5 flex flex-wrap items-center gap-3" style="border-bottom:1px solid var(--line)">
+              <div class="mr-auto">
+                <h2 class="text-sm font-semibold" style="color:var(--ink)">SKUs &amp; stock levels</h2>
+                <p class="text-xs mt-0.5" style="color:var(--ink-3)"><span class="tnum" x-text="filteredSkus.length"></span> of <span class="tnum" x-text="skus.length"></span> items · adjust on-hand with the stepper</p>
+              </div>
+              <label class="relative order-last w-full sm:order-none sm:w-56">
+                <span class="sr-only">Filter SKUs</span>
+                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color:var(--ink-3)"></i>
+                <input type="search" x-model="skuQuery" placeholder="Filter these SKUs…" class="field !h-9 !pl-9" />
+              </label>
+              <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by stock state">
+                <template x-for="f in stockFilters" :key="f.key">
+                  <button class="chip" :aria-pressed="stockFilter===f.key" @click="stockFilter=f.key">
+                    <span x-show="f.dot" class="w-2 h-2 rounded-full" :style="`background:${f.dot}`"></span>
+                    <span x-text="f.label"></span>
+                    <span class="tnum opacity-60" x-text="'· '+stockCount(f.key)"></span>
+                  </button>
+                </template>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="tbl min-w-[960px]">
+                <thead><tr>
+                  <th class="sortable" @click="sortBy('sku')" :aria-sort="ariaSort('sku')">SKU <span x-html="sortArrow('sku')"></span></th>
+                  <th class="sortable" @click="sortBy('item')" :aria-sort="ariaSort('item')">Item <span x-html="sortArrow('item')"></span></th>
+                  <th>Category</th>
+                  <th>Supplier</th>
+                  <th class="r sortable" @click="sortBy('onHand')" :aria-sort="ariaSort('onHand')">On hand <span x-html="sortArrow('onHand')"></span></th>
+                  <th class="r">Reorder</th>
+                  <th>Stock state</th>
+                </tr></thead>
+                <tbody>
+                  <template x-for="row in filteredSkus" :key="row.sku">
+                    <tr>
+                      <td class="mono text-[13px]" style="color:var(--ink-2)"><button class="hover:underline" style="color:var(--accent-strong)" @click="openSku(row)" x-text="row.sku"></button></td>
+                      <td class="font-medium whitespace-nowrap" style="color:var(--ink)" x-text="row.item"></td>
+                      <td class="whitespace-nowrap" style="color:var(--ink-2)" x-text="row.category"></td>
+                      <td class="whitespace-nowrap" style="color:var(--ink-2)" x-text="row.supplier"></td>
+                      <!-- inline-editable cell: stepper -->
+                      <td class="r">
+                        <div class="inline-flex items-center gap-1.5">
+                          <button class="step" @click="stepStock(row,-1)" :disabled="row.onHand<=0" :aria-label="'Decrease '+row.item"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                          <input class="field !h-8 !w-[74px] text-right mono tnum text-[13px] !px-2" type="text" inputmode="numeric"
+                                 :value="row.onHand.toLocaleString()" @change="setStock(row, $event.target.value)" :aria-label="'On hand for '+row.item" />
+                          <button class="step" @click="stepStock(row,1)" :aria-label="'Increase '+row.item"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+                        </div>
+                      </td>
+                      <!-- inline click-to-edit: reorder point -->
+                      <td class="r mono tnum text-[13px]" style="color:var(--ink-3)">
+                        <template x-if="editReorder!==row.sku">
+                          <button class="ie" @click="startReorder(row)" :aria-label="'Edit reorder point for '+row.item" x-text="row.reorder.toLocaleString()"></button>
+                        </template>
+                        <template x-if="editReorder===row.sku">
+                          <input class="field !h-8 !w-[74px] text-right mono tnum text-[13px] !px-2" type="text" inputmode="numeric" x-ref="ro"
+                                 :value="row.reorder" @keydown.enter="saveReorder(row,$event.target.value)" @keydown.escape="editReorder=null"
+                                 @blur="saveReorder(row,$event.target.value)" x-init="$nextTick(()=>$refs.ro&&$refs.ro.focus())" />
+                        </template>
+                      </td>
+                      <!-- inline-editable cell: status select -->
+                      <td>
+                        <div class="inline-flex items-center gap-2">
+                          <span class="w-2 h-2 rounded-full shrink-0" :style="`background:${stockMeta[row.status].color}`"></span>
+                          <select class="status-select" x-model="row.status" @change="onStatusChange(row)"
+                                  :style="`color:${stockMeta[row.status].color}`" :aria-label="'Stock state for '+row.item">
+                            <option value="in">In stock</option>
+                            <option value="low">Low</option>
+                            <option value="back">Backordered</option>
+                            <option value="out">Out of stock</option>
+                          </select>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                  <tr x-show="filteredSkus.length===0"><td colspan="7" class="text-center py-12" style="color:var(--ink-3)">
+                    <i data-lucide="package-search" class="w-8 h-8 mx-auto mb-2 opacity-60"></i>
+                    <div class="font-medium" style="color:var(--ink-2)">No SKUs match this filter.</div>
+                    <button class="btn btn-outline btn-sm mt-3" @click="stockFilter='all'; skuQuery=''">Reset filters</button>
+                  </td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             PAGE · PURCHASE ORDERS (PO table + PO status system + drawer)
+             ═══════════════════════════════════════════════════════════════ -->
+        <div x-show="page==='orders'" x-cloak>
+          <section class="card overflow-hidden">
+            <div class="p-4 sm:p-5 flex flex-wrap items-center gap-3" style="border-bottom:1px solid var(--line)">
+              <div class="mr-auto">
+                <h2 class="text-sm font-semibold" style="color:var(--ink)">Purchase orders</h2>
+                <p class="text-xs mt-0.5" style="color:var(--ink-3)"><span class="tnum" x-text="filteredOrders.length"></span> of <span class="tnum" x-text="orders.length"></span> orders · tap a row to open</p>
+              </div>
+              <label class="relative order-last w-full sm:order-none sm:w-52">
+                <span class="sr-only">Filter purchase orders</span>
+                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color:var(--ink-3)"></i>
+                <input type="search" x-model="poQuery" placeholder="Filter POs…" class="field !h-9 !pl-9" />
+              </label>
+              <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by PO state">
+                <template x-for="f in poFilters" :key="f.key">
+                  <button class="chip" :aria-pressed="poFilter===f.key" @click="poFilter=f.key">
+                    <span x-show="f.dot" class="w-2 h-2 rounded-full" :style="`background:${f.dot}`"></span>
+                    <span x-text="f.label"></span>
+                    <span class="tnum opacity-60" x-text="'· '+poCount(f.key)"></span>
+                  </button>
+                </template>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="tbl min-w-[920px]">
+                <thead><tr>
+                  <th>PO</th><th>Supplier</th><th>Lines</th><th class="r">Value</th><th>Expected</th><th>PO state</th><th class="r">Edit</th>
+                </tr></thead>
+                <tbody>
+                  <template x-for="po in filteredOrders" :key="po.id">
+                    <tr @click="openPO(po)" class="cursor-pointer">
+                      <td class="mono text-[13px]" style="color:var(--accent-strong)" x-text="po.id"></td>
+                      <td class="font-medium whitespace-nowrap" style="color:var(--ink)" x-text="po.supplier"></td>
+                      <td class="tnum mono text-[13px]" style="color:var(--ink-2)" x-text="po.lines"></td>
+                      <td class="r mono tnum text-[13px]" style="color:var(--ink)" x-text="'$'+po.value.toLocaleString()"></td>
+                      <td class="whitespace-nowrap mono text-[13px]" style="color:var(--ink-2)" x-text="po.eta"></td>
+                      <td @click.stop>
+                        <div class="inline-flex items-center gap-2">
+                          <span class="w-2 h-2 rounded-full shrink-0" :style="`background:${poMeta[po.status].color}`"></span>
+                          <select class="status-select" x-model="po.status" @change="onPoStatusChange(po)"
+                                  :style="`color:${poMeta[po.status].color}`" :aria-label="'PO state for '+po.id">
+                            <option value="draft">Draft</option>
+                            <option value="sent">Sent</option>
+                            <option value="partial">Partial</option>
+                            <option value="received">Received</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        </div>
+                      </td>
+                      <td class="r" @click.stop><button class="iconbtn bare !w-8 !h-8 ml-auto" @click="openPO(po)" :aria-label="'Edit '+po.id"><i data-lucide="pencil" class="w-4 h-4"></i></button></td>
+                    </tr>
+                  </template>
+                  <tr x-show="filteredOrders.length===0"><td colspan="7" class="text-center py-12" style="color:var(--ink-3)">
+                    <i data-lucide="file-search" class="w-8 h-8 mx-auto mb-2 opacity-60"></i>
+                    <div class="font-medium" style="color:var(--ink-2)">No purchase orders match.</div>
+                    <button class="btn btn-outline btn-sm mt-3" @click="poFilter='all'; poQuery=''">Reset filters</button>
+                  </td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             PAGE · SUPPLIERS (card mosaic + table)
+             ═══════════════════════════════════════════════════════════════ -->
+        <div x-show="page==='suppliers'" x-cloak>
+          <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
+            <template x-for="s in suppliers" :key="s.name">
+              <div class="card p-4 sm:p-5 flex flex-col">
+                <div class="flex items-start gap-3">
+                  <span class="grid place-items-center w-10 h-10 rounded-md text-sm font-semibold shrink-0" style="background:var(--surface-2); border:1px solid var(--line); color:var(--accent-strong)" x-text="s.initials"></span>
+                  <div class="min-w-0">
+                    <div class="font-semibold truncate" style="color:var(--ink)" x-text="s.name"></div>
+                    <div class="text-xs truncate" style="color:var(--ink-3)" x-text="s.category"></div>
+                  </div>
+                  <span class="ml-auto badge" :style="s.onTime>=97?stockBadge('in'):s.onTime>=92?stockBadge('low'):stockBadge('back')">
+                    <span class="dot"></span><span class="tnum" x-text="s.onTime+'% on-time'"></span>
+                  </span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mt-4">
+                  <div class="rounded-md p-2.5" style="background:var(--surface-2); border:1px solid var(--line)">
+                    <div class="lbl" style="font-size:10px">Lead time</div>
+                    <div class="mono tnum text-lg font-semibold mt-0.5" style="color:var(--ink)" x-text="s.lead+'d'"></div>
+                  </div>
+                  <div class="rounded-md p-2.5" style="background:var(--surface-2); border:1px solid var(--line)">
+                    <div class="lbl" style="font-size:10px">Open POs</div>
+                    <div class="mono tnum text-lg font-semibold mt-0.5" style="color:var(--ink)" x-text="s.openPos"></div>
+                  </div>
+                  <div class="rounded-md p-2.5" style="background:var(--surface-2); border:1px solid var(--line)">
+                    <div class="lbl" style="font-size:10px">YTD spend</div>
+                    <div class="mono tnum text-lg font-semibold mt-0.5" style="color:var(--ink)" x-text="s.spend"></div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1 mt-4" :aria-label="s.rating+' of 5 rating'">
+                  <template x-for="i in [1,2,3,4,5]" :key="i">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" stroke-width="1.8" stroke-linejoin="round"
+                         :fill="i<=s.rating?'var(--warn)':'transparent'" :stroke="i<=s.rating?'var(--warn)':'var(--line-2)'" aria-hidden="true">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/>
+                    </svg>
+                  </template>
+                  <span class="text-xs ml-1.5" style="color:var(--ink-3)" x-text="s.rating.toFixed(1)"></span>
+                  <button class="btn btn-outline btn-sm ml-auto" @click="ping('Opened '+s.name,'external-link')">View</button>
+                </div>
+              </div>
+            </template>
+          </section>
+
+          <section class="card overflow-hidden mt-5">
+            <div class="p-4 sm:p-5" style="border-bottom:1px solid var(--line)">
+              <h2 class="text-sm font-semibold" style="color:var(--ink)">Supplier scorecard</h2>
+              <p class="text-xs mt-0.5" style="color:var(--ink-3)">On-time delivery, lead time, and open commitments</p>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="tbl min-w-[720px]">
+                <thead><tr><th>Supplier</th><th>Category</th><th class="r">Lead time</th><th class="r">On-time</th><th class="r">Open POs</th><th class="r">YTD spend</th></tr></thead>
+                <tbody>
+                  <template x-for="s in suppliers" :key="s.name">
+                    <tr>
+                      <td class="font-medium whitespace-nowrap" style="color:var(--ink)" x-text="s.name"></td>
+                      <td style="color:var(--ink-2)" x-text="s.category"></td>
+                      <td class="r mono tnum text-[13px]" style="color:var(--ink-2)" x-text="s.lead+' d'"></td>
+                      <td class="r"><span class="badge" :style="s.onTime>=97?stockBadge('in'):s.onTime>=92?stockBadge('low'):stockBadge('back')"><span class="dot"></span><span class="tnum" x-text="s.onTime+'%'"></span></span></td>
+                      <td class="r mono tnum text-[13px]" style="color:var(--ink)" x-text="s.openPos"></td>
+                      <td class="r mono tnum text-[13px]" style="color:var(--ink)" x-text="s.spend"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             PAGE · SETTINGS
+             ═══════════════════════════════════════════════════════════════ -->
+        <div x-show="page==='settings'" x-cloak style="max-width:760px">
+          <div class="flex flex-col gap-5">
+
+            <!-- profile / inline edit name -->
+            <section class="card">
+              <div class="p-4 sm:p-5" style="border-bottom:1px solid var(--line)"><h2 class="text-sm font-semibold" style="color:var(--ink)">Profile</h2></div>
+              <div class="p-4 sm:p-5 flex items-center gap-4">
+                <span class="grid place-items-center w-12 h-12 rounded-lg text-base font-semibold shrink-0" style="background:var(--accent-solid); color:#fff" x-text="initials()"></span>
+                <div class="min-w-0">
+                  <div class="lbl mb-1">Display name</div>
+                  <template x-if="!editName">
+                    <button class="ie text-base font-semibold" style="color:var(--ink)" @click="startName()" aria-label="Edit display name"><span x-text="name"></span> <i data-lucide="pencil" class="inline w-3.5 h-3.5 align-middle" style="color:var(--ink-3)"></i></button>
+                  </template>
+                  <template x-if="editName">
+                    <div class="flex items-center gap-2">
+                      <input class="field !h-9 !w-52" x-ref="nm" x-model="nameDraft" @keydown.enter="saveName()" @keydown.escape="editName=false" x-init="$nextTick(()=>$refs.nm&&$refs.nm.focus())" aria-label="Display name" />
+                      <button class="btn btn-primary btn-sm" @click="saveName()">Save</button>
+                      <button class="btn btn-outline btn-sm" @click="editName=false">Cancel</button>
+                    </div>
+                  </template>
+                  <div class="text-xs mt-1" style="color:var(--ink-3)">Inventory lead · Central distribution</div>
+                </div>
+              </div>
+            </section>
+
+            <!-- appearance -->
+            <section class="card">
+              <div class="p-4 sm:p-5" style="border-bottom:1px solid var(--line)"><h2 class="text-sm font-semibold" style="color:var(--ink)">Appearance</h2></div>
+              <div class="divide-y" style="--tw-divide-opacity:1">
+                <div class="flex items-center justify-between p-4 sm:p-5" style="border-bottom:1px solid var(--line)">
+                  <div><div class="font-medium" style="color:var(--ink)">Edition</div><div class="text-xs mt-0.5" style="color:var(--ink-2)">Floor for daylight, Nightshift for dim docks.</div></div>
+                  <div class="seg" role="group" aria-label="Edition">
+                    <button :aria-pressed="!dark" @click="dark&&toggleEdition()">Floor</button>
+                    <button :aria-pressed="dark" @click="!dark&&toggleEdition()">Nightshift</button>
+                  </div>
+                </div>
+                <div class="flex items-center justify-between p-4 sm:p-5">
+                  <div><div class="font-medium" style="color:var(--ink)">Table density</div><div class="text-xs mt-0.5" style="color:var(--ink-2)">Comfortable spacing or compact rows.</div></div>
+                  <div class="seg" role="group" aria-label="Table density">
+                    <button :aria-pressed="density==='comfortable'" @click="density='comfortable'">Comfortable</button>
+                    <button :aria-pressed="density==='compact'" @click="density='compact'">Compact</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- notifications (toggles) -->
+            <section class="card">
+              <div class="p-4 sm:p-5" style="border-bottom:1px solid var(--line)"><h2 class="text-sm font-semibold" style="color:var(--ink)">Alerts &amp; automation</h2></div>
+              <div>
+                <template x-for="(t,i) in toggles" :key="t.key">
+                  <div class="flex items-center justify-between p-4 sm:p-5" :style="i<toggles.length-1?'border-bottom:1px solid var(--line)':''">
+                    <div class="pr-4"><div class="font-medium" style="color:var(--ink)" x-text="t.label"></div><div class="text-xs mt-0.5" style="color:var(--ink-2)" x-text="t.desc"></div></div>
+                    <button class="tg" role="switch" :aria-checked="t.on" :aria-label="t.label" @click="t.on=!t.on; ping(t.label+(t.on?' on':' off'), t.on?'check':'minus')"><b></b></button>
+                  </div>
+                </template>
+              </div>
+            </section>
+
+            <!-- reorder defaults (stepper + textarea) -->
+            <section class="card">
+              <div class="p-4 sm:p-5" style="border-bottom:1px solid var(--line)"><h2 class="text-sm font-semibold" style="color:var(--ink)">Reorder defaults</h2></div>
+              <div class="p-4 sm:p-5 space-y-5">
+                <div class="flex items-center justify-between gap-4">
+                  <div><div class="font-medium" style="color:var(--ink)">Safety-stock buffer</div><div class="text-xs mt-0.5" style="color:var(--ink-2)">Extra days of cover added to every auto-draft.</div></div>
+                  <div class="inline-flex items-center gap-2">
+                    <button class="step" @click="buffer=Math.max(0,buffer-1)" :disabled="buffer<=0" aria-label="Decrease buffer"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                    <span class="mono tnum text-lg font-semibold w-14 text-center" style="color:var(--ink)" x-text="buffer+'d'"></span>
+                    <button class="step" @click="buffer=Math.min(30,buffer+1)" :disabled="buffer>=30" aria-label="Increase buffer"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+                  </div>
+                </div>
+                <div>
+                  <label class="lbl block mb-1.5" for="tmpl">Reorder-note template</label>
+                  <textarea id="tmpl" class="field" rows="3" x-model="noteTemplate"></textarea>
+                  <div class="flex justify-end mt-2"><button class="btn btn-primary btn-sm" @click="ping('Template saved','check')">Save template</button></div>
+                </div>
+              </div>
+            </section>
+
+            <!-- misc -->
+            <section class="card">
+              <div class="p-4 sm:p-5" style="border-bottom:1px solid var(--line)"><h2 class="text-sm font-semibold" style="color:var(--ink)">More</h2></div>
+              <div>
+                <div class="flex items-center justify-between p-4 sm:p-5" style="border-bottom:1px solid var(--line)">
+                  <div><div class="font-medium" style="color:var(--ink)">Preview the modal pattern</div><div class="text-xs mt-0.5" style="color:var(--ink-2)">Opens the New purchase order dialog.</div></div>
+                  <button class="btn btn-outline btn-sm" @click="openNewPO()">Open dialog</button>
+                </div>
+                <div class="flex items-center justify-between p-4 sm:p-5">
+                  <div><div class="font-medium" style="color:var(--ink)">Reset demo data</div><div class="text-xs mt-0.5" style="color:var(--ink-2)">Restore SKUs, POs, and settings to defaults.</div></div>
+                  <button class="btn btn-danger btn-sm" @click="confirmReset=true">Reset</button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <footer class="pt-6 pb-2 text-xs flex flex-wrap items-center gap-x-4 gap-y-1" style="color:var(--ink-3)">
+          <span>Tessera · Procurement &amp; inventory console</span>
+          <span class="hidden sm:inline">·</span>
+          <span>The warehouse mosaic — every SKU in its place.</span>
+        </footer>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ═══════════════ EDIT DRAWER (SKU or PO) ═══════════════ -->
+<template x-if="drawer">
+  <div>
+    <div class="scrim" @click="closeDrawer()" x-transition.opacity></div>
+    <aside class="drawer" role="dialog" aria-modal="true" :aria-label="drawer.kind==='sku'?'Edit SKU':'Edit purchase order'"
+           x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+           x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+           @keydown.escape.window="closeDrawer()">
+      <div class="flex items-center gap-3 p-4 sm:p-5 flex-none" style="border-bottom:1px solid var(--line)">
+        <div>
+          <div class="lbl" x-text="drawer.kind==='sku'?draft.sku:draft.id"></div>
+          <div class="text-lg font-bold mt-0.5" style="color:var(--ink)" x-text="drawer.kind==='sku'?'Edit SKU':'Edit purchase order'"></div>
+        </div>
+        <button class="iconbtn bare ml-auto" @click="closeDrawer()" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4">
+        <!-- SKU form -->
+        <template x-if="drawer.kind==='sku'">
+          <div class="space-y-4">
+            <div><label class="lbl block mb-1.5">Item name</label><input class="field" x-model="draft.item" /></div>
+            <div class="grid grid-cols-2 gap-3">
+              <div><label class="lbl block mb-1.5">Category</label>
+                <select class="isel" x-model="draft.category" x-effect="$el.value=draft.category"><template x-for="c in categories" :key="c"><option :value="c" x-text="c"></option></template></select></div>
+              <div><label class="lbl block mb-1.5">Supplier</label>
+                <select class="isel" x-model="draft.supplier" x-effect="$el.value=draft.supplier"><template x-for="s in suppliers" :key="s.name"><option :value="s.name" x-text="s.name"></option></template></select></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div><label class="lbl block mb-1.5">On hand</label>
+                <div class="flex items-center gap-2">
+                  <button class="step" @click="draft.onHand=Math.max(0,draft.onHand-10)" aria-label="Decrease on hand"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                  <input class="field text-center mono tnum" type="text" inputmode="numeric" :value="draft.onHand" @change="draft.onHand=parseInt($event.target.value.replace(/[^0-9]/g,''))||0" aria-label="On hand" />
+                  <button class="step" @click="draft.onHand=draft.onHand+10" aria-label="Increase on hand"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+                </div>
+              </div>
+              <div><label class="lbl block mb-1.5">Reorder point</label>
+                <input class="field mono tnum" type="text" inputmode="numeric" :value="draft.reorder" @change="draft.reorder=parseInt($event.target.value.replace(/[^0-9]/g,''))||0" /></div>
+            </div>
+            <div><label class="lbl block mb-1.5">Stock state</label>
+              <div class="flex flex-wrap gap-2">
+                <template x-for="s in stockOrder" :key="s">
+                  <button class="chip" :aria-pressed="draft.status===s" @click="draft.status=s"><span class="w-2 h-2 rounded-full" :style="`background:${stockMeta[s].color}`"></span><span x-text="stockMeta[s].label"></span></button>
+                </template>
+              </div>
+            </div>
+            <div><label class="lbl block mb-1.5" for="dbin">Bin location</label><input id="dbin" class="field mono" x-model="draft.bin" /></div>
+            <div><label class="lbl block mb-1.5" for="dnote">Notes</label><textarea id="dnote" class="field" rows="3" x-model="draft.notes" placeholder="Handling, storage, or replenishment notes…"></textarea></div>
+          </div>
+        </template>
+
+        <!-- PO form -->
+        <template x-if="drawer.kind==='po'">
+          <div class="space-y-4">
+            <div><label class="lbl block mb-1.5">Supplier</label>
+              <select class="isel" x-model="draft.supplier" x-effect="$el.value=draft.supplier"><template x-for="s in suppliers" :key="s.name"><option :value="s.name" x-text="s.name"></option></template></select></div>
+            <div class="grid grid-cols-2 gap-3">
+              <div><label class="lbl block mb-1.5">Line items</label>
+                <div class="flex items-center gap-2">
+                  <button class="step" @click="draft.lines=Math.max(1,draft.lines-1)" aria-label="Fewer lines"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+                  <input class="field text-center mono tnum" type="text" inputmode="numeric" :value="draft.lines" @change="draft.lines=parseInt($event.target.value.replace(/[^0-9]/g,''))||1" aria-label="Line items" />
+                  <button class="step" @click="draft.lines=draft.lines+1" aria-label="More lines"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+                </div>
+              </div>
+              <div><label class="lbl block mb-1.5" for="dval">Order value ($)</label>
+                <input id="dval" class="field mono tnum" type="text" inputmode="numeric" :value="draft.value" @change="draft.value=parseInt($event.target.value.replace(/[^0-9]/g,''))||0" /></div>
+            </div>
+            <div><label class="lbl block mb-1.5" for="deta">Expected date</label><input id="deta" class="field mono" x-model="draft.eta" /></div>
+            <div><label class="lbl block mb-1.5">PO state</label>
+              <div class="flex flex-wrap gap-2">
+                <template x-for="s in poOrder" :key="s">
+                  <button class="chip" :aria-pressed="draft.status===s" @click="draft.status=s"><span class="w-2 h-2 rounded-full" :style="`background:${poMeta[s].color}`"></span><span x-text="poMeta[s].label"></span></button>
+                </template>
+              </div>
+            </div>
+            <div><label class="lbl block mb-1.5" for="ponote">Notes</label><textarea id="ponote" class="field" rows="3" x-model="draft.notes" placeholder="Delivery instructions, terms…"></textarea></div>
+          </div>
+        </template>
+      </div>
+
+      <div class="flex gap-3 p-4 sm:p-5 flex-none" style="border-top:1px solid var(--line)">
+        <button class="btn btn-outline" style="flex:1" @click="closeDrawer()">Cancel</button>
+        <button class="btn btn-primary" style="flex:2" @click="saveDrawer()"><i data-lucide="check" class="w-4 h-4"></i>Save changes</button>
+      </div>
+    </aside>
+  </div>
+</template>
+
+<!-- ═══════════════ MODAL — New purchase order ═══════════════ -->
+<template x-if="modal">
+  <div class="modalwrap" @keydown.escape.window="modal=false">
+    <div class="scrim" @click="modal=false" x-transition.opacity></div>
+    <div class="modal-card relative" role="dialog" aria-modal="true" aria-labelledby="modalTitle"
+         x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+      <div class="flex items-center gap-3 p-5 pb-3 flex-none">
+        <div>
+          <div class="lbl">Draft · <span x-text="warehouse"></span></div>
+          <div id="modalTitle" class="text-xl font-bold mt-0.5" style="color:var(--ink)">New purchase order</div>
+        </div>
+        <button class="iconbtn bare ml-auto" @click="modal=false" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="flex-1 min-h-0 overflow-y-auto px-5 py-2 space-y-4">
+        <div><label class="lbl block mb-1.5" for="nSupplier">Supplier</label>
+          <select id="nSupplier" class="isel" x-model="nw.supplier" x-ref="firstField">
+            <template x-for="s in suppliers" :key="s.name"><option :value="s.name" x-text="s.name"></option></template>
+          </select></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="lbl block mb-1.5">Line items</label>
+            <div class="flex items-center gap-2">
+              <button class="step" @click="nw.lines=Math.max(1,nw.lines-1)" aria-label="Fewer lines"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+              <input class="field text-center mono tnum" type="text" inputmode="numeric" :value="nw.lines" @change="nw.lines=parseInt($event.target.value.replace(/[^0-9]/g,''))||1" aria-label="Line items" />
+              <button class="step" @click="nw.lines=nw.lines+1" aria-label="More lines"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </div>
+          <div><label class="lbl block mb-1.5" for="nVal">Order value ($)</label>
+            <input id="nVal" class="field mono tnum" type="text" inputmode="numeric" placeholder="0" x-model="nw.value" /></div>
+        </div>
+        <div><label class="lbl block mb-1.5" for="nEta">Expected date</label>
+          <input id="nEta" class="field mono" placeholder="e.g. 12 Jul" x-model="nw.eta" /></div>
+        <div><label class="lbl block mb-1.5">PO state</label>
+          <div class="flex flex-wrap gap-2">
+            <template x-for="s in poOrder" :key="s">
+              <button class="chip" :aria-pressed="nw.status===s" @click="nw.status=s"><span class="w-2 h-2 rounded-full" :style="`background:${poMeta[s].color}`"></span><span x-text="poMeta[s].label"></span></button>
+            </template>
+          </div>
+        </div>
+        <div><label class="lbl block mb-1.5" for="nNote">Notes</label>
+          <textarea id="nNote" class="field" rows="2" placeholder="Optional delivery instructions…" x-model="nw.notes"></textarea></div>
+      </div>
+      <div class="flex gap-3 p-5 pt-3 flex-none" style="border-top:1px solid var(--line)">
+        <button class="btn btn-outline" style="flex:1" @click="modal=false">Cancel</button>
+        <button class="btn btn-primary" style="flex:2" @click="createPO()"><i data-lucide="plus" class="w-4 h-4"></i>Create purchase order</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ═══════════════ CONFIRM — reset demo ═══════════════ -->
+<template x-if="confirmReset">
+  <div class="modalwrap" @keydown.escape.window="confirmReset=false">
+    <div class="scrim" @click="confirmReset=false" x-transition.opacity></div>
+    <div class="modal-card !max-w-[400px]" role="alertdialog" aria-modal="true" aria-labelledby="resetTitle"
+         x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+      <div class="p-5">
+        <div class="grid place-items-center w-11 h-11 rounded-lg mb-3" style="background:color-mix(in srgb, var(--crit) 12%, transparent)"><i data-lucide="rotate-ccw" class="w-5 h-5" style="color:var(--crit)"></i></div>
+        <div id="resetTitle" class="text-lg font-bold" style="color:var(--ink)">Reset demo data?</div>
+        <p class="text-sm mt-1" style="color:var(--ink-2)">This restores all SKUs, purchase orders, and settings to their defaults. It cannot be undone.</p>
+      </div>
+      <div class="flex gap-3 p-5 pt-0">
+        <button class="btn btn-outline" style="flex:1" @click="confirmReset=false">Cancel</button>
+        <button class="btn btn-primary" style="flex:1; background:var(--crit)" @click="doReset()">Reset data</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ═══════════════ TOASTS ═══════════════ -->
+<div class="fixed bottom-4 right-4 z-[70] flex flex-col gap-2 items-end" aria-live="polite" aria-atomic="true">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="toast-enter flex items-center gap-3 pl-3 pr-4 py-2.5 rounded-lg min-w-[240px] max-w-[360px]" style="background:var(--ink); color:var(--surface); box-shadow:var(--shadow-pop)">
+      <span class="grid place-items-center w-6 h-6 rounded-md shrink-0" :style="`background:${t.color}`"><i :data-lucide="t.icon" class="w-3.5 h-3.5" style="color:#fff"></i></span>
+      <span class="text-sm font-medium leading-snug" x-text="t.msg"></span>
+    </div>
+  </template>
+</div>
+
+<script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<script>
+function tessera() {
+  return {
+    /* ── shell state ── */
+    page:'dashboard', dark:false, navOpen:false,
+    drawer:null, modal:false, confirmReset:false,
+    warehouse:'Central distribution',
+    warehouses:['Central distribution','Newark DC','Reno DC','Dallas DC','Atlanta DC','Fresno DC'],
+    range:'12 wks', ranges:['4 wks','12 wks','YTD'],
+    globalQuery:'', skuQuery:'', poQuery:'',
+    stockFilter:'all', poFilter:'all',
+    sort:{ key:'', dir:1 },
+    density:'comfortable',
+    editReorder:null, editName:false, nameDraft:'', name:'Riya Mehta',
+    buffer:5, noteTemplate:'Reorder {item} ({sku}) — {qty} units to restore cover. Ship to {warehouse}.',
+    toggles:[
+      { key:'lowstock', label:'Low-stock email alerts', desc:'Email when a SKU drops below its reorder point.', on:true },
+      { key:'autodraft', label:'Auto-draft reorders', desc:'Create a draft PO automatically for stockouts.', on:true },
+      { key:'digest', label:'Weekly supplier digest', desc:'Monday summary of on-time delivery by supplier.', on:false },
+    ],
+    toasts:[], _tid:0, _charts:{},
+
+    nav:[
+      { id:'dashboard', label:'Overview',        icon:'layout-grid' },
+      { id:'inventory', label:'Inventory',       icon:'boxes' },
+      { id:'orders',    label:'Purchase orders', icon:'file-text', badge:'6' },
+      { id:'suppliers', label:'Suppliers',       icon:'truck' },
+      { id:'settings',  label:'Settings',        icon:'settings' },
+    ],
+    meta:{
+      dashboard:{ kicker:'Central distribution · Tue 1 Jul', title:'Warehouse overview' },
+      inventory:{ kicker:'Live stock', title:'Inventory' },
+      orders:{ kicker:'Open commitments', title:'Purchase orders' },
+      suppliers:{ kicker:'Scorecard', title:'Suppliers' },
+      settings:{ kicker:'Riya Mehta', title:'Settings' },
+    },
+
+    /* ── stock status system ── */
+    stockOrder:['in','low','back','out'],
+    stockMeta:{
+      in:   { label:'In stock',    color:'var(--ok)' },
+      low:  { label:'Low',         color:'var(--low)' },
+      back: { label:'Backordered', color:'var(--warn)' },
+      out:  { label:'Out of stock',color:'var(--crit)' },
+    },
+    stockFilters:[
+      { key:'all',  label:'All',          dot:null },
+      { key:'in',   label:'In stock',     dot:'var(--ok)' },
+      { key:'low',  label:'Low',          dot:'var(--low)' },
+      { key:'back', label:'Backordered',  dot:'var(--warn)' },
+      { key:'out',  label:'Out of stock', dot:'var(--crit)' },
+    ],
+
+    /* ── PO status system ── */
+    poOrder:['draft','sent','partial','received','cancelled'],
+    poMeta:{
+      draft:    { label:'Draft',     color:'var(--neutral)' },
+      sent:     { label:'Sent',      color:'var(--accent)' },
+      partial:  { label:'Partial',   color:'var(--warn)' },
+      received: { label:'Received',  color:'var(--ok)' },
+      cancelled:{ label:'Cancelled', color:'var(--crit)' },
+    },
+    poFilters:[
+      { key:'all',      label:'All',      dot:null },
+      { key:'draft',    label:'Draft',    dot:'var(--neutral)' },
+      { key:'sent',     label:'Sent',     dot:'var(--accent)' },
+      { key:'partial',  label:'Partial',  dot:'var(--warn)' },
+      { key:'received', label:'Received', dot:'var(--ok)' },
+    ],
+
+    categories:['Fasteners','Electronics','Safety','Cabling','Components','Consumables'],
+
+    kpis:[
+      { label:'SKUs in stock', value:'3,412', icon:'boxes', iconColor:'var(--accent)',
+        delta:'+2.1%', deltaIcon:'trending-up', deltaColor:'var(--ok)', trendColor:'var(--ok)',
+        spark:[30,32,31,34,33,36,35,38,37,40,39,42] },
+      { label:'Open POs', value:'57', icon:'file-text', iconColor:'var(--accent)',
+        delta:'+6', deltaIcon:'trending-up', deltaColor:'var(--ink-2)', trendColor:'var(--accent)',
+        spark:[48,50,49,52,51,54,53,55,54,56,55,57] },
+      { label:'Stockouts', value:'14', valueColor:'var(--crit)', icon:'triangle-alert', iconColor:'var(--crit)',
+        delta:'+3', deltaIcon:'trending-up', deltaColor:'var(--crit)', trendColor:'var(--crit)',
+        spark:[8,9,10,9,11,10,12,11,13,12,13,14] },
+      { label:'Fill rate', value:'96.2%', icon:'gauge', iconColor:'var(--accent)',
+        delta:'+0.4pt', deltaIcon:'trending-up', deltaColor:'var(--ok)', trendColor:'var(--ok)',
+        spark:[94,95,94,95,96,95,96,96,95,96,96,96] },
+    ],
+
+    poDoughnut:[
+      { label:'Received', value:24, color:'var(--ok-graph)' },
+      { label:'Sent',     value:15, color:'var(--accent)' },
+      { label:'Draft',    value:12, color:'var(--ink-3)' },
+      { label:'Partial',  value:6,  color:'var(--warn-graph)' },
+    ],
+
+    skus:[], _skusSeed:[
+      { sku:'TSS-4021-A', item:'M8 Hex Bolt, Zinc',        category:'Fasteners',   supplier:'Fastenal North', onHand:18420, reorder:6000, bin:'A-12-3', status:'in',   notes:'' },
+      { sku:'TSS-1188-C', item:'Li-Ion Cell 18650',        category:'Components',  supplier:'Celltec Pacific', onHand:940,  reorder:1200, bin:'C-04-1', status:'low',  notes:'' },
+      { sku:'TSS-7742-E', item:'Nitrile Gloves, L',        category:'Safety',      supplier:'MedSupply Co.',   onHand:0,    reorder:800,  bin:'S-01-7', status:'out',  notes:'Expedite — clean-room line blocked.' },
+      { sku:'TSS-3390-B', item:'HDMI 2.1 Cable 2m',        category:'Cabling',     supplier:'Anker Wholesale', onHand:3260, reorder:1500, bin:'B-08-2', status:'in',   notes:'' },
+      { sku:'TSS-5501-D', item:'Ceramic Capacitor 10µF',   category:'Components',  supplier:'Murata Direct',   onHand:210,  reorder:2500, bin:'C-02-5', status:'back', notes:'Supplier 8 days late.' },
+      { sku:'TSS-2214-F', item:'Thermal Paste 4g',         category:'Consumables', supplier:'Arctic Labs',     onHand:1120, reorder:900,  bin:'D-03-4', status:'in',   notes:'' },
+      { sku:'TSS-6673-A', item:'Cat6 Patch Cable 1m',      category:'Cabling',     supplier:'Belden Supply',   onHand:640,  reorder:700,  bin:'B-09-1', status:'low',  notes:'' },
+      { sku:'TSS-9108-G', item:'ESD Wrist Strap',          category:'Safety',      supplier:'StaticGuard Inc.',onHand:0,    reorder:300,  bin:'S-02-2', status:'out',  notes:'' },
+      { sku:'TSS-8830-B', item:'M4 Washer, Stainless',     category:'Fasteners',   supplier:'Fastenal North',  onHand:24100,reorder:5000, bin:'A-11-6', status:'in',   notes:'' },
+      { sku:'TSS-4417-H', item:'USB-C Cable 1m',           category:'Cabling',     supplier:'Anker Wholesale', onHand:2140, reorder:1000, bin:'B-07-3', status:'in',   notes:'' },
+      { sku:'TSS-2290-C', item:'MOSFET N-Channel 60V',     category:'Electronics', supplier:'Murata Direct',   onHand:480,  reorder:600,  bin:'E-05-2', status:'low',  notes:'' },
+      { sku:'TSS-7013-D', item:'Isopropyl Wipes (100)',    category:'Consumables', supplier:'Arctic Labs',     onHand:1560, reorder:800,  bin:'D-04-1', status:'in',   notes:'' },
+      { sku:'TSS-5560-A', item:'Safety Goggles, Clear',    category:'Safety',      supplier:'MedSupply Co.',   onHand:320,  reorder:400,  bin:'S-03-5', status:'low',  notes:'' },
+      { sku:'TSS-9902-F', item:'Heat-Shrink Tubing 6mm',   category:'Cabling',     supplier:'Belden Supply',   onHand:5400, reorder:1200, bin:'B-10-4', status:'in',   notes:'' },
+    ],
+
+    orders:[], _ordersSeed:[
+      { id:'PO-8841', supplier:'Fastenal North',  lines:8,  value:42800, eta:'3 Jul',  status:'received', notes:'' },
+      { id:'PO-8846', supplier:'Celltec Pacific', lines:3,  value:18400, eta:'9 Jul',  status:'sent',     notes:'' },
+      { id:'PO-8850', supplier:'Murata Direct',   lines:12, value:31250, eta:'14 Jul', status:'partial',  notes:'Running 8 days late — chase.' },
+      { id:'PO-8853', supplier:'MedSupply Co.',   lines:5,  value:9600,  eta:'5 Jul',  status:'sent',     notes:'' },
+      { id:'PO-8857', supplier:'Anker Wholesale', lines:4,  value:12750, eta:'—',      status:'draft',    notes:'' },
+      { id:'PO-8861', supplier:'Belden Supply',   lines:6,  value:15320, eta:'11 Jul', status:'sent',     notes:'' },
+    ],
+
+    suppliers:[
+      { name:'Fastenal North',  initials:'FN', category:'Fasteners',   lead:4,  onTime:98, openPos:3, spend:'$412K', rating:5 },
+      { name:'Celltec Pacific', initials:'CP', category:'Components',   lead:12, onTime:91, openPos:2, spend:'$286K', rating:4 },
+      { name:'Murata Direct',   initials:'MD', category:'Components',   lead:9,  onTime:88, openPos:4, spend:'$519K', rating:3 },
+      { name:'Anker Wholesale', initials:'AW', category:'Cabling',     lead:6,  onTime:96, openPos:2, spend:'$194K', rating:4 },
+      { name:'MedSupply Co.',   initials:'MS', category:'Safety',      lead:7,  onTime:93, openPos:3, spend:'$132K', rating:4 },
+      { name:'Belden Supply',   initials:'BS', category:'Cabling',     lead:5,  onTime:97, openPos:1, spend:'$221K', rating:5 },
+      { name:'Arctic Labs',     initials:'AL', category:'Consumables', lead:3,  onTime:99, openPos:1, spend:'$88K',  rating:5 },
+      { name:'StaticGuard Inc.',initials:'SG', category:'Safety',      lead:8,  onTime:90, openPos:2, spend:'$67K',  rating:3 },
+    ],
+
+    nw:{ supplier:'Fastenal North', lines:1, value:'', eta:'', status:'draft', notes:'' },
+    draft:{},
+
+    /* ── derived ── */
+    get filteredSkus() {
+      let rows = this.stockFilter==='all' ? this.skus : this.skus.filter(r=>r.status===this.stockFilter);
+      const q = this.skuQuery.trim().toLowerCase();
+      if (q) rows = rows.filter(r=>`${r.sku} ${r.item} ${r.supplier} ${r.category}`.toLowerCase().includes(q));
+      if (this.sort.key) {
+        const k = this.sort.key, d = this.sort.dir;
+        rows = [...rows].sort((a,b)=>{
+          let av=a[k], bv=b[k];
+          if (typeof av==='string') return av.localeCompare(bv)*d;
+          return (av-bv)*d;
+        });
+      }
+      return rows;
+    },
+    get filteredOrders() {
+      let rows = this.poFilter==='all' ? this.orders : this.orders.filter(o=>o.status===this.poFilter);
+      const q = this.poQuery.trim().toLowerCase();
+      if (q) rows = rows.filter(o=>`${o.id} ${o.supplier} ${o.status}`.toLowerCase().includes(q));
+      return rows;
+    },
+    get watchlist() { return [...this.skus].sort((a,b)=>(a.onHand-a.reorder)-(b.onHand-b.reorder)).slice(0,6); },
+
+    stockCount(k) { return k==='all' ? this.skus.length : this.skus.filter(r=>r.status===k).length; },
+    poCount(k) { return k==='all' ? this.orders.length : this.orders.filter(o=>o.status===k).length; },
+    stockBadge(s) { const c=this.stockMeta[s].color; return `color:${c}; background:color-mix(in srgb, ${c} 14%, transparent)`; },
+
+    /* ── sort ── */
+    sortBy(k) { if (this.sort.key===k) this.sort.dir*=-1; else { this.sort.key=k; this.sort.dir=1; } },
+    ariaSort(k) { return this.sort.key!==k ? 'none' : (this.sort.dir===1 ? 'ascending' : 'descending'); },
+    sortArrow(k) {
+      if (this.sort.key!==k) return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline opacity-30" style="vertical-align:-1px"><path d="m8 9 4-4 4 4"/><path d="m16 15-4 4-4-4"/></svg>`;
+      const up = this.sort.dir===1;
+      return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-strong)" stroke-width="2.5" class="inline" style="vertical-align:-1px">${up?'<path d="m18 15-6-6-6 6"/>':'<path d="m6 9 6 6 6-6"/>'}</svg>`;
+    },
+
+    /* ── stock inline edits ── */
+    recompute(row) { row.status = row.onHand===0 ? 'out' : (row.onHand<=row.reorder ? 'low' : 'in'); },
+    stepStock(row, dir) {
+      const stepSize = row.onHand>=1000 ? 100 : (row.onHand>=100 ? 10 : 1);
+      row.onHand = Math.max(0, row.onHand + dir*stepSize);
+      this.recompute(row);
+    },
+    setStock(row, val) {
+      row.onHand = Math.max(0, parseInt(String(val).replace(/[^0-9]/g,'')) || 0);
+      this.recompute(row);
+      this.ping(`${row.item} → ${row.onHand.toLocaleString()} on hand`, 'boxes');
+    },
+    startReorder(row) { this.editReorder = row.sku; },
+    saveReorder(row, val) {
+      if (this.editReorder!==row.sku) return;
+      row.reorder = Math.max(0, parseInt(String(val).replace(/[^0-9]/g,'')) || 0);
+      this.recompute(row);
+      this.editReorder = null;
+      this.ping(`Reorder point updated`, 'check');
+    },
+    setStockFilter(k) { this.stockFilter = k; },
+    onStatusChange(row) {
+      const icon = (row.status==='out'||row.status==='back') ? 'triangle-alert' : (row.status==='low' ? 'trending-down' : 'check');
+      this.ping(`${row.item} → ${this.stockMeta[row.status].label}`, icon, this.stockMeta[row.status].color);
+    },
+    onPoStatusChange(po) {
+      this.ping(`${po.id} → ${this.poMeta[po.status].label}`, 'file-text', this.poMeta[po.status].color);
+      this.$nextTick(()=>{ if (this.page==='dashboard') this.renderCharts(); });
+    },
+
+    /* ── drawer ── */
+    openSku(row) { this.draft = JSON.parse(JSON.stringify(row)); this.draft.kind='sku'; this.drawer={ kind:'sku', ref:row }; this.$nextTick(()=>this.icons()); },
+    openPO(po)  { this.draft = JSON.parse(JSON.stringify(po));  this.draft.kind='po';  this.drawer={ kind:'po',  ref:po  }; this.$nextTick(()=>this.icons()); },
+    closeDrawer() { this.drawer=null; },
+    saveDrawer() {
+      const ref = this.drawer.ref;
+      Object.keys(this.draft).forEach(k=>{ if (k!=='kind') ref[k]=this.draft[k]; });
+      if (this.drawer.kind==='sku') { this.ping(`Saved ${ref.item}`, 'check'); }
+      else { this.ping(`Saved ${ref.id}`, 'check'); this.$nextTick(()=>{ if (this.page==='dashboard') this.renderCharts(); }); }
+      this.drawer=null;
+    },
+
+    /* ── modal: new PO ── */
+    openNewPO() { this.nw={ supplier:'Fastenal North', lines:1, value:'', eta:'', status:'draft', notes:'' }; this.modal=true; this.$nextTick(()=>{ this.icons(); this.$refs.firstField && this.$refs.firstField.focus(); }); },
+    createPO() {
+      const n = this.orders.length + 1;
+      const id = 'PO-'+(8861 + n);
+      this.orders.unshift({
+        id, supplier:this.nw.supplier, lines:this.nw.lines,
+        value: parseInt(String(this.nw.value).replace(/[^0-9]/g,'')) || 0,
+        eta: this.nw.eta || '—', status:this.nw.status, notes:this.nw.notes,
+      });
+      this.modal=false; this.page='orders'; this.poFilter='all';
+      this.ping(`Created ${id}`, 'check');
+      this.$nextTick(()=>this.icons());
+    },
+    openNewSku() {
+      const n = this.skus.length + 1;
+      const sku = 'TSS-' + (1000 + Math.floor(Math.random()*8999)) + '-N';
+      const row = { sku, item:'New item', category:'Components', supplier:'Fastenal North', onHand:0, reorder:100, bin:'—', status:'out', notes:'' };
+      this.skus.unshift(row);
+      this.page='inventory';
+      this.openSku(row);
+      this.ping(`Added ${sku} — fill in details`, 'plus');
+    },
+
+    /* ── settings ── */
+    initials() { return this.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); },
+    userInitialsName() { const p=this.name.split(' '); return p.length>1 ? p[0][0]+'. '+p[p.length-1] : this.name; },
+    startName() { this.nameDraft=this.name; this.editName=true; },
+    saveName() { if (this.nameDraft.trim()) { this.name=this.nameDraft.trim(); this.ping('Name updated','check'); } this.editName=false; },
+    doReset() {
+      this.skus = JSON.parse(JSON.stringify(this._skusSeed));
+      this.orders = JSON.parse(JSON.stringify(this._ordersSeed));
+      this.stockFilter='all'; this.poFilter='all'; this.skuQuery=''; this.poQuery=''; this.sort={key:'',dir:1};
+      this.confirmReset=false;
+      this.ping('Demo data reset', 'rotate-ccw');
+      this.$nextTick(()=>{ this.icons(); if (this.page==='dashboard') this.renderCharts(); });
+    },
+
+    /* ── nav / shell ── */
+    go(p) { this.page=p; this.editReorder=null; this.$nextTick(()=>{ this.icons(); if (p==='dashboard') this.renderCharts(); }); },
+    setWarehouse(w) { this.warehouse=w; this.ping(`Switched to ${w}`, 'warehouse'); },
+    runGlobalSearch() { if (!this.globalQuery.trim()) return; this.skuQuery=this.globalQuery; this.go('inventory'); this.stockFilter='all'; },
+    exportToast() { this.ping(`Exported ${this.page==='orders'?this.filteredOrders.length:this.filteredSkus.length} rows to CSV`, 'download'); },
+    setRange(r) { this.range=r; this.updateArea(); },
+
+    toggleEdition() {
+      this.dark=!this.dark;
+      document.documentElement.classList.toggle('dark', this.dark);
+      const m=document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', this.dark?'#18181B':'#FFFFFF');
+      // MutationObserver on <html> re-renders charts + icons
+    },
+
+    /* ── feedback ── */
+    ping(msg, icon='check', color='var(--ok)') {
+      const id=++this._tid;
+      this.toasts.push({ id, msg, icon, color });
+      this.$nextTick(()=>this.icons());
+      setTimeout(()=>{ this.toasts=this.toasts.filter(t=>t.id!==id); }, 2600);
+    },
+    icons() { if (window.lucide) lucide.createIcons(); },
+
+    sparkline(data, color) {
+      const w=60, h=20, min=Math.min(...data), max=Math.max(...data), rng=(max-min)||1;
+      const pts=data.map((v,i)=>{ const x=(i/(data.length-1))*w; const y=h-((v-min)/rng)*(h-2)-1; return `${x.toFixed(1)},${y.toFixed(1)}`; }).join(' ');
+      return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none" aria-hidden="true"><polyline points="${pts}" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    },
+
+    logoMarkup() {
+      return `<span class="grid place-items-center w-8 h-8 rounded-md" style="background:var(--accent-solid)"><i data-lucide="grid-2x2" class="w-5 h-5" style="color:#fff"></i></span>
+        <span class="text-[17px] font-bold tracking-tight" style="color:var(--ink)">Tessera</span>`;
+    },
+    profileMarkup() {
+      return `<div class="flex items-center gap-3 px-2 py-2 rounded-lg" style="background:var(--surface-2); border:1px solid var(--line)">
+          <span class="grid place-items-center w-9 h-9 rounded-md text-xs font-semibold" style="background:var(--accent-solid); color:#fff">${this.initials()}</span>
+          <div class="min-w-0"><div class="text-sm font-medium truncate" style="color:var(--ink)">${this.name}</div><div class="text-xs truncate" style="color:var(--ink-3)">Inventory lead</div></div>
+          <i data-lucide="settings" class="w-4 h-4 ml-auto" style="color:var(--ink-3)"></i>
+        </div>`;
+    },
+
+    /* ── charts ── */
+    chartData() {
+      const value12=[7.4,7.5,7.3,7.6,7.8,7.7,7.9,8.0,7.9,8.1,8.0,8.2];
+      const turns12=[3.1,3.0,3.2,3.3,3.1,3.4,3.5,3.3,3.6,3.5,3.7,3.8];
+      const weeks12=Array.from({length:12},(_,i)=>`W${i+1}`);
+      if (this.range==='4 wks') return { labels:weeks12.slice(-4), value:value12.slice(-4), turns:turns12.slice(-4) };
+      if (this.range==='YTD') return {
+        labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+        value:[6.9,7.1,7.0,7.2,7.4,7.3,7.5,7.6,7.8,7.9,8.0,8.2],
+        turns:[2.8,2.9,3.0,3.1,3.0,3.2,3.3,3.4,3.5,3.6,3.7,3.8],
+      };
+      return { labels:weeks12, value:value12, turns:turns12 };
+    },
+
+    renderCharts() {
+      if (!window.Chart) return;
+      const css=getComputedStyle(document.documentElement);
+      const c=n=>css.getPropertyValue(n).trim();
+      const font="'Familjen Grotesk', sans-serif", mono="'Geist Mono', monospace";
+      Chart.defaults.font.family=font; Chart.defaults.font.size=11; Chart.defaults.color=c('--ink-3');
+      Chart.defaults.animation=false; // instant re-render on edition/tab switch; avoids detached-canvas frames
+      const line=c('--line'), ink=c('--ink'), ink3=c('--ink-3'), accent=c('--accent'), surface=c('--surface');
+      const tooltip={ backgroundColor:ink, titleColor:c('--surface'), bodyColor:c('--ink-2'),
+        borderColor:c('--line-2'), borderWidth:1, padding:10, cornerRadius:8,
+        titleFont:{family:font,weight:'600'}, bodyFont:{family:mono}, boxWidth:8, boxHeight:8, boxPadding:4 };
+
+      const draw=(id, cfg)=>{ const el=document.getElementById(id); if (!el || el.offsetParent===null) return;
+        const ctx=el.getContext && el.getContext('2d'); if (!ctx) return;
+        try { if (this._charts[id]) this._charts[id].destroy(); this._charts[id]=new Chart(ctx, cfg); } catch(e){} };
+
+      const d=this.chartData();
+      const ctxA=document.getElementById('chartArea');
+      let gradA=null;
+      if (ctxA && ctxA.offsetParent!==null) { const cx=ctxA.getContext('2d');
+        if (cx){ const g=cx.createLinearGradient(0,0,0,240); g.addColorStop(0, accent+'2E'); g.addColorStop(1, accent+'00'); gradA=g; } }
+      draw('chartArea', { type:'line',
+        data:{ labels:d.labels, datasets:[
+          { label:'Value ($M)', data:d.value, borderColor:accent, backgroundColor:gradA, fill:true, tension:.35, borderWidth:2, pointRadius:0, pointHoverRadius:4, pointHoverBackgroundColor:accent, pointHoverBorderColor:surface, pointHoverBorderWidth:2, yAxisID:'y' },
+          { label:'Turns', data:d.turns, borderColor:ink3, backgroundColor:'transparent', fill:false, tension:.35, borderWidth:1.5, borderDash:[4,3], pointRadius:0, pointHoverRadius:4, yAxisID:'y1' } ]},
+        options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+          plugins:{legend:{display:false}, tooltip}, scales:{
+            x:{ grid:{display:false}, border:{color:line}, ticks:{font:{family:mono}, color:ink3} },
+            y:{ position:'left', grid:{color:line}, border:{display:false}, ticks:{font:{family:mono}, color:ink3, maxTicksLimit:6, callback:v=>'$'+(+v).toFixed(1)+'M'} },
+            y1:{ position:'right', grid:{display:false}, border:{display:false}, ticks:{font:{family:mono}, color:ink3, stepSize:1, callback:v=>(+v).toFixed(0)+'x'}, min:2, max:5 } } } });
+
+      draw('chartBar', { type:'bar',
+        data:{ labels:['Newark','Reno','Dallas','Atlanta','Fresno'], datasets:[{ label:'Units (k)', data:[128,96,112,74,58], backgroundColor:[accent,accent,accent,ink3,ink3], hoverBackgroundColor:accent, borderRadius:5, borderSkipped:false, maxBarThickness:46 }]},
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip}, scales:{
+          x:{ grid:{display:false}, border:{color:line}, ticks:{font:{family:font}, color:c('--ink-2')} },
+          y:{ grid:{color:line}, border:{display:false}, ticks:{font:{family:mono}, color:ink3, callback:v=>v+'k'}, beginAtZero:true } } } });
+
+      draw('chartDoughnut', { type:'doughnut',
+        data:{ labels:this.poDoughnut.map(p=>p.label), datasets:[{ data:this.poDoughnut.map(p=>p.value),
+          backgroundColor:[c('--ok-graph'), accent, ink3, c('--warn-graph')], borderColor:surface, borderWidth:3, hoverOffset:6 }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'64%', plugins:{legend:{display:false}, tooltip} } });
+    },
+
+    boot() {
+      this.skus = JSON.parse(JSON.stringify(this._skusSeed));
+      this.orders = JSON.parse(JSON.stringify(this._ordersSeed));
+      this.$nextTick(()=>{ this.icons(); requestAnimationFrame(()=>this.renderCharts()); });
+      // re-render icons + charts on edition swap
+      new MutationObserver(()=>{ this.$nextTick(()=>{ this.icons(); this.renderCharts(); }); })
+        .observe(document.documentElement, { attributes:true, attributeFilter:['class'] });
+      // keep icons fresh as Alpine re-renders lists
+      this.$watch('page', ()=>this.$nextTick(()=>this.icons()));
+      this.$watch('filteredSkus', ()=>this.$nextTick(()=>this.icons()));
+      this.$watch('filteredOrders', ()=>this.$nextTick(()=>this.icons()));
+    },
+  };
+}
+</script>
+</body>
+</html>
